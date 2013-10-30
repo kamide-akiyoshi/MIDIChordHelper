@@ -179,7 +179,7 @@ class MidiEditor extends JDialog implements DropTargetListener, ListSelectionLis
 
 		private void setSelectedEvent() {
 			seq_model = seqListModel.getSequenceModel(seq_selection_model);
-			eventDialog.midi_message_form.durationForm.setPPQ(
+			eventDialog.midiMessageForm.durationForm.setPPQ(
 					seq_model.getSequence().getResolution()
 					);
 			tick_position_model.setSequenceIndex(
@@ -203,7 +203,7 @@ class MidiEditor extends JDialog implements DropTargetListener, ListSelectionLis
 			public void actionPerformed(ActionEvent e) {
 				setSelectedEvent();
 				eventDialog.setTitle("Jump selection to");
-				eventDialog.ok_button.setAction(jump_event_action);
+				eventDialog.okButton.setAction(jump_event_action);
 				eventDialog.openTickForm();
 			}
 		};
@@ -223,7 +223,7 @@ class MidiEditor extends JDialog implements DropTargetListener, ListSelectionLis
 			public void actionPerformed(ActionEvent e) {
 				setSelectedEvent();
 				eventDialog.setTitle("Paste to");
-				eventDialog.ok_button.setAction(paste_event_action);
+				eventDialog.okButton.setAction(paste_event_action);
 				eventDialog.openTickForm();
 			}
 		};
@@ -247,10 +247,10 @@ class MidiEditor extends JDialog implements DropTargetListener, ListSelectionLis
 				setSelectedEvent();
 				midi_events_to_be_removed = null;
 				eventDialog.setTitle("Add a new MIDI event");
-				eventDialog.ok_button.setAction(add_event_action);
+				eventDialog.okButton.setAction(add_event_action);
 				int ch = midi_track_model.getChannel();
 				if( ch >= 0 ) {
-					eventDialog.midi_message_form.channelText.setSelectedChannel(ch);
+					eventDialog.midiMessageForm.channelText.setSelectedChannel(ch);
 				}
 				eventDialog.openEventForm();
 			}
@@ -259,7 +259,7 @@ class MidiEditor extends JDialog implements DropTargetListener, ListSelectionLis
 			{ putValue(NAME,"OK"); }
 			public void actionPerformed(ActionEvent e) {
 				long tick = tick_position_model.getTickPosition();
-				MidiMessage midi_msg = eventDialog.midi_message_form.getMessage();
+				MidiMessage midi_msg = eventDialog.midiMessageForm.getMessage();
 				MidiEvent new_midi_event = new MidiEvent(midi_msg,tick);
 				if( midi_events_to_be_removed != null ) {
 					midi_track_model.removeMidiEvents(midi_events_to_be_removed);
@@ -270,13 +270,13 @@ class MidiEditor extends JDialog implements DropTargetListener, ListSelectionLis
 				}
 				if(
 					pair_note_on_off_model.isSelected() &&
-					eventDialog.midi_message_form.isNote()
+					eventDialog.midiMessageForm.isNote()
 				) {
-					ShortMessage sm = eventDialog.midi_message_form.getPartnerMessage();
+					ShortMessage sm = eventDialog.midiMessageForm.getPartnerMessage();
 					if( sm == null ) scrollToEventAt( tick );
 					else {
-						int duration = eventDialog.midi_message_form.durationForm.getDuration();
-						if( eventDialog.midi_message_form.isNote(false) ) { // Note Off
+						int duration = eventDialog.midiMessageForm.durationForm.getDuration();
+						if( eventDialog.midiMessageForm.isNote(false) ) { // Note Off
 							duration = -duration;
 						}
 						long partner_tick = tick + (long)duration;
@@ -300,7 +300,7 @@ class MidiEditor extends JDialog implements DropTargetListener, ListSelectionLis
 		public MidiEventCellEditor() {
 			edit_event_button.setHorizontalAlignment(JButton.LEFT);
 			eventDialog.cancel_button.setAction(cancel_action);
-			eventDialog.midi_message_form.setOutputMidiChannels(
+			eventDialog.midiMessageForm.setOutputMidiChannels(
 					midiDevice.getChannels()
 					);
 			eventDialog.tick_position_form.setModel(tick_position_model);
@@ -310,18 +310,18 @@ class MidiEditor extends JDialog implements DropTargetListener, ListSelectionLis
 						setSelectedEvent();
 						if( sel_midi_evt == null ) return;
 						MidiEvent partner_event = null;
-						eventDialog.midi_message_form.setMessage( sel_midi_evt.getMessage() );
-						if( eventDialog.midi_message_form.isNote() ) {
+						eventDialog.midiMessageForm.setMessage( sel_midi_evt.getMessage() );
+						if( eventDialog.midiMessageForm.isNote() ) {
 							int partner_index = midi_track_model.getIndexOfPartnerFor(sel_index);
 							if( partner_index < 0 ) {
-								eventDialog.midi_message_form.durationForm.setDuration(0);
+								eventDialog.midiMessageForm.durationForm.setDuration(0);
 							}
 							else {
 								partner_event = midi_track_model.getMidiEvent(partner_index);
 								long partner_tick = partner_event.getTick();
 								long duration = current_tick > partner_tick ?
 										current_tick - partner_tick : partner_tick - current_tick ;
-								eventDialog.midi_message_form.durationForm.setDuration((int)duration);
+								eventDialog.midiMessageForm.durationForm.setDuration((int)duration);
 							}
 						}
 						MidiEvent events[];
@@ -336,14 +336,14 @@ class MidiEditor extends JDialog implements DropTargetListener, ListSelectionLis
 						}
 						midi_events_to_be_removed = events;
 						eventDialog.setTitle("Change MIDI event");
-						eventDialog.ok_button.setAction(add_event_action);
+						eventDialog.okButton.setAction(add_event_action);
 						eventDialog.openEventForm();
 					}
 				}
 			);
 			pair_note_on_off_model.addItemListener(new ItemListener() {
 				public void itemStateChanged(ItemEvent e) {
-					eventDialog.midi_message_form.durationForm.setEnabled(
+					eventDialog.midiMessageForm.durationForm.setEnabled(
 							pair_note_on_off_model.isSelected()
 							);
 				}

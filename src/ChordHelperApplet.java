@@ -241,7 +241,7 @@ public class ChordHelperApplet extends JApplet implements MetaEventListener {
 	 */
 	public static class VersionInfo {
 		public static final String	NAME = "MIDI Chord Helper";
-		public static final String	VERSION = "Ver.20131028.1";
+		public static final String	VERSION = "Ver.20131031.1";
 		public static final String	COPYRIGHT = "Copyright (C) 2004-2013";
 		public static final String	AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String	URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";

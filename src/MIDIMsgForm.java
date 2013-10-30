@@ -54,16 +54,16 @@ import javax.swing.event.ListSelectionListener;
  *	http://www.yk.rim.or.jp/~kamide/music/chordhelper/
  */
 class MidiEventDialog extends JDialog {
-	MidiMessageForm midi_message_form = new MidiMessageForm();
+	MidiMessageForm midiMessageForm = new MidiMessageForm();
 	TickPositionForm tick_position_form = new TickPositionForm();
-	JButton ok_button = new JButton("OK");
+	JButton okButton = new JButton("OK");
 	JButton cancel_button = new JButton("Cancel");
 	public MidiEventDialog() {
 		setLayout(new FlowLayout());
 		add( tick_position_form );
-		add( midi_message_form );
+		add( midiMessageForm );
 		JPanel ok_cancel_panel = new JPanel();
-		ok_cancel_panel.add( ok_button );
+		ok_cancel_panel.add( okButton );
 		ok_cancel_panel.add( cancel_button );
 		add( ok_cancel_panel );
 		cancel_button.addActionListener(
@@ -76,21 +76,21 @@ class MidiEventDialog extends JDialog {
 	}
 	public void openTickForm() {
 		tick_position_form.setVisible(true);
-		midi_message_form.setVisible(false);
+		midiMessageForm.setVisible(false);
 		setBounds( 200, 300, 500, 120 );
 		setVisible(true);
 	}
 	public void openEventForm() {
 		tick_position_form.setVisible(true);
-		midi_message_form.setVisible(true);
-		midi_message_form.setDurationVisible(true);
+		midiMessageForm.setVisible(true);
+		midiMessageForm.setDurationVisible(true);
 		setBounds( 200, 300, 630, 320 );
 		setVisible(true);
 	}
 	public void openMessageForm() {
 		tick_position_form.setVisible(false);
-		midi_message_form.setVisible(true);
-		midi_message_form.setDurationVisible(false);
+		midiMessageForm.setVisible(true);
+		midiMessageForm.setDurationVisible(false);
 		setBounds( 200, 300, 630, 270 );
 		setVisible(true);
 	}
