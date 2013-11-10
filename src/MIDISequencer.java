@@ -2,6 +2,8 @@
 import java.awt.Color;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.HashMap;
+import java.util.Map;
 
 import javax.sound.midi.InvalidMidiDataException;
 import javax.sound.midi.MetaEventListener;
@@ -51,163 +53,141 @@ enum TimeLabelFormat {
 /**
  * シーケンサの現在位置（分：秒）を表示するビュー
  */
-class TimeIndicator extends JPanel {
-	private TimeLabel timePositionLabel;
-	private TimeLabel timeLengthLabel;
+class TimeIndicator extends JPanel implements ChangeListener {
+	/**
+	 * 時間（分：秒）表示ラベル
+	 */
+	private static class TimeLabel extends JLabel {
+		/**
+		 * 時間表示の形式
+		 */
+		private TimeLabelFormat formatType;
+		/**
+		 * 時間の値（秒）
+		 */
+		private int valueInSec;
+		/**
+		 * 時間表示ラベルを構築します。
+		 * @param formatType 表示形式
+		 */
+		public TimeLabel(TimeLabelFormat formatType) {
+			super();
+			if( (this.formatType = formatType) == TimeLabelFormat.POSITION ) {
+				setFont( getFont().deriveFont(getFont().getSize2D() + 4) );
+				setForeground( new Color(0x80,0x00,0x00) );
+				setToolTipText("Time position - 現在位置（分：秒）");
+			}
+			else {
+				setToolTipText("Time length - 曲の長さ（分：秒）");
+			}
+			setText(formatType.toTimeString(valueInSec));
+		}
+		/**
+		 * 時間の値を秒単位で設定します。
+		 * @param sec 秒単位の時間
+		 */
+		public void setTimeInSecond(int sec) {
+			if( valueInSec == sec )
+				return;
+			setText(formatType.toTimeString(sec));
+		}
+	}
+	private TimeLabel timePositionLabel = new TimeLabel(TimeLabelFormat.POSITION);
+	private TimeLabel timeLengthLabel = new TimeLabel(TimeLabelFormat.LENGTH);
 	private SequencerTimeRangeModel model;
-	public TimeIndicator() {
-		timePositionLabel = new TimeLabel(TimeLabelFormat.POSITION);
-		timeLengthLabel = new TimeLabel(TimeLabelFormat.LENGTH);
+	/**
+	 * シーケンサの現在位置（分：秒）を表示するビューを構築します。
+	 * @param model スライダー用の時間範囲データモデル
+	 */
+	public TimeIndicator(SequencerTimeRangeModel model) {
 		setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
 		add(timePositionLabel);
 		add(timeLengthLabel);
+		(this.model = model).addChangeListener(this);
 	}
-	public TimeIndicator(SequencerTimeRangeModel model) {
-		this();
-		(this.model = model).addChangeListener(
-			new ChangeListener() {
-				public void stateChanged(ChangeEvent e) {
-					SequencerTimeRangeModel model = TimeIndicator.this.model;
-					timeLengthLabel.setTimeInSecond(model.getMaximum()/1000);
-					timePositionLabel.setTimeInSecond(model.getValue()/1000);
-				}
-			}
-		);
-	}
-}
-
-/**
- * 時間（分：秒）表示ラベル
- */
-class TimeLabel extends JLabel {
-	/**
-	 * 時間表示の形式
-	 */
-	private TimeLabelFormat formatType;
-	/**
-	 * 時間の値（秒）
-	 */
-	private int valueInSec = -1;
-	/**
-	 * 時間表示ラベルを構築します。
-	 * @param formatType 表示形式
-	 */
-	public TimeLabel(TimeLabelFormat formatType) {
-		super();
-		if( (this.formatType = formatType) == TimeLabelFormat.POSITION ) {
-			float largePointSize = getFont().getSize2D() + 4;
-			setFont( getFont().deriveFont(largePointSize) );
-			setForeground( new Color(0x80,0x00,0x00) );
-			setToolTipText("Time position - 現在位置（分：秒）");
-		}
-		else {
-			setToolTipText("Time length - 曲の長さ（分：秒）");
-		}
-		setText(formatType.toTimeString(0));
-	}
-	/**
-	 * 時間の値をマイクロ秒単位で設定します。
-	 * @param us マイクロ秒単位の時間
-	 */
-	public void setTimeInMicrosecond(long us) {
-		setTimeInSecond( (int)(us/1000000) );
-	}
-	/**
-	 * 時間の値を秒単位で設定します。
-	 * @param sec 秒単位の時間
-	 */
-	public void setTimeInSecond(int sec) {
-		if( valueInSec == sec )
-			return;
-		if( (valueInSec = sec) < 0 )
-			setText(null);
-		else
-			setText(formatType.toTimeString(sec));
+	public void stateChanged(ChangeEvent e) {
+		timeLengthLabel.setTimeInSecond(model.getMaximum()/1000);
+		timePositionLabel.setTimeInSecond(model.getValue()/1000);
 	}
 }
 
 /**
  * 小節表示ビュー
  */
-class MeasureIndicator extends JPanel {
-	private SequencerTimeRangeModel model;
-	private MeasureLabel measurePositionLabel;
-	private MeasureLabel measureLengthLabel;
-	public MeasureIndicator() {
-		measurePositionLabel = new MeasureLabel(TimeLabelFormat.POSITION);
-		measureLengthLabel = new MeasureLabel(TimeLabelFormat.LENGTH);
-		setLayout( new BoxLayout( this, BoxLayout.X_AXIS ) );
-		add( measurePositionLabel );
-		add( measureLengthLabel );
-	}
-	public MeasureIndicator(SequencerTimeRangeModel model) {
-		this();
-		(this.model = model).addChangeListener(new ChangeListener() {
-			@Override
-			public void stateChanged(ChangeEvent e) {
-				SequencerTimeRangeModel model = MeasureIndicator.this.model;
-				Sequencer sequencer = model.deviceManager.getSequencer();
-				MidiSequenceModel seqModel =
-					model.deviceManager.timeRangeModel.getSequenceModel();
-				SequenceIndex seqIndex = (
-					seqModel == null ? null : seqModel.getSequenceIndex()
-				);
-				if( ! sequencer.isRunning() || sequencer.isRecording() ) {
-					measureLengthLabel.setMeasure(
-						seqIndex == null ? 0 : seqIndex.tickToMeasure(
-							sequencer.getTickLength()
-						)
-					);
-				}
-				if( seqIndex == null ) {
-					measurePositionLabel.setMeasure( 0, 0 );
-				}
-				else {
-					int measurePosition = seqIndex.tickToMeasure(
-						sequencer.getTickPosition()
-					);
-					measurePositionLabel.setMeasure(
-						measurePosition, seqIndex.last_beat
-					);
-				}
+class MeasureIndicator extends JPanel implements ChangeListener {
+	/**
+	 * 小節表示ラベル
+	 */
+	private static class MeasureLabel extends JLabel {
+		private TimeLabelFormat formatType;
+		private int measure = -1;
+		private int beat = 0;
+		public MeasureLabel(TimeLabelFormat formatType) {
+			if( (this.formatType = formatType) == TimeLabelFormat.POSITION ) {
+				setFont( getFont().deriveFont(getFont().getSize2D() + 4) );
+				setForeground( new Color(0x80,0x00,0x00) );
+				setText( "0001:01" );
+				setToolTipText("Measure:beat position - 何小節目：何拍目");
 			}
-		});
+			else {
+				setText( "/0000" );
+				setToolTipText("Measure length - 小節の数");
+			}
+		}
+		public void setMeasure(int measure) {
+			setMeasure(measure,0);
+		}
+		public void setMeasure(int measure, int beat) {
+			if( this.measure == measure && this.beat == beat ) {
+				return;
+			}
+			this.beat = beat;
+			this.measure = measure;
+			if( formatType == TimeLabelFormat.LENGTH )
+				setText(String.format("/%04d", measure));
+			else
+				setText(String.format("%04d:%02d", measure+1, beat+1));
+		}
 	}
-}
-/**
- * 小節表示ラベル
- */
-class MeasureLabel extends JLabel {
-	private TimeLabelFormat formatType;
-	private int measure = -1;
-	private int beat = 0;
-	public MeasureLabel(TimeLabelFormat formatType) {
-		if( (this.formatType = formatType) == TimeLabelFormat.POSITION ) {
-			float large_point_size = getFont().getSize2D() + 4;
-			setFont( getFont().deriveFont(large_point_size) );
-			setForeground( new Color(0x80,0x00,0x00) );
-			setText( "0001:01" );
-			setToolTipText("Measure:beat position - 何小節目：何拍目");
+	private MeasureLabel measurePositionLabel = new MeasureLabel(TimeLabelFormat.POSITION);
+	private MeasureLabel measureLengthLabel = new MeasureLabel(TimeLabelFormat.LENGTH);
+	private SequencerTimeRangeModel model;
+	/**
+	 * シーケンサの現在の小節位置を表示するビューを構築します。
+	 * @param model スライダー用の時間範囲データモデル
+	 */
+	public MeasureIndicator(SequencerTimeRangeModel model) {
+		setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
+		add(measurePositionLabel);
+		add(measureLengthLabel);
+		(this.model = model).addChangeListener(this);
+	}
+	@Override
+	public void stateChanged(ChangeEvent e) {
+		Sequencer sequencer = model.deviceModelList.getSequencer();
+		MidiSequenceTableModel seqModel =
+			model.deviceModelList.timeRangeModel.getSequenceTableModel();
+		SequenceTickIndex seqIndex = (
+			seqModel == null ? null : seqModel.getSequenceTickIndex()
+		);
+		if( ! sequencer.isRunning() || sequencer.isRecording() ) {
+			measureLengthLabel.setMeasure(
+				seqIndex == null ? 0 : seqIndex.tickToMeasure(
+					sequencer.getTickLength()
+				)
+			);
+		}
+		if( seqIndex == null ) {
+			measurePositionLabel.setMeasure( 0, 0 );
 		}
 		else {
-			setText( "/0000" );
-			setToolTipText("Measure length - 小節の数");
+			int measurePosition = seqIndex.tickToMeasure(
+				sequencer.getTickPosition()
+			);
+			measurePositionLabel.setMeasure(
+				measurePosition, seqIndex.lastBeat
+			);
 		}
-	}
-	public void setMeasure(int measure) {
-		setMeasure(measure,0);
-	}
-	public void setMeasure(int measure, int beat) {
-		if( this.measure == measure && this.beat == beat ) {
-			return;
-		}
-		this.beat = beat;
-		if( (this.measure = measure) < 0 )
-			setText( null );
-		else if( formatType == TimeLabelFormat.LENGTH )
-			setText( String.format("/%04d", measure) );
-		else
-			setText( String.format("%04d:%02d", measure+1, beat+1) );
 	}
 }
 
@@ -275,116 +255,217 @@ class SpeedSlider extends JPanel implements ActionListener {
 }
 
 /**
- * 時間範囲データモデル
+ * スライダー用の時間範囲データモデル
  */
-class SequencerTimeRangeModel implements BoundedRangeModel {
-	static final int INTERVAL_MS = 20;
-	MidiDeviceManager deviceManager;
+class SequencerTimeRangeModel
+	implements BoundedRangeModel, MetaEventListener, ActionListener
+{
+	/**
+	 * 更新インターバル [ミリ秒]
+	 */
+	private static final int INTERVAL_MS = 20;
+	/**
+	 * MIDIデバイスモデルリスト
+	 */
+	MidiDeviceModelList deviceModelList;
+	/**
+	 * シーケンサ
+	 */
 	private Sequencer sequencer;
-	javax.swing.Timer	timer;
-	private boolean valueIsAdjusting = false;
-	private EventListenerList listenerList = new EventListenerList();
+	/**
+	 * このデータモデルをシーケンサに同期させるためのサンプリングタイマー
+	 */
+	javax.swing.Timer timer = new javax.swing.Timer(INTERVAL_MS, this);
+	/**
+	 * 開始終了アクション
+	 */
 	public StartStopAction startStopAction = new StartStopAction();
-	class StartStopAction extends AbstractAction {
-		Icon play_icon = new ButtonIcon(ButtonIcon.PLAY_ICON);
-		Icon pause_icon = new ButtonIcon(ButtonIcon.PAUSE_ICON);
+	/**
+	 * 開始終了アクション
+	 */
+	private class StartStopAction extends AbstractAction {
+		private Map<Boolean,Icon> iconMap = new HashMap<Boolean,Icon>() {
+			{
+				put(Boolean.FALSE, new ButtonIcon(ButtonIcon.PLAY_ICON));
+				put(Boolean.TRUE, new ButtonIcon(ButtonIcon.PAUSE_ICON));
+			}
+		};
 		{
 			putValue(
 				SHORT_DESCRIPTION,
 				"Start/Stop recording or playing - 録音または再生の開始／停止"
 			);
-			putValue( LARGE_ICON_KEY, play_icon );
-			putValue( SELECTED_KEY, false );
+			setRunning(false);
 		}
+		@Override
 		public void actionPerformed(ActionEvent event) {
-			if( timer.isRunning() ) stop(); else start();
+			if(timer.isRunning()) stop(); else start();
 		}
-		public void setRunning(boolean is_running) {
-			putValue( LARGE_ICON_KEY, is_running ? pause_icon : play_icon );
-			putValue( SELECTED_KEY, is_running );
+		/**
+		 * 開始されているかどうかを設定します。
+		 * @param isRunning 開始されていたらtrue
+		 */
+		public void setRunning(boolean isRunning) {
+			putValue(LARGE_ICON_KEY, iconMap.get(isRunning));
+			putValue(SELECTED_KEY, isRunning);
 		}
 	}
-	public Action move_backward_action = new AbstractAction() {
+	/**
+	 * １小節戻るアクション
+	 */
+	public Action moveBackwardAction = new AbstractAction() {
 		{
-			putValue( SHORT_DESCRIPTION, "Move backward 1 measure - １小節戻る" );
-			putValue( LARGE_ICON_KEY, new ButtonIcon(ButtonIcon.BACKWARD_ICON) );
+			putValue(SHORT_DESCRIPTION, "Move backward 1 measure - １小節戻る");
+			putValue(LARGE_ICON_KEY, new ButtonIcon(ButtonIcon.BACKWARD_ICON));
 		}
-		public void actionPerformed( ActionEvent event ) {
-			moveMeasure(-1);
-		}
+		@Override
+		public void actionPerformed(ActionEvent event) { moveMeasure(-1); }
 	};
-	public Action move_forward_action = new AbstractAction() {
+	/**
+	 *１小節進むアクション
+	 */
+	public Action moveForwardAction = new AbstractAction() {
 		{
-			putValue( SHORT_DESCRIPTION, "Move forward 1 measure - １小節進む" );
-			putValue( LARGE_ICON_KEY, new ButtonIcon(ButtonIcon.FORWARD_ICON) );
+			putValue(SHORT_DESCRIPTION, "Move forward 1 measure - １小節進む");
+			putValue(LARGE_ICON_KEY, new ButtonIcon(ButtonIcon.FORWARD_ICON));
 		}
-		public void actionPerformed( ActionEvent event ) {
-			moveMeasure(1);
-		}
+		@Override
+		public void actionPerformed(ActionEvent event) { moveMeasure(1); }
 	};
-	public Action toggle_repeat_action = new AbstractAction() {
-		{
-			putValue( SHORT_DESCRIPTION, "Repeat - 繰り返し再生" );
-			putValue( LARGE_ICON_KEY, new ButtonIcon(ButtonIcon.REPEAT_ICON) );
-			putValue( SELECTED_KEY, false );
+	/**
+	 * 小節位置を移動します。
+	 * @param measureOffset 小節位置の移動量（負数も指定可）
+	 */
+	private void moveMeasure(int measureOffset) {
+		if( measureOffset == 0 || seqModel == null )
+			return;
+		SequenceTickIndex seqIndex = seqModel.getSequenceTickIndex();
+		int measurePosition = seqIndex.tickToMeasure(sequencer.getTickPosition());
+		long newTickPosition = seqIndex.measureToTick(measurePosition + measureOffset);
+		if( newTickPosition < 0 ) {
+			// 下限
+			newTickPosition = 0;
 		}
+		else {
+			long tickLength = sequencer.getTickLength();
+			if( newTickPosition > tickLength ) {
+				// 上限
+				newTickPosition = tickLength - 1;
+			}
+		}
+		sequencer.setTickPosition(newTickPosition);
+		fireStateChanged();
+	}
+	/**
+	 * 繰り返し再生ON/OFF切り替えアクション
+	 */
+	public Action toggleRepeatAction = new AbstractAction() {
+		{
+			putValue(SHORT_DESCRIPTION, "Repeat - 繰り返し再生");
+			putValue(LARGE_ICON_KEY, new ButtonIcon(ButtonIcon.REPEAT_ICON));
+			putValue(SELECTED_KEY, false);
+		}
+		@Override
 		public void actionPerformed(ActionEvent event) { }
 	};
-	public SequencerTimeRangeModel( MidiDeviceManager device_manager ) {
-		this.deviceManager = device_manager;
-		this.sequencer = device_manager.getSequencer();
-		timer = new javax.swing.Timer(
-			INTERVAL_MS,
-			new ActionListener() {
-				public void actionPerformed(ActionEvent e) {
-					if( ! valueIsAdjusting ) fireStateChanged();
-				}
-			}
-		);
-		timer.setCoalesce(true);
-		sequencer.addMetaEventListener(
-			new MetaEventListener() {
-				public void meta(MetaMessage msg) {
-					if( msg.getType() != 0x2F /* End-Of-Track */)
-						return;
-					timer.stop();
-					startStopAction.setRunning(false);
-					sequencer.setMicrosecondPosition(0);
-					if(
-						(Boolean)toggle_repeat_action.getValue( Action.SELECTED_KEY ) ||
-						SequencerTimeRangeModel.this.deviceManager.editorDialog.loadNext(1)
-					) start();
-					else fireStateChanged();
-				}
-			}
-		);
+	/**
+	 * 新しい {@link SequencerTimeRangeModel} を構築します。
+	 * @param deviceModelList MIDIデバイスモデルリスト
+	 */
+	public SequencerTimeRangeModel(MidiDeviceModelList deviceModelList) {
+		this.deviceModelList = deviceModelList;
+		sequencer = deviceModelList.getSequencer();
+		sequencer.addMetaEventListener(this);
 	}
+	@Override
+	public void meta(MetaMessage msg) {
+		if( msg.getType() != 0x2F ) return;
+		/* End-Of-Track */
+		timer.stop();
+		startStopAction.setRunning(false);
+		sequencer.setMicrosecondPosition(0);
+		if(
+			(Boolean)toggleRepeatAction.getValue(Action.SELECTED_KEY)
+			||
+			deviceModelList.editorDialog.loadNext(1)
+		)
+			start();
+		else
+			fireStateChanged();
+	}
+	@Override
 	public int getExtent() { return 0; }
-	public int getMaximum() { return (int)(getMicrosecondLength()/1000L); }
+	@Override
 	public int getMinimum() { return 0; }
-	public int getValue() { return (int)(getMicrosecondPosition()/1000L); }
-	public boolean getValueIsAdjusting() { return valueIsAdjusting; }
-	public void setExtent(int new_extent) {}
-	public void setMaximum(int new_maximum) {}
-	public void setMinimum(int new_minimum) {}
+	private long getMicrosecondLength() {
+		//
+		// Sequencer.getMicrosecondLength() returns NEGATIVE value
+		//  when over 0x7FFFFFFF microseconds (== 35.7913941166666... minutes),
+		//  should be corrected when negative
+		//
+		long usLength = sequencer.getMicrosecondLength();
+		return usLength < 0 ? 0x100000000L + usLength : usLength ;
+	}
+	@Override
+	public int getMaximum() {
+		return (int)(getMicrosecondLength()/1000L);
+	}
+	private long getMicrosecondPosition() {
+		long usPosition = sequencer.getMicrosecondPosition();
+		return usPosition < 0 ? 0x100000000L + usPosition : usPosition ;
+	}
+	@Override
+	public int getValue() {
+		return (int)(getMicrosecondPosition()/1000L);
+	}
+	@Override
+	public void setExtent(int newExtent) {}
+	@Override
+	public void setMaximum(int newMaximum) {}
+	@Override
+	public void setMinimum(int newMinimum) {}
+	@Override
 	public void setRangeProperties(int value, int extent, int min, int max, boolean adjusting) {
 		sequencer.setMicrosecondPosition( 1000L * (long)value );
 		valueIsAdjusting = adjusting;
 		fireStateChanged();
 	}
-	public void setValue(int new_value) {
-		sequencer.setMicrosecondPosition( 1000L * (long)new_value );
+	@Override
+	public void setValue(int newValue) {
+		sequencer.setMicrosecondPosition( 1000L * (long)newValue );
 		fireStateChanged();
 	}
+	/**
+	 * 値調整中のときtrue
+	 */
+	private boolean valueIsAdjusting = false;
+	@Override
+	public boolean getValueIsAdjusting() {
+		return valueIsAdjusting;
+	}
+	@Override
 	public void setValueIsAdjusting(boolean b) {
 		valueIsAdjusting = b;
 	}
+	@Override
+	public void actionPerformed(ActionEvent e) {
+		if( ! valueIsAdjusting ) fireStateChanged();
+	}
+	/**
+	 * イベントリスナーのリスト
+	 */
+	protected EventListenerList listenerList = new EventListenerList();
+	@Override
 	public void addChangeListener(ChangeListener listener) {
 		listenerList.add(ChangeListener.class, listener);
 	}
+	@Override
 	public void removeChangeListener(ChangeListener listener) {
 		listenerList.remove(ChangeListener.class, listener);
 	}
+	/**
+	 * 状態が変わったことをリスナーに通知します。
+	 */
 	public void fireStateChanged() {
 		Object[] listeners = listenerList.getListenerList();
 		for (int i = listeners.length-2; i>=0; i-=2) {
@@ -393,22 +474,11 @@ class SequencerTimeRangeModel implements BoundedRangeModel {
 			}
 		}
 	}
-	long getMicrosecondLength() {
-		//
-		// Sequencer.getMicrosecondLength() returns NEGATIVE value
-		//  when over 0x7FFFFFFF microseconds (== 35.7913941166666... minutes),
-		//  should be corrected when negative
-		//
-		long us_len = sequencer.getMicrosecondLength();
-		return us_len < 0 ? 0x100000000L + us_len : us_len ;
+	private MidiSequenceTableModel seqModel = null;
+	public MidiSequenceTableModel getSequenceTableModel() {
+		return seqModel;
 	}
-	long getMicrosecondPosition() {
-		long us_pos = sequencer.getMicrosecondPosition();
-		return us_pos < 0 ? 0x100000000L + us_pos : us_pos ;
-	}
-	private MidiSequenceModel seq_model = null;
-	public MidiSequenceModel getSequenceModel() { return seq_model; }
-	public boolean setSequenceModel( MidiSequenceModel seq_model ) {
+	public boolean setSequenceModel(MidiSequenceTableModel seqModel) {
 		//
 		// javax.sound.midi:Sequencer.setSequence() のドキュメントにある
 		// 「このメソッドは、Sequencer が閉じている場合でも呼び出すことができます。 」
@@ -416,53 +486,30 @@ class SequencerTimeRangeModel implements BoundedRangeModel {
 		// 連鎖的に stop() が呼ばれるために IllegalStateException sequencer not open が出る。
 		// この現象を回避するため、あらかじめチェックしてから setSequence() を呼び出している。
 		//
-		if( seq_model != null || sequencer.isOpen() ) {
+		if( seqModel != null || sequencer.isOpen() ) {
 			try {
 				// Set new MIDI data
-				sequencer.setSequence(
-						seq_model == null ? null : seq_model.getSequence()
-						);
+				sequencer.setSequence(seqModel==null ? null : seqModel.getSequence());
 			} catch ( InvalidMidiDataException e ) {
 				e.printStackTrace();
 				return false;
 			}
 		}
-		this.seq_model = seq_model;
+		this.seqModel = seqModel;
 		fireStateChanged();
 		return true;
 	}
-	// 小節位置の相対移動
-	public void moveMeasure( int measure_offset ) {
-		if( measure_offset == 0 || seq_model == null ) return;
-		SequenceIndex seq_index = seq_model.getSequenceIndex();
-		long new_tick_pos =
-				seq_index.measureToTick(
-						measure_offset + seq_index.tickToMeasure(
-								sequencer.getTickPosition()
-								)
-						);
-		if( new_tick_pos < 0 ) new_tick_pos = 0;
-		else {
-			long tick_len = sequencer.getTickLength();
-			if( new_tick_pos > tick_len ) new_tick_pos = tick_len - 1;
-		}
-		sequencer.setTickPosition( new_tick_pos );
-		fireStateChanged();
-	}
 
-	// 開始／終了
-	public boolean isStartable() {
-		return sequencer.isOpen() && sequencer.getSequence() != null ;
-	}
 	public void start() {
-		if( ! isStartable() ) {
+		if( ! sequencer.isOpen() || sequencer.getSequence() == null ) {
 			startStopAction.setRunning(false);
 			return;
 		}
 		startStopAction.setRunning(true);
 		timer.start();
-		if( deviceManager.isRecordable() ) {
-			deviceManager.resetMicrosecondPosition();
+		if( deviceModelList.isRecordable() ) {
+			for( MidiConnecterListModel model : deviceModelList )
+				model.resetMicrosecondPosition();
 			System.gc();
 			sequencer.startRecording();
 		}
@@ -472,7 +519,8 @@ class SequencerTimeRangeModel implements BoundedRangeModel {
 		fireStateChanged();
 	}
 	public void stop() {
-		if( sequencer.isOpen() ) sequencer.stop();
+		if( sequencer.isOpen() )
+			sequencer.stop();
 		timer.stop();
 		startStopAction.setRunning(false);
 		fireStateChanged();

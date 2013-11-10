@@ -85,7 +85,7 @@ class AppletFrame extends JFrame implements AppletStub, AppletContext {
 		applet.editorDialog.seqListModel.addTableModelListener(
 			new TableModelListener() {
 				public void tableChanged(TableModelEvent e) {
-					if( e.getColumn() == SequenceListModel.COLUMN_FILENAME )
+					if( e.getColumn() == SequenceListTableModel.COLUMN_FILENAME )
 						setFilenameToTitle();
 				}
 			}
@@ -103,7 +103,7 @@ class AppletFrame extends JFrame implements AppletStub, AppletContext {
 		applet.start();
 	}
 	private void setFilenameToTitle() {
-		MidiSequenceModel seqModel = applet.deviceManager.timeRangeModel.getSequenceModel();
+		MidiSequenceTableModel seqModel = applet.deviceManager.timeRangeModel.getSequenceTableModel();
 		String filename = ( seqModel == null ? null : seqModel.getFilename() );
 		String title = ChordHelperApplet.VersionInfo.NAME;
 		if( filename != null && ! filename.isEmpty() ) {

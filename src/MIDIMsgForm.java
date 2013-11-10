@@ -988,7 +988,7 @@ class MidiChannelButtonSelecter extends JList<Integer> {
 //
 ////////////////////////////////////
 class TickPositionModel implements ChangeListener {
-	private SequenceIndex seq_index;
+	private SequenceTickIndex seq_index;
 	private boolean is_changing = false;
 	public SpinnerNumberModel
 	tick_model, measure_model, beat_model, extra_tick_model;
@@ -1017,9 +1017,9 @@ class TickPositionModel implements ChangeListener {
 							tick_model.getNumber().longValue()
 							)
 					);
-			beat_model.setValue( seq_index.last_beat + 1 );
+			beat_model.setValue( seq_index.lastBeat + 1 );
 			is_changing = false;
-			extra_tick_model.setValue( seq_index.last_extra_tick );
+			extra_tick_model.setValue( seq_index.lastExtraTick );
 			return;
 		}
 		if( is_changing ) return;
@@ -1033,10 +1033,10 @@ class TickPositionModel implements ChangeListener {
 	}
 	// Methods
 	//
-	public SequenceIndex getSequenceIndex() {
+	public SequenceTickIndex getSequenceIndex() {
 		return seq_index;
 	}
-	public void setSequenceIndex( SequenceIndex seq_index ) {
+	public void setSequenceIndex( SequenceTickIndex seq_index ) {
 		this.seq_index = seq_index;
 		extra_tick_model.setMaximum( 4 * seq_index.getResolution() - 1 );
 	}
@@ -1307,48 +1307,44 @@ class TempoSelecter extends JPanel implements MouseListener {
 	public void clear() { setTempo( DEFAULT_QPM ); }
 }
 
-/////////////////////////////
-//
-// Time Signature - 拍子選択
-//
-/////////////////////////////
-class TimeSignatureLabel extends JLabel {
-	private byte upper = -1;
-	private byte lower_index = -1;
-	public void setTimeSignature(byte upper, byte lower_index) {
-		if( this.upper == upper && this.lower_index == lower_index ) {
-			return;
-		}
-		setText(
-				"<html><font size=\"+1\">" +
-						upper + "/" + (1 << lower_index) +
-						"</font></html>"
-				);
-	}
-}
+/**
+ * 拍子選択ビュー
+ */
 class TimeSignatureSelecter extends JPanel {
-	SpinnerNumberModel upperTimesigSpinnerModel;
-	JSpinner upper_timesig_spinner;
-	JComboBox<String> lowerTimesigCombobox;
-	TimeSignatureLabel	timesig_value_label;
-	private boolean	editable;
-
-	public TimeSignatureSelecter() {
-		upperTimesigSpinnerModel = new SpinnerNumberModel( 4, 1, 32, 1 );
-		upper_timesig_spinner = new JSpinner( upperTimesigSpinnerModel );
-		upper_timesig_spinner.setToolTipText("Time signature (upper digit) - 拍子の分子");
-		lowerTimesigCombobox = new JComboBox<String>();
-		lowerTimesigCombobox.setToolTipText("Time signature (lower digit) - 拍子の分母");
-		for( int i=0; i<6; i++ ) {
-			lowerTimesigCombobox.addItem( "/" + (1<<i) );
+	SpinnerNumberModel upperTimesigSpinnerModel = new SpinnerNumberModel(4, 1, 32, 1);
+	private JSpinner upperTimesigSpinner = new JSpinner(
+		upperTimesigSpinnerModel
+	) {
+		{
+			setToolTipText("Time signature (upper digit) - 拍子の分子");
 		}
-		timesig_value_label = new TimeSignatureLabel();
-		timesig_value_label.setToolTipText("Time signature - 拍子");
-		lowerTimesigCombobox.setSelectedIndex(2);
-		//
-		add( upper_timesig_spinner );
-		add( lowerTimesigCombobox );
-		add( timesig_value_label );
+	};
+	JComboBox<String> lowerTimesigCombobox = new JComboBox<String>() {
+		{
+			setToolTipText("Time signature (lower digit) - 拍子の分母");
+			for( int i=0; i<6; i++ ) addItem( "/" + (1<<i) );
+			setSelectedIndex(2);
+		}
+	};
+	private class TimeSignatureLabel extends JLabel {
+		private byte upper = -1;
+		private byte lower_index = -1;
+		{
+			setToolTipText("Time signature - 拍子");
+		}
+		public void setTimeSignature(byte upper, byte lower_index) {
+			if( this.upper == upper && this.lower_index == lower_index ) {
+				return;
+			}
+			setText("<html><font size=\"+1\">" + upper + "/" + (1 << lower_index) + "</font></html>");
+		}
+	}
+	private TimeSignatureLabel timesigValueLabel = new TimeSignatureLabel();
+	private boolean	editable;
+	public TimeSignatureSelecter() {
+		add(upperTimesigSpinner);
+		add(lowerTimesigCombobox);
+		add(timesigValueLabel);
 		setEditable(true);
 	}
 	public void clear() {
@@ -1378,7 +1374,7 @@ class TimeSignatureSelecter extends JPanel {
 	public void setValue( byte upper, byte lower_index ) {
 		upperTimesigSpinnerModel.setValue( upper );
 		lowerTimesigCombobox.setSelectedIndex( lower_index );
-		timesig_value_label.setTimeSignature( upper, lower_index );
+		timesigValueLabel.setTimeSignature( upper, lower_index );
 	}
 	public void setValue( byte[] data ) {
 		setValue( data[0], data[1] );
@@ -1386,13 +1382,11 @@ class TimeSignatureSelecter extends JPanel {
 	public boolean isEditable() { return editable; }
 	public void setEditable( boolean editable ) {
 		this.editable = editable;
-		upper_timesig_spinner.setVisible(editable);
+		upperTimesigSpinner.setVisible(editable);
 		lowerTimesigCombobox.setVisible(editable);
-		timesig_value_label.setVisible(!editable);
+		timesigValueLabel.setVisible(!editable);
 		if( !editable ) {
-			timesig_value_label.setTimeSignature(
-					getUpperByte(), getLowerByte()
-					);
+			timesigValueLabel.setTimeSignature(getUpperByte(), getLowerByte());
 		}
 	}
 }

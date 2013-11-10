@@ -36,73 +36,63 @@ import javax.swing.SpinnerNumberModel;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
-class NewSequenceDialog extends JDialog
-implements ActionListener
-{
-	Insets	zero_insets = new Insets(0,0,0,0);
-
+class NewSequenceDialog extends JDialog implements ActionListener {
+	public static final Insets	ZERO_INSETS = new Insets(0,0,0,0);
 	JTextArea		chord_text;
 	JTextField		seq_name_text;
 	PPQSelectionComboBox	ppq_combo_box;
 	TimeSignatureSelecter	timesig_selecter;
 	TempoSelecter		tempo_selecter;
 	MeasureSelecter	measure_selecter;
-	JButton
-	add_new_button,
-	transpose_up_button, transpose_down_button, enharmonic_button,
-	random_chord_button, toggle_major_minor_button;
+	JButton add_new_button;
+	JButton transpose_up_button;
+	JButton transpose_down_button;
+	JButton enharmonic_button;
+	JButton random_chord_button;
+	JButton toggle_major_minor_button;
 	JPanel new_file_panel;
 	TrackSpecPanel track_spec_panel;
 	JTabbedPane tabbed_pane;
 	MidiEditor midi_editor;
 
-	public NewSequenceDialog( MidiEditor midi_editor ) {
+	public NewSequenceDialog(MidiEditor midi_editor) {
 		this.midi_editor = midi_editor;
 		setTitle("Generate new sequence - " + ChordHelperApplet.VersionInfo.NAME);
 		tabbed_pane = new JTabbedPane();
-
 		ppq_combo_box = new PPQSelectionComboBox();
 		seq_name_text = new JTextField();
 		timesig_selecter = new TimeSignatureSelecter();
 		tempo_selecter = new TempoSelecter();
 		measure_selecter = new MeasureSelecter();
-		String initial_string =
-				"Key: C\nC G/B | Am Em/G | F C/E | Dm7 G7 C % | F G7 | Csus4 C\n";
-		chord_text = new JTextArea( initial_string, 18, 30 );
-		JScrollPane chord_text_scroll_area =
-				new JScrollPane( (Component)chord_text );
+		chord_text = new JTextArea( "Key: C\nC G/B | Am Em/G | F C/E | Dm7 G7 C % | F G7 | Csus4 C\n", 18, 30 );
+		JScrollPane chord_text_scroll_area = new JScrollPane( (Component)chord_text );
 
-		add_new_button = new JButton(
-				"Generate & Add to PlayList",
-				new ButtonIcon(ButtonIcon.EJECT_ICON)
-				);
-		add_new_button.setMargin(zero_insets);
+		add_new_button = new JButton("Generate & Add to PlayList", new ButtonIcon(ButtonIcon.EJECT_ICON));
+		add_new_button.setMargin(ZERO_INSETS);
 		add_new_button.addActionListener(this);
 		transpose_up_button = new JButton(" + Up ");
-		transpose_up_button.setMargin(zero_insets);
+		transpose_up_button.setMargin(ZERO_INSETS);
 		transpose_up_button.addActionListener(this);
 		transpose_down_button = new JButton(" - Down ");
-		transpose_down_button.setMargin(zero_insets);
+		transpose_down_button.setMargin(ZERO_INSETS);
 		transpose_down_button.addActionListener(this);
 		enharmonic_button = new JButton(" Enharmonic ");
-		enharmonic_button.setMargin(zero_insets);
+		enharmonic_button.setMargin(ZERO_INSETS);
 		enharmonic_button.addActionListener(this);
 		random_chord_button = new JButton("Randomize (Tempo, Time signature, Chord progression)");
-		random_chord_button.setMargin(zero_insets);
+		random_chord_button.setMargin(ZERO_INSETS);
 		random_chord_button.addActionListener(this);
 		toggle_major_minor_button = new JButton("Relative key");
-		toggle_major_minor_button.setMargin(zero_insets);
+		toggle_major_minor_button.setMargin(ZERO_INSETS);
 		toggle_major_minor_button.addActionListener(this);
 
 		JPanel sequence_name_panel = new JPanel();
-		sequence_name_panel.setLayout(
-				new BoxLayout( sequence_name_panel, BoxLayout.LINE_AXIS )
-				);
+		sequence_name_panel.setLayout(new BoxLayout(sequence_name_panel, BoxLayout.LINE_AXIS));
 		sequence_name_panel.add( new JLabel("Sequence name:") );
 		sequence_name_panel.add( seq_name_text );
 
 		JPanel new_file_panel_2 = new JPanel();
-		new_file_panel_2.setLayout( new BoxLayout( new_file_panel_2, BoxLayout.LINE_AXIS ) );
+		new_file_panel_2.setLayout(new BoxLayout(new_file_panel_2, BoxLayout.LINE_AXIS));
 		new_file_panel_2.add( new JLabel("Resolution in PPQ =") );
 		new_file_panel_2.add( ppq_combo_box );
 		new_file_panel_2.add( measure_selecter );
@@ -156,21 +146,15 @@ implements ActionListener
 		dts.velocity = 127;
 		track_spec_panel.addTrackSpec(dts);
 		//
-		mts = new Music.MelodyTrackSpec(
-				0, "Bass track", new Music.Range(36,48)
-				);
+		mts = new Music.MelodyTrackSpec(0, "Bass track", new Music.Range(36,48));
 		mts.is_bass = true;
 		mts.velocity = 96;
 		track_spec_panel.addTrackSpec(mts);
 		//
-		mts =  new Music.MelodyTrackSpec(
-				1, "Chord track", new Music.Range(60,72)
-				);
+		mts =  new Music.MelodyTrackSpec(1, "Chord track", new Music.Range(60,72));
 		track_spec_panel.addTrackSpec(mts);
 		//
-		mts = new Music.MelodyTrackSpec(
-				2, "Melody track", new Music.Range(60,84)
-				);
+		mts = new Music.MelodyTrackSpec(2, "Melody track", new Music.Range(60,84));
 		mts.random_melody = true;
 		mts.beat_pattern = 0xFFFF;
 		mts.continuous_beat_pattern = 0x820A;

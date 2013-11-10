@@ -1211,28 +1211,27 @@ class MidiDeviceTree extends JTree
 }
 
 /**
- * MIDIデバイスマネージャ (Model)
+ * MIDIデバイスモデルリスト
  */
-class MidiDeviceManager extends Vector<MidiConnecterListModel> {
+class MidiDeviceModelList extends Vector<MidiConnecterListModel> {
 	private Sequencer sequencer = null;
 	SpeedSliderModel speedSliderModel = null;
 	SequencerTimeRangeModel timeRangeModel = null;
 	MidiEditor editorDialog = null;
-	MidiConnecterListModel firstMidiOutModel = null;
-	public MidiDeviceManager( Vector<VirtualMidiDevice> vmds ) {
+	private MidiConnecterListModel firstMidiOutModel = null;
+	/**
+	 * MIDIデバイスモデルリストを生成します。
+	 * @param vmdList 仮想MIDIデバイスのリスト
+	 */
+	public MidiDeviceModelList(List<VirtualMidiDevice> vmdList) {
 		MidiDevice.Info[] devInfos = MidiSystem.getMidiDeviceInfo();
-		MidiConnecterListModel
-		guiModels[] = new MidiConnecterListModel[vmds.size()],
-		sequencerModel = null,
-		firstMidiInModel = null;
-		for( int i=0; i<vmds.size(); i++ )
-			guiModels[i] = addMidiDevice(vmds.get(i));
-
+		MidiConnecterListModel guiModels[] = new MidiConnecterListModel[vmdList.size()];
+		MidiConnecterListModel sequencerModel = null;
+		MidiConnecterListModel firstMidiInModel = null;
+		for( int i=0; i<vmdList.size(); i++ )
+			guiModels[i] = addMidiDevice(vmdList.get(i));
 		try {
 			sequencer = MidiSystem.getSequencer(false);
-			sequencerModel = addMidiDevice(sequencer);
-			speedSliderModel = new SpeedSliderModel(sequencer);
-			timeRangeModel = new SequencerTimeRangeModel(this);
 		} catch( MidiUnavailableException e ) {
 			System.out.println(
 				ChordHelperApplet.VersionInfo.NAME +
@@ -1240,6 +1239,9 @@ class MidiDeviceManager extends Vector<MidiConnecterListModel> {
 			);
 			e.printStackTrace();
 		}
+		sequencerModel = addMidiDevice(sequencer);
+		speedSliderModel = new SpeedSliderModel(sequencer);
+		timeRangeModel = new SequencerTimeRangeModel(this);
 		for( MidiDevice.Info info : devInfos ) {
 			MidiDevice device;
 			try {
@@ -1247,7 +1249,7 @@ class MidiDeviceManager extends Vector<MidiConnecterListModel> {
 			} catch( MidiUnavailableException e ) {
 				e.printStackTrace(); continue;
 			}
-			if( device instanceof Sequencer )  continue;
+			if( device instanceof Sequencer ) continue;
 			if( device instanceof Synthesizer ) {
 				try {
 					addMidiDevice(MidiSystem.getSynthesizer());
@@ -1300,15 +1302,27 @@ class MidiDeviceManager extends Vector<MidiConnecterListModel> {
 			sequencerModel.connectToReceiverOf(firstMidiOutModel);
 		}
 	}
-	private MidiConnecterListModel addMidiDevice( MidiDevice device ) {
+	/**
+	 * 指定のMIDIデバイスからMIDIデバイスモデルを生成して追加します。
+	 * @param device MIDIデバイス
+	 * @return 生成されたMIDIデバイスモデル
+	 */
+	private MidiConnecterListModel addMidiDevice(MidiDevice device) {
 		MidiConnecterListModel m = new MidiConnecterListModel(device,this);
 		addElement(m);
 		return m;
 	}
-	public void setMidiEditor( MidiEditor editorDialog ) {
+	/**
+	 * MIDIエディタを設定します。
+	 * <p>MIDIエディタが持つ仮想MIDIデバイスからMIDIデバイスモデルを生成し、
+	 * このデバイスモデルリストに追加します。
+	 * </p>
+	 * @param editorDialog MIDIエディタ
+	 */
+	public void setMidiEditor(MidiEditor editorDialog) {
 		editorDialog.deviceManager = this;
 		MidiConnecterListModel mclm = addMidiDevice(
-			(this.editorDialog = editorDialog).midiDevice
+			(this.editorDialog = editorDialog).virtualMidiDevice
 		);
 		try {
 			mclm.openDevice();
@@ -1317,20 +1331,24 @@ class MidiDeviceManager extends Vector<MidiConnecterListModel> {
 		}
 		mclm.connectToReceiverOf(firstMidiOutModel);
 	}
+	/**
+	 * MIDIシーケンサを返します。
+	 * @return MIDIシーケンサ
+	 */
 	public Sequencer getSequencer() { return sequencer; }
+	/**
+	 * 録音可能かどうか調べます。
+	 * @return 録音可能ならtrue
+	 */
 	public boolean isRecordable() {
 		return editorDialog != null && editorDialog.isRecordable();
-	}
-	public void resetMicrosecondPosition() {
-		for( MidiConnecterListModel model : this )
-			model.resetMicrosecondPosition();
 	}
 }
 
 /**
  * MIDIデバイスダイアログ (View)
  */
-class MidiDeviceDialog extends JDialog {
+class MidiDeviceDialog extends JDialog implements ActionListener {
 	MidiDeviceTree deviceTree;
 	JEditorPane deviceInfoPane = new JEditorPane("text/html","<html></html>") {
 		{
@@ -1397,6 +1415,10 @@ class MidiDeviceDialog extends JDialog {
 				setDividerLocation(250);
 			}
 		});
+	}
+	@Override
+	public void actionPerformed(ActionEvent event) {
+		setVisible(true);
 	}
 }
 

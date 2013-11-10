@@ -48,6 +48,10 @@ public class Base64Dialog extends JDialog implements ActionListener {
 			}
 		}
 	}
+	/**
+	 * Base64テキスト入力ダイアログを構築します。
+	 * @param midiEditor 親画面となるMIDIエディタ
+	 */
 	public Base64Dialog(MidiEditor midiEditor) {
 		this.midiEditor = midiEditor;
 		setTitle("Base64-encoded MIDI sequence - " + ChordHelperApplet.VersionInfo.NAME);
@@ -92,7 +96,7 @@ public class Base64Dialog extends JDialog implements ActionListener {
 				base64TextArea.requestFocusInWindow();
 				last_index = midiEditor.seqListModel.getRowCount() - 1;
 			}
-			midiEditor.seq_selection_model.setSelectionInterval( last_index, last_index );
+			midiEditor.seqSelectionModel.setSelectionInterval( last_index, last_index );
 			setVisible(false);
 		}
 		else if( obj == clearButton ) {
