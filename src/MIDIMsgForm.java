@@ -53,42 +53,36 @@ import javax.swing.event.ListSelectionListener;
  *	Copyright (C) 2006-2013 ＠きよし - Akiyoshi Kamide
  *	http://www.yk.rim.or.jp/~kamide/music/chordhelper/
  */
-class MidiEventDialog extends JDialog {
+class MidiEventDialog extends JDialog implements ActionListener {
 	MidiMessageForm midiMessageForm = new MidiMessageForm();
-	TickPositionForm tick_position_form = new TickPositionForm();
+	TickPositionForm tickPositionForm = new TickPositionForm();
 	JButton okButton = new JButton("OK");
-	JButton cancel_button = new JButton("Cancel");
+	JButton cancelButton = new JButton("Cancel");
 	public MidiEventDialog() {
 		setLayout(new FlowLayout());
-		add( tick_position_form );
+		add( tickPositionForm );
 		add( midiMessageForm );
-		JPanel ok_cancel_panel = new JPanel();
-		ok_cancel_panel.add( okButton );
-		ok_cancel_panel.add( cancel_button );
-		add( ok_cancel_panel );
-		cancel_button.addActionListener(
-			new ActionListener() {
-				public void actionPerformed(ActionEvent e) {
-					setVisible(false);
-				}
-			}
-		);
+		add( new JPanel() {{ add(okButton); add(cancelButton); }} );
+		cancelButton.addActionListener(this);
+	}
+	public void actionPerformed(ActionEvent e) {
+		setVisible(false);
 	}
 	public void openTickForm() {
-		tick_position_form.setVisible(true);
+		tickPositionForm.setVisible(true);
 		midiMessageForm.setVisible(false);
 		setBounds( 200, 300, 500, 120 );
 		setVisible(true);
 	}
 	public void openEventForm() {
-		tick_position_form.setVisible(true);
+		tickPositionForm.setVisible(true);
 		midiMessageForm.setVisible(true);
 		midiMessageForm.setDurationVisible(true);
 		setBounds( 200, 300, 630, 320 );
 		setVisible(true);
 	}
 	public void openMessageForm() {
-		tick_position_form.setVisible(false);
+		tickPositionForm.setVisible(false);
 		midiMessageForm.setVisible(true);
 		midiMessageForm.setDurationVisible(false);
 		setBounds( 200, 300, 630, 270 );
@@ -315,7 +309,7 @@ class MidiMessageForm extends JPanel implements ActionListener {
 					}
 				}
 			);
-			minor_checkbox.addItemListener(
+			minorCheckbox.addItemListener(
 				new ItemListener() {
 					public void itemStateChanged(ItemEvent e) {
 						dataText.setValue(getKey().getBytes());
@@ -695,11 +689,9 @@ class MidiMessageForm extends JPanel implements ActionListener {
 }
 
 
-///////////////////////////////////////
-//
-// Hex value: [0x00 0x00 0x00 ... ]
-//
-///////////////////////////////////////
+/**
+ * 16進数テキスト入力フォーム [0x00 0x00 0x00 ... ]
+ */
 class HexTextForm extends JPanel {
 	public JTextArea text_area;
 	public JLabel title_label;
@@ -767,12 +759,9 @@ class HexTextForm extends JPanel {
 	}
 	public void clear() { text_area.setText(""); }
 }
-
-///////////////////////////////////////
-//
-// Hex value: [0x00 0x00 0x00 ... ] v -> Select
-//
-///////////////////////////////////////
+/**
+ * 16進数選択 [0x00 0x00 0x00 ... ] v -> Select
+ */
 class HexSelecter extends JPanel {
 	private JComboBox<String> comboBox = new JComboBox<String>();
 	private JLabel title;
@@ -857,15 +846,16 @@ class HexSelecter extends JPanel {
 	}
 }
 
-///////////////////////////////////////
-//
-// MIDI Channel Selecter (ComboBox or List)
-//
-///////////////////////////////////////
+/**
+ * MIDIチャンネル選択コンボボックスモデル
+ */
 interface MidiChannelComboBoxModel extends ComboBoxModel<Integer> {
 	int getSelectedChannel();
 	void setSelectedChannel(int channel);
 }
+/**
+ * MIDIチャンネル選択コンボボックスモデルのデフォルト実装
+ */
 class DefaultMidiChannelComboBoxModel extends DefaultComboBoxModel<Integer>
 	implements MidiChannelComboBoxModel
 {
@@ -880,14 +870,15 @@ class DefaultMidiChannelComboBoxModel extends DefaultComboBoxModel<Integer>
 		setSelectedItem(getElementAt(channel));
 	}
 }
+/**
+ * MIDIチャンネル選択ビュー（コンボボックス）
+ */
 class MidiChannelComboSelecter extends JPanel {
 	JComboBox<Integer> comboBox = new JComboBox<>();
 	public MidiChannelComboSelecter( String title ) {
-		this( title, new DefaultMidiChannelComboBoxModel() );
+		this(title, new DefaultMidiChannelComboBoxModel());
 	}
-	public MidiChannelComboSelecter(
-		String title, MidiChannelComboBoxModel model
-	) {
+	public MidiChannelComboSelecter(String title, MidiChannelComboBoxModel model) {
 		setLayout(new FlowLayout());
 		if( title != null ) add( new JLabel(title) );
 		comboBox.setModel(model);
@@ -907,7 +898,12 @@ class MidiChannelComboSelecter extends JPanel {
 		comboBox.setSelectedIndex(channel);
 	}
 }
-class MidiChannelButtonSelecter extends JList<Integer> {
+/**
+ * MIDIチャンネル選択ビュー（リストボタン）
+ */
+class MidiChannelButtonSelecter extends JList<Integer>
+	implements ListDataListener, ListSelectionListener
+{
 	private PianoKeyboard keyboard = null;
 	public MidiChannelButtonSelecter(MidiChannelComboBoxModel model) {
 		super(model);
@@ -915,27 +911,26 @@ class MidiChannelButtonSelecter extends JList<Integer> {
 		setVisibleRowCount(1);
 		setCellRenderer(new MyCellRenderer());
 		setSelectedIndex(model.getSelectedChannel());
-		model.addListDataListener(new ListDataListener() {
-			public void contentsChanged(ListDataEvent e) {
-				MidiChannelButtonSelecter.this.setSelectedIndex(
-						MidiChannelButtonSelecter.this.getModel().getSelectedChannel()
-						);
-			}
-			public void intervalAdded(ListDataEvent e) {}
-			public void intervalRemoved(ListDataEvent e) {}
-		});
-		addListSelectionListener(new ListSelectionListener() {
-			public void valueChanged(ListSelectionEvent e) {
-				MidiChannelButtonSelecter.this.getModel().setSelectedChannel(
-						MidiChannelButtonSelecter.this.getSelectedIndex()
-						);
-			}
-		});
+		model.addListDataListener(this);
+		addListSelectionListener(this);
+	}
+	@Override
+	public void contentsChanged(ListDataEvent e) {
+		setSelectedIndex(getModel().getSelectedChannel());
+	}
+	@Override
+	public void intervalAdded(ListDataEvent e) {}
+	@Override
+	public void intervalRemoved(ListDataEvent e) {}
+	@Override
+	public void valueChanged(ListSelectionEvent e) {
+		getModel().setSelectedChannel(getSelectedIndex());
 	}
 	public MidiChannelButtonSelecter(PianoKeyboard keyboard) {
 		this(keyboard.midiChComboboxModel);
 		setPianoKeyboard(keyboard);
 	}
+	@Override
 	public MidiChannelComboBoxModel getModel() {
 		return (MidiChannelComboBoxModel)(super.getModel());
 	}
@@ -949,6 +944,7 @@ class MidiChannelButtonSelecter extends JList<Integer> {
 			setHorizontalAlignment(CENTER);
 			setSelectionBackground(Color.yellow);
 		}
+		@Override
 		public Component getListCellRendererComponent(
 			JList<? extends Integer> list,
 			Integer value, int index,
@@ -970,6 +966,7 @@ class MidiChannelButtonSelecter extends JList<Integer> {
 			setFont(list.getFont());
 			return this;
 		}
+		@Override
 		protected void paintComponent(Graphics g) {
 			super.paintComponent(g);
 			if( cellHasFocus ) {
@@ -980,81 +977,69 @@ class MidiChannelButtonSelecter extends JList<Integer> {
 	}
 }
 
-////////////////////////////////////
-//
-// Tick Position
-//
-// Mesausre:[xxxx] Beat:[xx] ExTick:[xxx]
-//
-////////////////////////////////////
+/**
+ * tick位置 Mesausre:[xxxx] Beat:[xx] ExTick:[xxx]
+ */
 class TickPositionModel implements ChangeListener {
-	private SequenceTickIndex seq_index;
-	private boolean is_changing = false;
-	public SpinnerNumberModel
-	tick_model, measure_model, beat_model, extra_tick_model;
-	//
-	// Constuctor
-	//
+	public SpinnerNumberModel tickModel = new SpinnerNumberModel(0L, 0L, 999999L, 1L);
+	public SpinnerNumberModel measureModel = new SpinnerNumberModel(1, 1, 9999, 1);
+	public SpinnerNumberModel beatModel = new SpinnerNumberModel(1, 1, 32, 1);
+	public SpinnerNumberModel extraTickModel = new SpinnerNumberModel(0, 0, 4*960-1, 1);
+	/**
+	 * 新しい {@link TickPositionModel} を構築します。
+	 */
 	public TickPositionModel() {
-		tick_model = new SpinnerNumberModel(0L, 0L, 999999L, 1L);
-		tick_model.addChangeListener(this);
-		measure_model = new SpinnerNumberModel(1, 1, 9999, 1);
-		measure_model.addChangeListener(this);
-		beat_model = new SpinnerNumberModel(1, 1, 32, 1);
-		beat_model.addChangeListener(this);
-		extra_tick_model = new SpinnerNumberModel(0, 0, 4*960-1, 1);
-		extra_tick_model.addChangeListener(this);
+		tickModel.addChangeListener(this);
+		measureModel.addChangeListener(this);
+		beatModel.addChangeListener(this);
+		extraTickModel.addChangeListener(this);
 	}
-	// ChangeListener
-	//
+	private SequenceTickIndex sequenceTickIndex;
+	private boolean isChanging = false;
+	@Override
 	public void stateChanged(ChangeEvent e) {
-		if( seq_index == null ) return;
-		Object src = e.getSource();
-		if( src == tick_model ) {
-			is_changing = true;
-			measure_model.setValue(
-					1 + seq_index.tickToMeasure(
-							tick_model.getNumber().longValue()
-							)
-					);
-			beat_model.setValue( seq_index.lastBeat + 1 );
-			is_changing = false;
-			extra_tick_model.setValue( seq_index.lastExtraTick );
+		if( sequenceTickIndex == null )
+			return;
+		Object changedAt = e.getSource();
+		if( changedAt == tickModel ) {
+			isChanging = true;
+			long newTick = tickModel.getNumber().longValue();
+			int newMeasure = 1 + sequenceTickIndex.tickToMeasure(newTick);
+			measureModel.setValue(newMeasure);
+			beatModel.setValue( sequenceTickIndex.lastBeat + 1 );
+			isChanging = false;
+			extraTickModel.setValue( sequenceTickIndex.lastExtraTick );
 			return;
 		}
-		if( is_changing ) return;
-		tick_model.setValue(
-				seq_index.measureToTick(
-						measure_model.getNumber().intValue() - 1,
-						beat_model.getNumber().intValue() - 1,
-						extra_tick_model.getNumber().intValue()
-						)
-				);
+		if( isChanging )
+			return;
+		long newTick = sequenceTickIndex.measureToTick(
+			measureModel.getNumber().intValue() - 1,
+			beatModel.getNumber().intValue() - 1,
+			extraTickModel.getNumber().intValue()
+		);
+		tickModel.setValue(newTick);
 	}
-	// Methods
-	//
-	public SequenceTickIndex getSequenceIndex() {
-		return seq_index;
-	}
-	public void setSequenceIndex( SequenceTickIndex seq_index ) {
-		this.seq_index = seq_index;
-		extra_tick_model.setMaximum( 4 * seq_index.getResolution() - 1 );
+	public void setSequenceIndex(SequenceTickIndex sequenceTickIndex) {
+		this.sequenceTickIndex = sequenceTickIndex;
+		extraTickModel.setMaximum( 4 * sequenceTickIndex.getResolution() - 1 );
 	}
 	public long getTickPosition() {
-		return tick_model.getNumber().longValue();
+		return tickModel.getNumber().longValue();
 	}
 	public void setTickPosition( long tick ) {
-		tick_model.setValue(tick);
+		tickModel.setValue(tick);
 	}
 }
 
+/**
+ * tick位置入力フォーム
+ */
 class TickPositionForm extends JPanel {
-	JSpinner
-	tick_spinner = new JSpinner(),
-	measure_spinner = new JSpinner(),
-	beat_spinner = new JSpinner(),
-	extra_tick_spinner = new JSpinner();
-
+	JSpinner tickSpinner = new JSpinner();
+	JSpinner measureSpinner = new JSpinner();
+	JSpinner beatSpinner = new JSpinner();
+	JSpinner extraTickSpinner = new JSpinner();
 	public TickPositionForm() {
 		setLayout(new GridLayout(2,4));
 		add( new JLabel() );
@@ -1063,24 +1048,21 @@ class TickPositionForm extends JPanel {
 		add( new JLabel("Beat:") );
 		add( new JLabel("ExTick:") );
 		add( new JLabel("Tick position : ",JLabel.RIGHT) );
-		add( tick_spinner );
-		add( measure_spinner );
-		add( beat_spinner );
-		add( extra_tick_spinner );
+		add( tickSpinner );
+		add( measureSpinner );
+		add( beatSpinner );
+		add( extraTickSpinner );
 	}
-	public TickPositionForm( TickPositionModel tpm ) {
-		this(); setModel(tpm);
-	}
-	public void setModel( TickPositionModel tpm ) {
-		tick_spinner.setModel(tpm.tick_model);
-		measure_spinner.setModel(tpm.measure_model);
-		beat_spinner.setModel(tpm.beat_model);
-		extra_tick_spinner.setModel(tpm.extra_tick_model);
+	public void setModel(TickPositionModel model) {
+		tickSpinner.setModel(model.tickModel);
+		measureSpinner.setModel(model.measureModel);
+		beatSpinner.setModel(model.beatModel);
+		extraTickSpinner.setModel(model.extraTickModel);
 	}
 }
 
 /**
- * 音の長さフォーム
+ * 音長入力フォーム
  */
 class DurationForm extends JPanel implements ActionListener, ChangeListener {
 	class NoteIcon extends ButtonIcon {
@@ -1095,6 +1077,7 @@ class DurationForm extends JPanel implements ActionListener, ChangeListener {
 	}
 	class NoteRenderer extends JLabel implements ListCellRenderer<NoteIcon> {
 		public NoteRenderer() { setOpaque(true); }
+		@Override
 		public Component getListCellRendererComponent(
 			JList<? extends NoteIcon> list,
 			NoteIcon icon,
@@ -1179,20 +1162,17 @@ class DurationForm extends JPanel implements ActionListener, ChangeListener {
 		add( spinner = new JSpinner( model ) );
 		add( unit_label = new JLabel("[Ticks]") );
 	}
-	// ActionListener
-	//
+	@Override
 	public void actionPerformed(ActionEvent e) {
 		int duration = note_combo.getDuration();
 		if( duration < 0 ) return;
 		model.setDuration( duration );
 	}
-	// ChangeListener
-	//
+	@Override
 	public void stateChanged(ChangeEvent e) {
 		note_combo.setDuration( model.getDuration() );
 	}
-	// Methods
-	//
+	@Override
 	public void setEnabled( boolean enabled ) {
 		super.setEnabled(enabled);
 		title_label.setEnabled(enabled);
@@ -1211,17 +1191,15 @@ class DurationForm extends JPanel implements ActionListener, ChangeListener {
 	}
 }
 
-//////////////////////////////
-//
-//  Tempo in QPM
-//
-//////////////////////////////
+/**
+ * テンポ選択（QPM: Quarter Per Minute）
+ */
 class TempoSelecter extends JPanel implements MouseListener {
+	static final int DEFAULT_QPM = 120;
 	JSpinner		tempo_spinner;
 	SpinnerNumberModel	tempoSpinnerModel;
 	JLabel		tempo_label, tempo_value_label;
 	private boolean	editable;
-	static final int	DEFAULT_QPM = 120;
 	private long	prev_beat_us_pos = 0;
 
 	public TempoSelecter() {
@@ -1245,9 +1223,6 @@ class TempoSelecter extends JPanel implements MouseListener {
 		setEditable(true);
 		tempo_label.addMouseListener(this);
 	}
-	//
-	// MouseListener
-	//
 	public void mousePressed(MouseEvent e) {
 		Component obj = e.getComponent();
 		if( obj == tempo_label && isEditable() ) {
@@ -1269,12 +1244,7 @@ class TempoSelecter extends JPanel implements MouseListener {
 	public void mouseEntered(MouseEvent e) { }
 	public void mouseExited(MouseEvent e) { }
 	public void mouseClicked(MouseEvent e) { }
-	//
-	// Methods
-	//
-	public boolean isEditable() {
-		return editable;
-	}
+	public boolean isEditable() { return editable; }
 	public void setEditable( boolean editable ) {
 		this.editable = editable;
 		tempo_spinner.setVisible( editable );
@@ -1391,11 +1361,9 @@ class TimeSignatureSelecter extends JPanel {
 	}
 }
 
-/////////////////////////////
-//
-// Key Signature - 調性選択
-//
-/////////////////////////////
+/**
+ * 調性選択
+ */
 class KeySignatureSelecter extends JPanel implements ActionListener {
 	JComboBox<String> keysigCombobox = new JComboBox<String>() {
 		{
@@ -1411,29 +1379,20 @@ class KeySignatureSelecter extends JPanel implements ActionListener {
 			setMaximumRowCount(15);
 		}
 	};
-	JCheckBox minor_checkbox = null;
+	JCheckBox minorCheckbox = null;
 
-	public KeySignatureSelecter() {
-		this(true);
-	}
+	public KeySignatureSelecter() { this(true); }
 	public KeySignatureSelecter(boolean use_minor_checkbox) {
 		add(new JLabel("Key:"));
 		add(keysigCombobox);
 		if( use_minor_checkbox ) {
-			add( minor_checkbox = new JCheckBox("minor") );
-			minor_checkbox.addActionListener(this);
+			add( minorCheckbox = new JCheckBox("minor") );
+			minorCheckbox.addActionListener(this);
 		}
 		keysigCombobox.addActionListener(this);
 		clear();
 	}
-	// ActionListener
-	//
-	public void actionPerformed(ActionEvent e) {
-		updateToolTipText();
-	}
-	//
-	// Methods
-	//
+	public void actionPerformed(ActionEvent e) { updateToolTipText(); }
 	private void updateToolTipText() {
 		Music.Key key = getKey();
 		keysigCombobox.setToolTipText(
@@ -1442,26 +1401,25 @@ class KeySignatureSelecter extends JPanel implements ActionListener {
 			+ " (" + key.signatureDescription() + ")"
 		);
 	}
-	public void clear() {
-		setKey( new Music.Key("C") );
-	}
+	public void clear() { setKey(new Music.Key("C")); }
 	public void setKey( Music.Key key ) {
 		if( key == null ) {
 			clear();
 			return;
 		}
 		keysigCombobox.setSelectedIndex( key.toCo5() + 7 );
-		if( minor_checkbox == null )
+		if( minorCheckbox == null )
 			return;
 		switch( key.majorMinor() ) {
-		case Music.Key.MINOR : minor_checkbox.setSelected(true); break;
-		case Music.Key.MAJOR : minor_checkbox.setSelected(false); break;
+		case Music.Key.MINOR : minorCheckbox.setSelected(true); break;
+		case Music.Key.MAJOR : minorCheckbox.setSelected(false); break;
 		}
 	}
 	public Music.Key getKey() {
 		int minor = (
-			minor_checkbox == null ? Music.Key.MAJOR_OR_MINOR :
-			isMinor() ? Music.Key.MINOR : Music.Key.MAJOR
+			minorCheckbox == null ? Music.Key.MAJOR_OR_MINOR :
+			isMinor() ? Music.Key.MINOR :
+			Music.Key.MAJOR
 		);
 		return new Music.Key(getKeyCo5(),minor);
 	}
@@ -1469,9 +1427,12 @@ class KeySignatureSelecter extends JPanel implements ActionListener {
 		return keysigCombobox.getSelectedIndex() - 7;
 	}
 	public boolean isMinor() {
-		return ( minor_checkbox != null && minor_checkbox.isSelected() );
+		return minorCheckbox != null && minorCheckbox.isSelected();
 	}
 }
+/**
+ * 調表示ラベル
+ */
 class KeySignatureLabel extends JLabel {
 	private Music.Key key;
 	public KeySignatureLabel() { clear(); }
@@ -1486,58 +1447,54 @@ class KeySignatureLabel extends JLabel {
 		}
 		setText( "key:" + key.toString() );
 		setToolTipText(
-				"Key: " + key.toStringIn(Music.SymbolLanguage.NAME)
-				+ " "  + key.toStringIn(Music.SymbolLanguage.IN_JAPANESE)
-				+ " (" + key.signatureDescription() + ")"
-				);
+			"Key: " + key.toStringIn(Music.SymbolLanguage.NAME)
+			+ " "  + key.toStringIn(Music.SymbolLanguage.IN_JAPANESE)
+			+ " (" + key.signatureDescription() + ")"
+		);
 		setEnabled(true);
 	}
 	public void clear() { setKeySignature( (Music.Key)null ); }
 }
 
-///////////////////////////////////////////////
-//
-// Velocity
-//
-///////////////////////////////////////////////
+/**
+ * ベロシティ値範囲モデル
+ */
 class VelocityModel extends DefaultBoundedRangeModel {
 	public VelocityModel() { super( 64, 0, 0, 127 ); }
 }
-class VelocitySelecter extends JPanel {
+/**
+ * ベロシティ選択ビュー
+ */
+class VelocitySelecter extends JPanel implements ChangeListener {
 	private static final String	LABEL_PREFIX = "Velocity=";
-	public JSlider slider = null;
+	public JSlider slider;
 	public JLabel label;
-	public VelocitySelecter( VelocityModel model ) {
-		slider = new JSlider(model);
-		slider.addChangeListener(new ChangeListener() {
-			public void stateChanged(ChangeEvent e) {
-				label.setText( LABEL_PREFIX + getValue() );
-			}
-		});
-		slider.setToolTipText("Velocity");
-		label = new JLabel( LABEL_PREFIX + model.getValue(), Label.RIGHT );
-		label.setToolTipText("Velocity");
-		setLayout( new BoxLayout( this, BoxLayout.X_AXIS ) );
-		add(label);
-		add(slider);
+	public VelocitySelecter(VelocityModel model) {
+		setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
+		add(label = new JLabel(LABEL_PREFIX + model.getValue(), Label.RIGHT) {{
+			setToolTipText("Velocity");
+		}});
+		add(slider = new JSlider(model) {{ setToolTipText("Velocity"); }});
+		slider.addChangeListener(this);
 	}
+	public void stateChanged(ChangeEvent e) {
+		label.setText( LABEL_PREFIX + getValue() );
+	}
+	@Override
 	public void setBackground(Color c) {
 		super.setBackground(c);
+		// このクラスが構築される前にスーパークラスの
+		// Look & Feel からここが呼ばれることがあるため
+		// null チェックが必要
 		if( slider != null ) slider.setBackground(c);
 	}
-	public int getValue() {
-		return slider.getValue();
-	}
-	public void setValue(int velocity) {
-		slider.setValue(velocity);
-	}
+	public int getValue() { return slider.getValue(); }
+	public void setValue(int velocity) { slider.setValue(velocity); }
 }
 
-///////////////////////////////////////////////
-//
-// MIDI Instrument (Program) - 音色選択
-//
-///////////////////////////////////////////////
+/**
+ * MIDI Instrument (Program) - 音色選択
+ */
 class MidiProgramSelecter extends JComboBox<String> {
 	private int family;
 	private MidiProgramFamilySelecter family_selecter = null;
@@ -1585,11 +1542,14 @@ class MidiProgramSelecter extends JComboBox<String> {
 		}
 	}
 }
+/**
+ * MIDI Instrument (Program) Family - 音色ファミリーの選択
+ */
 class MidiProgramFamilySelecter extends JComboBox<String> implements ActionListener {
-	private MidiProgramSelecter program_selecter = null;
+	private MidiProgramSelecter programSelecter = null;
 	public MidiProgramFamilySelecter() { this(null); }
 	public MidiProgramFamilySelecter( MidiProgramSelecter mps ) {
-		program_selecter = mps;
+		programSelecter = mps;
 		setMaximumRowCount(17);
 		addItem("Program:");
 		for( int i=0; i < MIDISpec.instrument_family_names.length; i++ ) {
@@ -1598,10 +1558,10 @@ class MidiProgramFamilySelecter extends JComboBox<String> implements ActionListe
 		setSelectedIndex(0);
 		addActionListener(this);
 	}
-	public void actionPerformed(ActionEvent evt) {
-		if( program_selecter == null ) return;
+	public void actionPerformed(ActionEvent event) {
+		if( programSelecter == null ) return;
 		int i = getSelectedIndex();
-		program_selecter.setFamily( i < 0 ? i : i-1 );
+		programSelecter.setFamily( i < 0 ? i : i-1 );
 	}
 	public int getProgram() {
 		int i = getSelectedIndex();
@@ -1609,9 +1569,9 @@ class MidiProgramFamilySelecter extends JComboBox<String> implements ActionListe
 		else return (i-1)*8;
 	}
 	public String getProgramFamilyName() { return (String)( getSelectedItem() ); }
-	public void setProgram( int program_no ) {
-		if( program_no < 0 ) program_no = 0;
-		else program_no = program_no / 8 + 1;
-		setSelectedIndex( program_no );
+	public void setProgram( int programNumber ) {
+		if( programNumber < 0 ) programNumber = 0;
+		else programNumber = programNumber / 8 + 1;
+		setSelectedIndex( programNumber );
 	}
 }

@@ -82,7 +82,7 @@ class AppletFrame extends JFrame implements AppletStub, AppletContext {
 					System.exit(0);
 			}
 		});
-		applet.editorDialog.seqListModel.addTableModelListener(
+		applet.editorDialog.sequenceListTableModel.addTableModelListener(
 			new TableModelListener() {
 				public void tableChanged(TableModelEvent e) {
 					if( e.getColumn() == SequenceListTableModel.COLUMN_FILENAME )
@@ -90,7 +90,7 @@ class AppletFrame extends JFrame implements AppletStub, AppletContext {
 				}
 			}
 		);
-		applet.deviceManager.timeRangeModel.addChangeListener(
+		applet.deviceModelList.timeRangeModel.addChangeListener(
 			new ChangeListener() {
 				public void stateChanged(ChangeEvent e) {
 					setFilenameToTitle();
@@ -103,7 +103,7 @@ class AppletFrame extends JFrame implements AppletStub, AppletContext {
 		applet.start();
 	}
 	private void setFilenameToTitle() {
-		MidiSequenceTableModel seqModel = applet.deviceManager.timeRangeModel.getSequenceTableModel();
+		MidiSequenceTableModel seqModel = applet.deviceModelList.timeRangeModel.getSequenceTableModel();
 		String filename = ( seqModel == null ? null : seqModel.getFilename() );
 		String title = ChordHelperApplet.VersionInfo.NAME;
 		if( filename != null && ! filename.isEmpty() ) {

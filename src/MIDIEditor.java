@@ -80,7 +80,7 @@ import javax.swing.table.TableColumnModel;
 import javax.swing.table.TableModel;
 
 /**
- * MIDI Editor/Playlist for MIDI Chord Helper
+ * MIDIエディタ（MIDI Editor/Playlist for MIDI Chord Helper）
  *
  * @author
  *	Copyright (C) 2006-2013 Akiyoshi Kamide
@@ -89,163 +89,251 @@ import javax.swing.table.TableModel;
 class MidiEditor extends JDialog
 	implements DropTargetListener, ListSelectionListener, ActionListener
 {
-	public static final Insets	ZERO_INSETS = new Insets(0,0,0,0);
-
-	MidiDeviceModelList deviceManager;
-
-	SequenceListTableModel seqListModel;
-	private JFileChooser fileChooser = null;
-	private Base64Dialog base64Dialog = new Base64Dialog(this);
-	NewSequenceDialog	newSequenceDialog;
-	MidiEventDialog	eventDialog = new MidiEventDialog();
-
-	MidiEvent copied_events[] = null;
-	int copied_events_PPQ = 0;
-
-	ListSelectionModel seqSelectionModel;
-	ListSelectionModel track_selection_model;
-	ListSelectionModel event_selection_model;
-
-	JTable sequence_table_view;
-	JTable track_table_view;
-	JTable event_table_view;
-
-	JScrollPane scrollable_sequence_table;
-	JScrollPane scrollable_track_table_view;
-	JScrollPane scrollable_event_table_view;
-
-	JLabel totalTimeLabel;
-	JLabel tracks_label;
-	JLabel midi_events_label;
-
-	JButton
-	add_new_sequence_button, delete_sequence_button,
-	base64_encode_button = null,
-	add_midi_file_button,
-	save_midi_file_button,
-	jump_sequence_button,
-	add_track_button, remove_track_button,
-	add_event_button, jump_event_button,
-	cut_event_button, copy_event_button,
-	paste_event_button, remove_event_button;
-
-	JCheckBox pair_note_checkbox;
-
-	JButton forward_button;
-	JButton backward_button;
-	JToggleButton play_pause_button;
-
-	JSplitPane sequence_split_pane;
-	JSplitPane track_split_pane;
-
+	public static final Insets ZERO_INSETS = new Insets(0,0,0,0);
+	/**
+	 * MIDIデバイスモデルリスト
+	 */
+	MidiDeviceModelList deviceModelList;
+	/**
+	 * プレイリストのモデル
+	 */
+	SequenceListTableModel sequenceListTableModel;
+	/**
+	 * このMIDIエディタの仮想MIDIデバイス
+	 */
 	VirtualMidiDevice virtualMidiDevice = new AbstractVirtualMidiDevice() {
-		{
-			info = new MyInfo();
-			setMaxReceivers(0);
-		}
 		class MyInfo extends Info {
 			protected MyInfo() {
-				super(
-					"MIDI Editor",
-					"Unknown vendor",
-					"MIDI sequence editor",
-					""
-				);
+				super("MIDI Editor","Unknown vendor","MIDI sequence editor","");
 			}
 		}
+		{
+			info = new MyInfo();
+			// 送信のみなので MIDI IN はサポートしない
+			setMaxReceivers(0);
+		}
 	};
+	/**
+	 * 新しいMIDIシーケンスを生成するダイアログ
+	 */
+	NewSequenceDialog newSequenceDialog = new NewSequenceDialog(this) {
+		{
+			setChannels(virtualMidiDevice.getChannels());
+		}
+	};
+	/**
+	 * MIDIイベント入力ダイアログ
+	 */
+	MidiEventDialog	eventDialog = new MidiEventDialog();
 
-	MidiEventCellEditor event_cell_editor;
+	/**
+	 * MIDIシーケンス選択状態
+	 */
+	ListSelectionModel seqSelectionModel;
+	/**
+	 * MIDIトラック選択状態
+	 */
+	private ListSelectionModel trackSelectionModel;
+	/**
+	 * MIDIイベント選択状態
+	 */
+	private ListSelectionModel eventSelectionModel;
 
+	/**
+	 * MIDIシーケンスリストテーブルビュー
+	 */
+	private JTable sequenceListTableView;
+	/**
+	 * MIDIトラックリストテーブルビュー
+	 */
+	private JTable trackListTableView;
+	/**
+	 * MIDIイベントリストテーブルビュー
+	 */
+	private JTable eventListTableView;
+	/**
+	 * スクロール可能なMIDIイベントテーブルビュー
+	 */
+	private JScrollPane scrollableEventTableView;
+
+	/**
+	 * 全MIDIシーケンス合計時間表示ラベル
+	 */
+	private JLabel totalTimeLabel = new JLabel();
+	/**
+	 * MIDIトラック数表示ラベル
+	 */
+	private JLabel tracksLabel = new JLabel("Tracks");
+	/**
+	 * MIDIイベント数表示ラベル
+	 */
+	private JLabel midiEventsLabel = new JLabel("No track selected");
+
+	/**
+	 * BASE64エンコードボタン（ライブラリが見えている場合のみ有効）
+	 */
+	private JButton base64EncodeButton = null;
+	/**
+	 * MIDIシーケンス追加ボタン
+	 */
+	private JButton addMidiFileButton;
+	/**
+	 * MIDIシーケンス削除ボタン
+	 */
+	private JButton deleteSequenceButton;
+	/**
+	 * MIDIファイル保存ボタン
+	 */
+	private JButton saveMidiFileButton = new JButton("Save") {{
+		setMargin(ZERO_INSETS);
+	}};
+	/**
+	 * MIDIシーケンスジャンプボタン
+	 */
+	private JButton jumpSequenceButton = new JButton("Jump") {{
+		setToolTipText("Move to selected song - 選択した曲へ進む");
+		setMargin(ZERO_INSETS);
+		addActionListener(
+			new ActionListener() {
+				public void actionPerformed(ActionEvent e) {
+					load(seqSelectionModel.getMinSelectionIndex());
+				}
+			}
+		);
+	}};
+	/**
+	 * MIDIトラック追加ボタン
+	 */
+	private JButton addTrackButton = new JButton("New") {{
+		setMargin(ZERO_INSETS);
+		addActionListener(
+			new ActionListener() {
+				public void actionPerformed(ActionEvent e) {
+					sequenceListTableModel.getSequenceModel(seqSelectionModel).createTrack();
+					int trackCount = sequenceListTableModel.getSequenceModel(seqSelectionModel).getRowCount();
+					if( trackCount > 0 ) {
+						int createdTrackIndex = trackCount - 1;
+						trackSelectionModel.setSelectionInterval(createdTrackIndex, createdTrackIndex);
+					}
+					sequenceListTableModel.fireSequenceChanged(seqSelectionModel);
+				}
+			}
+		);
+	}};;
+	/**
+	 * MIDIトラック除去ボタン
+	 */
+	private JButton removeTrackButton;
+	/**
+	 * MIDIイベント除去ボタン
+	 */
+	private JButton removeEventButton;
+	/**
+	 * Pair note on/off チェックボックス
+	 */
+	private JCheckBox pairNoteCheckbox;
+	/**
+	 * ファイル選択ダイアログ
+	 */
+	private JFileChooser fileChooser = null;
+	/**
+	 * BASE64テキスト入力ダイアログ
+	 */
+	private Base64Dialog base64Dialog = new Base64Dialog(this);
+
+	/**
+	 * MIDIイベント表のセルエディタ
+	 */
 	class MidiEventCellEditor extends AbstractCellEditor implements TableCellEditor {
-		MidiEvent[] midi_events_to_be_removed; // 削除対象にする変更前イベント（null可）
+		MidiEvent[] midiEventsToBeRemoved; // 削除対象にする変更前イベント（null可）
 		MidiTrackTableModel midi_track_model; // 対象トラック
 		MidiSequenceTableModel seq_model;   // 対象シーケンス
 		MidiEvent sel_midi_evt = null; // 選択されたイベント
 		int sel_index = -1; // 選択されたイベントの場所
 		long current_tick = 0; // 選択されたイベントのtick位置
 
-		TickPositionModel tick_position_model = new TickPositionModel();
+		TickPositionModel tickPositionModel = new TickPositionModel();
 		JToggleButton.ToggleButtonModel
-		pair_note_on_off_model = new JToggleButton.ToggleButtonModel();
+		pairNoteOnOffModel = new JToggleButton.ToggleButtonModel();
 
-		JButton edit_event_button = new JButton();
-
-		Action cancel_action = new AbstractAction() {
+		private void setSelectedEvent() {
+			seq_model = sequenceListTableModel.getSequenceModel(seqSelectionModel);
+			eventDialog.midiMessageForm.durationForm.setPPQ(seq_model.getSequence().getResolution());
+			tickPositionModel.setSequenceIndex(seq_model.getSequenceTickIndex());
+			sel_index = -1;
+			current_tick = 0;
+			sel_midi_evt = null;
+			midi_track_model = (MidiTrackTableModel)eventListTableView.getModel();
+			if( ! eventSelectionModel.isSelectionEmpty() ) {
+				sel_index = eventSelectionModel.getMinSelectionIndex();
+				sel_midi_evt = midi_track_model.getMidiEvent(sel_index);
+				current_tick = sel_midi_evt.getTick();
+				tickPositionModel.setTickPosition(current_tick);
+			}
+		}
+		/**
+		 * キャンセルするアクション
+		 */
+		Action cancelAction = new AbstractAction() {
 			{ putValue(NAME,"Cancel"); }
 			public void actionPerformed(ActionEvent e) {
 				fireEditingCanceled();
 				eventDialog.setVisible(false);
 			}
 		};
-
-		private void setSelectedEvent() {
-			seq_model = seqListModel.getSequenceModel(seqSelectionModel);
-			eventDialog.midiMessageForm.durationForm.setPPQ(
-				seq_model.getSequence().getResolution()
-			);
-			tick_position_model.setSequenceIndex(seq_model.getSequenceTickIndex());
-			sel_index = -1;
-			current_tick = 0;
-			sel_midi_evt = null;
-			midi_track_model = (MidiTrackTableModel)event_table_view.getModel();
-			if( ! event_selection_model.isSelectionEmpty() ) {
-				sel_index = event_selection_model.getMinSelectionIndex();
-				sel_midi_evt = midi_track_model.getMidiEvent(sel_index);
-				current_tick = sel_midi_evt.getTick();
-				tick_position_model.setTickPosition(current_tick);
-			}
-		}
-
-		// 指定のTick位置へジャンプ
-		Action query_jump_event_action = new AbstractAction() {
+		/**
+		 * 指定のTick位置へジャンプするアクション
+		 */
+		Action queryJumpEventAction = new AbstractAction() {
+			private Action jumpEventAction = new AbstractAction() {
+				{ putValue(NAME,"Jump"); }
+				public void actionPerformed(ActionEvent e) {
+					scrollToEventAt(tickPositionModel.getTickPosition());
+					eventDialog.setVisible(false);
+				}
+			};
 			{ putValue(NAME,"Jump to ..."); }
 			public void actionPerformed(ActionEvent e) {
 				setSelectedEvent();
 				eventDialog.setTitle("Jump selection to");
-				eventDialog.okButton.setAction(jump_event_action);
+				eventDialog.okButton.setAction(jumpEventAction);
 				eventDialog.openTickForm();
 			}
 		};
-		Action jump_event_action = new AbstractAction() {
-			{ putValue(NAME,"Jump"); }
-			public void actionPerformed(ActionEvent e) {
-				scrollToEventAt(tick_position_model.getTickPosition());
-				eventDialog.setVisible(false);
-			}
-		};
-
-		// 指定のTick位置へ貼り付け
-		Action query_paste_event_action = new AbstractAction() {
+		/**
+		 * 指定のTick位置へ貼り付けるアクション
+		 */
+		Action queryPasteEventAction = new AbstractAction() {
+			private Action pasteEventAction = new AbstractAction() {
+				{ putValue(NAME,"Paste"); }
+				public void actionPerformed(ActionEvent e) {
+					long tick = tickPositionModel.getTickPosition();
+					((MidiTrackTableModel)eventListTableView.getModel()).addMidiEvents(
+						copiedEventsToPaste, tick, copiedEventsPPQ
+					);
+					scrollToEventAt( tick );
+					sequenceListTableModel.fireSequenceChanged(seqSelectionModel);
+					eventDialog.setVisible(false);
+				}
+			};
 			{ putValue(NAME,"Paste to ..."); }
 			public void actionPerformed(ActionEvent e) {
 				setSelectedEvent();
 				eventDialog.setTitle("Paste to");
-				eventDialog.okButton.setAction(paste_event_action);
+				eventDialog.okButton.setAction(pasteEventAction);
 				eventDialog.openTickForm();
 			}
 		};
-		Action paste_event_action = new AbstractAction() {
-			{ putValue(NAME,"Paste"); }
-			public void actionPerformed(ActionEvent e) {
-				long tick = tick_position_model.getTickPosition();
-				((MidiTrackTableModel)event_table_view.getModel()).addMidiEvents(
-						copied_events, tick, copied_events_PPQ
-						);
-				scrollToEventAt( tick );
-				seqListModel.fireSequenceChanged(seqSelectionModel);
-				eventDialog.setVisible(false);
-			}
-		};
-
-		// イベントの追加（または変更）
-		Action query_add_event_action = new AbstractAction() {
+		/**
+		 * 新しいイベントの追加を行うアクション
+		 */
+		Action queryAddEventAction = new AbstractAction() {
 			{ putValue(NAME,"New"); }
 			public void actionPerformed(ActionEvent e) {
 				setSelectedEvent();
-				midi_events_to_be_removed = null;
+				midiEventsToBeRemoved = null;
 				eventDialog.setTitle("Add a new MIDI event");
-				eventDialog.okButton.setAction(add_event_action);
+				eventDialog.okButton.setAction(addEventAction);
 				int ch = midi_track_model.getChannel();
 				if( ch >= 0 ) {
 					eventDialog.midiMessageForm.channelText.setSelectedChannel(ch);
@@ -253,21 +341,24 @@ class MidiEditor extends JDialog
 				eventDialog.openEventForm();
 			}
 		};
-		Action add_event_action = new AbstractAction() {
+		/**
+		 * イベントの追加（または変更）を行うアクション
+		 */
+		private Action addEventAction = new AbstractAction() {
 			{ putValue(NAME,"OK"); }
 			public void actionPerformed(ActionEvent e) {
-				long tick = tick_position_model.getTickPosition();
+				long tick = tickPositionModel.getTickPosition();
 				MidiMessage midi_msg = eventDialog.midiMessageForm.getMessage();
 				MidiEvent new_midi_event = new MidiEvent(midi_msg,tick);
-				if( midi_events_to_be_removed != null ) {
-					midi_track_model.removeMidiEvents(midi_events_to_be_removed);
+				if( midiEventsToBeRemoved != null ) {
+					midi_track_model.removeMidiEvents(midiEventsToBeRemoved);
 				}
 				if( ! midi_track_model.addMidiEvent(new_midi_event) ) {
 					System.out.println("addMidiEvent failure");
 					return;
 				}
 				if(
-					pair_note_on_off_model.isSelected() &&
+					pairNoteOnOffModel.isSelected() &&
 					eventDialog.midiMessageForm.isNote()
 				) {
 					ShortMessage sm = eventDialog.midiMessageForm.getPartnerMessage();
@@ -287,20 +378,21 @@ class MidiEditor extends JDialog
 						scrollToEventAt( partner_tick > tick ? partner_tick : tick );
 					}
 				}
-				seqListModel.fireSequenceChanged(seq_model);
+				sequenceListTableModel.fireSequenceChanged(seq_model);
 				eventDialog.setVisible(false);
 				fireEditingStopped();
 			}
 		};
 
-		// Constructor
-		//
+		JButton editEventButton = new JButton() {{
+			setHorizontalAlignment(JButton.LEFT);
+		}};
+
 		public MidiEventCellEditor() {
-			edit_event_button.setHorizontalAlignment(JButton.LEFT);
-			eventDialog.cancel_button.setAction(cancel_action);
+			eventDialog.cancelButton.setAction(cancelAction);
 			eventDialog.midiMessageForm.setOutputMidiChannels(virtualMidiDevice.getChannels());
-			eventDialog.tick_position_form.setModel(tick_position_model);
-			edit_event_button.addActionListener(
+			eventDialog.tickPositionForm.setModel(tickPositionModel);
+			editEventButton.addActionListener(
 				new ActionListener() {
 					public void actionPerformed(ActionEvent e) {
 						setSelectedEvent();
@@ -330,24 +422,22 @@ class MidiEditor extends JDialog
 							events[0] = sel_midi_evt;
 							events[1] = partner_event;
 						}
-						midi_events_to_be_removed = events;
+						midiEventsToBeRemoved = events;
 						eventDialog.setTitle("Change MIDI event");
-						eventDialog.okButton.setAction(add_event_action);
+						eventDialog.okButton.setAction(addEventAction);
 						eventDialog.openEventForm();
 					}
 				}
 			);
-			pair_note_on_off_model.addItemListener(new ItemListener() {
+			pairNoteOnOffModel.addItemListener(new ItemListener() {
 				public void itemStateChanged(ItemEvent e) {
 					eventDialog.midiMessageForm.durationForm.setEnabled(
-						pair_note_on_off_model.isSelected()
+						pairNoteOnOffModel.isSelected()
 					);
 				}
 			});
-			pair_note_on_off_model.setSelected(true);
+			pairNoteOnOffModel.setSelected(true);
 		}
-		// TableCellEditor
-		//
 		public boolean isCellEditable(EventObject e) {
 			// ダブルクリックで編集
 			return e instanceof MouseEvent && ((MouseEvent)e).getClickCount() == 2;
@@ -359,12 +449,15 @@ class MidiEditor extends JDialog
 			JTable table, Object value, boolean isSelected,
 			int row, int column
 		) {
-			edit_event_button.setText((String)value);
-			return edit_event_button;
+			editEventButton.setText((String)value);
+			return editEventButton;
 		}
 	}
 
-	public Action move_to_top_action = new AbstractAction() {
+	/**
+	 * 曲の先頭または前の曲へ戻るアクション
+	 */
+	public Action moveToTopAction = new AbstractAction() {
 		{
 			putValue( SHORT_DESCRIPTION,
 				"Move to top or previous song - 曲の先頭または前の曲へ戻る"
@@ -372,83 +465,126 @@ class MidiEditor extends JDialog
 			putValue( LARGE_ICON_KEY, new ButtonIcon(ButtonIcon.TOP_ICON) );
 		}
 		public void actionPerformed( ActionEvent event ) {
-			if( deviceManager.getSequencer().getTickPosition() <= 40 )
+			if( deviceModelList.getSequencer().getTickPosition() <= 40 )
 				loadNext(-1);
-			deviceManager.timeRangeModel.setValue(0);
+			deviceModelList.timeRangeModel.setValue(0);
 		}
 	};
-	public Action move_to_bottom_action = new AbstractAction() {
+	/**
+	 * 次の曲へ進むアクション
+	 */
+	public Action moveToBottomAction = new AbstractAction() {
 		{
 			putValue( SHORT_DESCRIPTION, "Move to next song - 次の曲へ進む" );
 			putValue( LARGE_ICON_KEY, new ButtonIcon(ButtonIcon.BOTTOM_ICON) );
 		}
 		public void actionPerformed( ActionEvent event ) {
-			if( loadNext(1) ) deviceManager.timeRangeModel.setValue(0);
+			if( loadNext(1) )
+				deviceModelList.timeRangeModel.setValue(0);
 		}
 	};
-	//
-	// Constructor
-	//
-	public MidiEditor(MidiDeviceModelList deviceManager) {
-		this.deviceManager = deviceManager;
+
+	/**
+	 * MIDIイベントセルエディタ
+	 */
+	private MidiEventCellEditor eventCellEditor = new MidiEventCellEditor();
+	/**
+	 * ペースト用にコピーされたMIDIイベントの配列
+	 */
+	private MidiEvent copiedEventsToPaste[] = null;
+	/**
+	 * ペースト用にコピーされたMIDIイベントのタイミング解像度
+	 */
+	private int copiedEventsPPQ = 0;
+	/**
+	 * イベント追加ボタン
+	 */
+	private JButton addEventButton = new JButton(eventCellEditor.queryAddEventAction) {{
+		setMargin(ZERO_INSETS);
+	}};
+	/**
+	 * イベントジャンプボタン
+	 */
+	private JButton jumpEventButton = new JButton(eventCellEditor.queryJumpEventAction) {{
+		setMargin(ZERO_INSETS);
+	}};
+	/**
+	 * イベント貼り付けボタン
+	 */
+	private JButton pasteEventButton = new JButton(eventCellEditor.queryPasteEventAction) {{
+		setMargin(ZERO_INSETS);
+	}};
+	/**
+	 * イベントカットボタン
+	 */
+	private JButton cutEventButton = new JButton("Cut") {{
+		setMargin(ZERO_INSETS);
+		addActionListener(
+			new ActionListener() {
+				public void actionPerformed(ActionEvent e) {
+					if( ! confirm("Do you want to cut selected event ?\n選択したMIDIイベントを切り取りますか？"))
+						return;
+					MidiTrackTableModel trackTableModel = (MidiTrackTableModel)eventListTableView.getModel();
+					copiedEventsToPaste = trackTableModel.getMidiEvents( eventSelectionModel );
+					copiedEventsPPQ = sequenceListTableModel.getSequenceModel(seqSelectionModel).getSequence().getResolution();
+					trackTableModel.removeMidiEvents( copiedEventsToPaste );
+					sequenceListTableModel.fireSequenceChanged(seqSelectionModel);
+				}
+			}
+		);
+	}};
+	/**
+	 * イベントコピーボタン
+	 */
+	private JButton copyEventButton = new JButton("Copy") {{
+		setMargin(ZERO_INSETS);
+		addActionListener(
+			new ActionListener() {
+				public void actionPerformed(ActionEvent e) {
+					copiedEventsToPaste = ((MidiTrackTableModel)eventListTableView.getModel()).getMidiEvents(eventSelectionModel);
+					copiedEventsPPQ = sequenceListTableModel.getSequenceModel(seqSelectionModel).getSequence().getResolution();
+					updateButtonStatus();
+				}
+			}
+		);
+	}};
+	/**
+	 * 再生／一時停止ボタン
+	 */
+	private JToggleButton playPauseButton;
+
+	/**
+	 * 新しい {@link MidiEditor} を構築します。
+	 * @param deviceModelList MIDIデバイスモデルリスト
+	 */
+	public MidiEditor(MidiDeviceModelList deviceModelList) {
+		this.deviceModelList = deviceModelList;
 		setTitle("MIDI Editor/Playlist - MIDI Chord Helper");
 		setBounds( 150, 200, 850, 500 );
 		setLayout(new FlowLayout());
-		Icon delete_icon = new ButtonIcon(ButtonIcon.X_ICON);
 		new DropTarget(this, DnDConstants.ACTION_COPY_OR_MOVE, this, true);
-		totalTimeLabel = new JLabel();
-		//
-		// Buttons (Sequence)
-		//
-		add_new_sequence_button = new JButton("New");
-		add_new_sequence_button.setToolTipText("Generate new song - 新しい曲を生成");
-		add_new_sequence_button.setMargin(ZERO_INSETS);
-		add_new_sequence_button.addActionListener(
-			new ActionListener() {
-				public void actionPerformed(ActionEvent e) {
-					newSequenceDialog.setVisible(true);
+		addMidiFileButton = new JButton("Open") {{
+			setMargin(ZERO_INSETS);
+			addActionListener(
+				new ActionListener() {
+					public void actionPerformed(ActionEvent e) {
+						if(
+							fileChooser == null ||
+							fileChooser.showOpenDialog(MidiEditor.this) != JFileChooser.APPROVE_OPTION
+						) return;
+						addSequenceFromMidiFile(fileChooser.getSelectedFile());
+					}
 				}
-			}
-		);
-		add_midi_file_button = new JButton("Open");
-		add_midi_file_button.setMargin(ZERO_INSETS);
-		add_midi_file_button.addActionListener(
-			new ActionListener() {
-				public void actionPerformed(ActionEvent e) {
-					if(
-						fileChooser == null ||
-						fileChooser.showOpenDialog(MidiEditor.this) != JFileChooser.APPROVE_OPTION
-					) return;
-					addSequenceFromMidiFile(fileChooser.getSelectedFile());
-				}
-			}
-		);
-		//
-		play_pause_button = new JToggleButton(deviceManager.timeRangeModel.startStopAction);
-		backward_button = new JButton(move_to_top_action);
-		backward_button.setMargin(ZERO_INSETS);
-		forward_button = new JButton(move_to_bottom_action);
-		forward_button.setMargin(ZERO_INSETS);
-		//
-		jump_sequence_button = new JButton("Jump");
-		jump_sequence_button.setToolTipText("Move to selected song - 選択した曲へ進む");
-		jump_sequence_button.setMargin(ZERO_INSETS);
-		jump_sequence_button.addActionListener(
-			new ActionListener() {
-				public void actionPerformed(ActionEvent e) {
-					load( seqSelectionModel.getMinSelectionIndex() );
-				}
-			}
-		);
-		save_midi_file_button = new JButton("Save");
-		save_midi_file_button.setMargin(ZERO_INSETS);
-		save_midi_file_button.addActionListener(
+			);
+		}};
+		playPauseButton = new JToggleButton(deviceModelList.timeRangeModel.startStopAction);
+		saveMidiFileButton.addActionListener(
 			new ActionListener() {
 				public void actionPerformed(ActionEvent e) {
 					if( fileChooser == null ) return;
 					File midi_file;
 					MidiSequenceTableModel seq_model =
-							seqListModel.getSequenceModel(seqSelectionModel);
+							sequenceListTableModel.getSequenceModel(seqSelectionModel);
 					String filename = seq_model.getFilename();
 					if( filename != null && ! filename.isEmpty() ) {
 						midi_file = new File(filename);
@@ -485,221 +621,154 @@ class MidiEditor extends JDialog
 				}
 			}
 		);
-		delete_sequence_button = new JButton("Delete", delete_icon);
-		delete_sequence_button.setMargin(ZERO_INSETS);
-		delete_sequence_button.addActionListener(
-			new ActionListener() {
-				public void actionPerformed(ActionEvent e) {
-					if(
-						fileChooser != null &&
-						seqListModel.getSequenceModel(seqSelectionModel).isModified() &&
-						! confirm(
-							"Selected MIDI sequence not saved - delete it ?\n" +
-							"選択したMIDIシーケンスは保存されていませんが、削除しますか？"
-						)
-					) return;
-					seqListModel.removeSequence(seqSelectionModel);
-					totalTimeLabel.setText( seqListModel.getTotalLength() );
-				}
-			}
-		);
-		//
-		// Buttons (Track)
-		//
-		tracks_label = new JLabel("Tracks");
-		add_track_button = new JButton("New");
-		add_track_button.setMargin(ZERO_INSETS);
-		add_track_button.addActionListener(
+		Icon deleteIcon = new ButtonIcon(ButtonIcon.X_ICON);
+		deleteSequenceButton = new JButton("Delete", deleteIcon) {{
+			setMargin(ZERO_INSETS);
+			addActionListener(
 				new ActionListener() {
 					public void actionPerformed(ActionEvent e) {
-						seqListModel.getSequenceModel(seqSelectionModel).createTrack();
-						int n_tracks = seqListModel.getSequenceModel(seqSelectionModel).getRowCount();
-						if( n_tracks > 0 ) {
-							// Select a created track
-							track_selection_model.setSelectionInterval(
-									n_tracks - 1, n_tracks - 1
-									);
+						if( fileChooser != null ) {
+							// ファイルに保存できる場合（Javaアプレットではなく、Javaアプリとして動作している場合）
+							MidiSequenceTableModel seqModel = sequenceListTableModel.getSequenceModel(seqSelectionModel);
+							if( seqModel.isModified() ) {
+								// ファイル未保存の変更がある場合
+								String confirmMessage =
+									"Selected MIDI sequence not saved - delete it ?\n" +
+									"選択したMIDIシーケンスは保存されていませんが、削除しますか？";
+								if( ! confirm(confirmMessage) ) {
+									// ユーザに確認してNoって言われた場合
+									return;
+								}
+							}
 						}
-						seqListModel.fireSequenceChanged(seqSelectionModel);
+						// 削除を実行
+						sequenceListTableModel.removeSequence(seqSelectionModel);
+						// 削除された分、合計時間が短くなったはずなので表示を更新
+						totalTimeLabel.setText(sequenceListTableModel.getTotalLength());
 					}
 				}
-				);
-		remove_track_button = new JButton("Delete", delete_icon);
-		remove_track_button.setMargin(ZERO_INSETS);
-		remove_track_button.addActionListener(
+			);
+		}};
+		removeTrackButton = new JButton("Delete", deleteIcon) {{
+			setMargin(ZERO_INSETS);
+			addActionListener(
 				new ActionListener() {
 					public void actionPerformed(ActionEvent e) {
-						if( ! confirm(
-								"Do you want to delete selected track ?\n選択したトラックを削除しますか？"
-								)) return;
-						seqListModel.getSequenceModel(
-								seqSelectionModel
-								).deleteTracks( track_selection_model );
-						seqListModel.fireSequenceChanged(seqSelectionModel);
+						if( ! confirm("Do you want to delete selected track ?\n選択したトラックを削除しますか？"))
+							return;
+						sequenceListTableModel.getSequenceModel(seqSelectionModel).deleteTracks(trackSelectionModel);
+						sequenceListTableModel.fireSequenceChanged(seqSelectionModel);
 					}
 				}
-				);
-		JPanel track_button_panel = new JPanel();
-		track_button_panel.add(add_track_button);
-		track_button_panel.add(remove_track_button);
-		//
-		// Buttons (Event)
-		//
-		event_cell_editor = new MidiEventCellEditor();
-		add_event_button = new JButton(event_cell_editor.query_add_event_action);
-		add_event_button.setMargin(ZERO_INSETS);
-		jump_event_button = new JButton(event_cell_editor.query_jump_event_action);
-		jump_event_button.setMargin(ZERO_INSETS);
-		paste_event_button = new JButton(event_cell_editor.query_paste_event_action);
-		paste_event_button.setMargin(ZERO_INSETS);
-		remove_event_button = new JButton("Delete", delete_icon);
-		remove_event_button.setMargin(ZERO_INSETS);
-		remove_event_button.addActionListener(
-			new ActionListener() {
-				public void actionPerformed(ActionEvent e) {
-					if( ! confirm(
-							"Do you want to delete selected event ?\n選択したMIDIイベントを削除しますか？"
-							)) return;
-					((MidiTrackTableModel)event_table_view.getModel()).removeMidiEvents( event_selection_model );
-					seqListModel.fireSequenceChanged(seqSelectionModel);
+			);
+		}};
+		removeEventButton = new JButton("Delete", deleteIcon) {{
+			setMargin(ZERO_INSETS);
+			addActionListener(
+				new ActionListener() {
+					public void actionPerformed(ActionEvent e) {
+						if( ! confirm("Do you want to delete selected event ?\n選択したMIDIイベントを削除しますか？"))
+							return;
+						((MidiTrackTableModel)eventListTableView.getModel()).removeMidiEvents(eventSelectionModel);
+						sequenceListTableModel.fireSequenceChanged(seqSelectionModel);
+					}
 				}
-			}
-		);
-		cut_event_button = new JButton("Cut");
-		cut_event_button.setMargin(ZERO_INSETS);
-		cut_event_button.addActionListener(
-			new ActionListener() {
-				public void actionPerformed(ActionEvent e) {
-					if( ! confirm(
-							"Do you want to cut selected event ?\n選択したMIDIイベントを切り取りますか？"
-							)) return;
-					MidiTrackTableModel track_model = (MidiTrackTableModel)event_table_view.getModel();
-					copied_events = track_model.getMidiEvents( event_selection_model );
-					copied_events_PPQ = seqListModel.getSequenceModel(
-							seqSelectionModel
-							).getSequence().getResolution();
-					track_model.removeMidiEvents( copied_events );
-					seqListModel.fireSequenceChanged(seqSelectionModel);
-				}
-			}
-		);
-		copy_event_button = new JButton("Copy");
-		copy_event_button.setMargin(ZERO_INSETS);
-		copy_event_button.addActionListener(
-			new ActionListener() {
-				public void actionPerformed(ActionEvent e) {
-					copied_events = ((MidiTrackTableModel)event_table_view.getModel()).getMidiEvents(
-							event_selection_model
-							);
-					copied_events_PPQ = seqListModel.getSequenceModel(
-							seqSelectionModel
-							).getSequence().getResolution();
-					updateButtonStatus();
-				}
-			}
-		);
-		pair_note_checkbox = new JCheckBox( "Pair NoteON/OFF" );
-		pair_note_checkbox.setModel(event_cell_editor.pair_note_on_off_model);
+			);
+		}};
 		//
 		// Tables
 		//
-		MidiSequenceTableModel empty_track_table_model = new MidiSequenceTableModel(
-			seqListModel = new SequenceListTableModel(deviceManager)
+		MidiSequenceTableModel emptyTrackTableModel = new MidiSequenceTableModel(
+			sequenceListTableModel = new SequenceListTableModel(deviceModelList)
 		);
-		sequence_table_view = new JTable( seqListModel );
-		track_table_view = new JTable( empty_track_table_model );
-		event_table_view = new JTable( new MidiTrackTableModel() );
+		sequenceListTableView = new JTable(sequenceListTableModel);
+		trackListTableView = new JTable(emptyTrackTableModel);
+		eventListTableView = new JTable(new MidiTrackTableModel());
 		//
-		seqListModel.sizeColumnWidthToFit( sequence_table_view );
+		sequenceListTableModel.sizeColumnWidthToFit(sequenceListTableView);
+		emptyTrackTableModel.sizeColumnWidthToFit(trackListTableView.getColumnModel());
 		//
-		TableColumnModel track_column_model = track_table_view.getColumnModel();
-		empty_track_table_model.sizeColumnWidthToFit(track_column_model);
-		//
-		seqSelectionModel = sequence_table_view.getSelectionModel();
+		seqSelectionModel = sequenceListTableView.getSelectionModel();
 		seqSelectionModel.setSelectionMode( ListSelectionModel.SINGLE_SELECTION );
 		seqSelectionModel.addListSelectionListener(
 			new ListSelectionListener() {
 				public void valueChanged(ListSelectionEvent e) {
 					if( e.getValueIsAdjusting() ) return;
 					sequenceSelectionChanged();
-					track_selection_model.setSelectionInterval(0,0);
+					trackSelectionModel.setSelectionInterval(0,0);
 				}
 			}
 		);
-		JScrollPane scrollable_sequence_table = new JScrollPane(sequence_table_view);
 		//
-		track_selection_model = track_table_view.getSelectionModel();
-		track_selection_model.setSelectionMode(
-				ListSelectionModel.MULTIPLE_INTERVAL_SELECTION
-				);
-		track_selection_model.addListSelectionListener(this);
-		JScrollPane scrollable_track_table_view
-		= new JScrollPane(track_table_view);
+		trackSelectionModel = trackListTableView.getSelectionModel();
+		trackSelectionModel.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+		trackSelectionModel.addListSelectionListener(this);
 		//
-		event_selection_model = event_table_view.getSelectionModel();
-		event_selection_model.setSelectionMode(
-				ListSelectionModel.MULTIPLE_INTERVAL_SELECTION
-				);
-		event_selection_model.addListSelectionListener(this);
-		scrollable_event_table_view
-		= new JScrollPane(event_table_view);
-
+		eventSelectionModel = eventListTableView.getSelectionModel();
+		eventSelectionModel.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+		eventSelectionModel.addListSelectionListener(this);
+		//
 		if( base64Dialog.isBase64Available() ) {
-			base64_encode_button = new JButton( "Base64 Encode" );
-			base64_encode_button.setMargin(ZERO_INSETS);
-			base64_encode_button.addActionListener(
-				new ActionListener() {
-					public void actionPerformed(ActionEvent e) {
-						MidiSequenceTableModel seq_model =
-								seqListModel.getSequenceModel(seqSelectionModel);
-						base64Dialog.setMIDIData(
-							seq_model.getMIDIdata(), seq_model.getFilename()
-						);
-						base64Dialog.setVisible(true);
+			base64EncodeButton = new JButton("Base64 Encode") {{
+				setMargin(ZERO_INSETS);
+				addActionListener(
+					new ActionListener() {
+						public void actionPerformed(ActionEvent e) {
+							MidiSequenceTableModel mstm = sequenceListTableModel.getSequenceModel(seqSelectionModel);
+							base64Dialog.setMIDIData(mstm.getMIDIdata(), mstm.getFilename());
+							base64Dialog.setVisible(true);
+						}
 					}
-				}
-			);
-		}
-		newSequenceDialog = new NewSequenceDialog(this);
-		newSequenceDialog.setChannels(virtualMidiDevice.getChannels());
-
-		JPanel button_panel = new JPanel();
-		button_panel.setLayout( new BoxLayout( button_panel, BoxLayout.LINE_AXIS ) );
-		button_panel.add( totalTimeLabel );
-		button_panel.add( Box.createRigidArea(new Dimension(10, 0)) );
-		button_panel.add( add_new_sequence_button );
-		button_panel.add( Box.createRigidArea(new Dimension(5, 0)) );
-		button_panel.add( add_midi_file_button );
-		button_panel.add( Box.createRigidArea(new Dimension(5, 0)) );
-		button_panel.add( backward_button );
-		button_panel.add( Box.createRigidArea(new Dimension(5, 0)) );
-		button_panel.add( play_pause_button );
-		button_panel.add( Box.createRigidArea(new Dimension(5, 0)) );
-		button_panel.add( forward_button );
-		button_panel.add( Box.createRigidArea(new Dimension(5, 0)) );
-		button_panel.add( jump_sequence_button );
-		button_panel.add( Box.createRigidArea(new Dimension(5, 0)) );
-		button_panel.add( save_midi_file_button );
-		if( base64_encode_button != null ) {
-			button_panel.add( Box.createRigidArea(new Dimension(5, 0)) );
-			button_panel.add( base64_encode_button );
-		}
-		button_panel.add( Box.createRigidArea(new Dimension(5, 0)) );
-		button_panel.add( delete_sequence_button );
-		button_panel.add( Box.createRigidArea(new Dimension(5, 0)) );
-		button_panel.add( new SpeedSlider(deviceManager.speedSliderModel) );
-
-		JPanel playlist_panel = new JPanel();
-		playlist_panel.setLayout(
-				new BoxLayout( playlist_panel, BoxLayout.Y_AXIS )
 				);
-		playlist_panel.add( scrollable_sequence_table );
-		playlist_panel.add( Box.createRigidArea(new Dimension(0, 10)) );
-		playlist_panel.add( button_panel );
-		playlist_panel.add( Box.createRigidArea(new Dimension(0, 10)) );
+			}};
+		}
+		JPanel buttonPanel = new JPanel() {{
+			setLayout( new BoxLayout(this, BoxLayout.LINE_AXIS ));
+			add( totalTimeLabel );
+			add( Box.createRigidArea(new Dimension(10, 0)) );
+			add( new JButton("New") {{
+				setToolTipText("Generate new song - 新しい曲を生成");
+				setMargin(ZERO_INSETS);
+				addActionListener(
+					new ActionListener() {
+						public void actionPerformed(ActionEvent e) {
+							newSequenceDialog.setVisible(true);
+						}
+					}
+				);
+			}});
+			add( Box.createRigidArea(new Dimension(5, 0)) );
+			add( addMidiFileButton );
+			add( Box.createRigidArea(new Dimension(5, 0)) );
+			add( new JButton(moveToTopAction) {{setMargin(ZERO_INSETS);}} );
+			add( Box.createRigidArea(new Dimension(5, 0)) );
+			add( playPauseButton );
+			add( Box.createRigidArea(new Dimension(5, 0)) );
+			add( new JButton(moveToBottomAction) {{setMargin(ZERO_INSETS);}} );
+			add( Box.createRigidArea(new Dimension(5, 0)) );
+			add( jumpSequenceButton );
+			add( Box.createRigidArea(new Dimension(5, 0)) );
+			add( saveMidiFileButton );
+			if( base64EncodeButton != null ) {
+				add( Box.createRigidArea(new Dimension(5, 0)) );
+				add( base64EncodeButton );
+			}
+			add( Box.createRigidArea(new Dimension(5, 0)) );
+			add( deleteSequenceButton );
+			add( Box.createRigidArea(new Dimension(5, 0)) );
+		}};
+		buttonPanel.add(new SequencerSpeedSlider(deviceModelList.speedSliderModel));
+
+		JPanel playlistPanel = new JPanel() {{
+			setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
+			add(new JScrollPane(sequenceListTableView));
+			add(Box.createRigidArea(new Dimension(0, 10)));
+		}};
+		playlistPanel.add( buttonPanel );
+		playlistPanel.add( Box.createRigidArea(new Dimension(0, 10)) );
 
 		sequenceSelectionChanged();
-		totalTimeLabel.setText( seqListModel.getTotalLength() );
+		totalTimeLabel.setText( sequenceListTableModel.getTotalLength() );
 
 		try {
 			fileChooser = new JFileChooser();
@@ -719,53 +788,51 @@ class MidiEditor extends JDialog
 		}
 		if( fileChooser == null ) {
 			// Applet cannot access local files
-			add_midi_file_button.setVisible(false);
-			save_midi_file_button.setVisible(false);
+			addMidiFileButton.setVisible(false);
+			saveMidiFileButton.setVisible(false);
 		}
-		//
-		// Lists and input panel
-		//
-		JPanel track_list_panel = new JPanel();
-		track_list_panel.setLayout(new BoxLayout( track_list_panel, BoxLayout.PAGE_AXIS ));
-		track_list_panel.add( tracks_label );
-		track_list_panel.add( Box.createRigidArea(new Dimension(0, 5)) );
-		track_list_panel.add( scrollable_track_table_view );
-		track_list_panel.add( Box.createRigidArea(new Dimension(0, 5)) );
-		track_list_panel.add( track_button_panel );
-		//
-		JPanel event_list_panel = new JPanel();
-		event_list_panel.add( midi_events_label = new JLabel("No track selected") );
-		event_list_panel.add(scrollable_event_table_view);
-		//
-		JPanel event_button_panel = new JPanel();
-		event_button_panel.add(pair_note_checkbox);
-		event_button_panel.add(jump_event_button);
-		event_button_panel.add(add_event_button);
-		event_button_panel.add(copy_event_button);
-		event_button_panel.add(cut_event_button);
-		event_button_panel.add(paste_event_button);
-		event_button_panel.add(remove_event_button);
-		//
-		event_list_panel.add( event_button_panel );
-		event_list_panel.setLayout(
-				new BoxLayout( event_list_panel, BoxLayout.Y_AXIS )
+		JPanel trackListPanel = new JPanel() {{
+			setLayout(new BoxLayout(this, BoxLayout.PAGE_AXIS));
+			add( tracksLabel);
+			add( Box.createRigidArea(new Dimension(0, 5)) );
+			add( new JScrollPane(trackListTableView));
+			add( Box.createRigidArea(new Dimension(0, 5)) );
+			add( new JPanel() {{
+				add(addTrackButton);
+				add(removeTrackButton);
+			}});
+		}};
+		JPanel eventListPanel = new JPanel() {{
+			add(midiEventsLabel);
+			add(scrollableEventTableView = new JScrollPane(eventListTableView));
+			add(new JPanel() {{
+				add(
+					pairNoteCheckbox = new JCheckBox("Pair NoteON/OFF") {{
+						setModel(eventCellEditor.pairNoteOnOffModel);
+					}}
 				);
-		//
-		track_split_pane = new JSplitPane(
-			JSplitPane.HORIZONTAL_SPLIT,
-			track_list_panel, event_list_panel
-		);
-		track_split_pane.setDividerLocation(300);
-		sequence_split_pane = new JSplitPane(
-			JSplitPane.VERTICAL_SPLIT,
-			playlist_panel, track_split_pane
-		);
-		sequence_split_pane.setDividerLocation(160);
+				add(jumpEventButton);
+				add(addEventButton);
+				add(copyEventButton);
+				add(cutEventButton);
+				add(pasteEventButton);
+				add(removeEventButton);
+			}});
+			setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
+		}};
+
 		Container cp = getContentPane();
-		cp.setLayout( new BoxLayout( cp, BoxLayout.Y_AXIS ) );
+		cp.setLayout(new BoxLayout(cp, BoxLayout.Y_AXIS));
 		cp.add(Box.createVerticalStrut(2));
-		cp.add(sequence_split_pane);
-		//
+		cp.add(
+			new JSplitPane(JSplitPane.VERTICAL_SPLIT, playlistPanel,
+				new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, trackListPanel, eventListPanel) {{
+					setDividerLocation(300);
+				}}
+			) {{
+				setDividerLocation(160);
+			}}
+		);
 		seqSelectionModel.setSelectionInterval(0,0);
 		updateButtonStatus();
 	}
@@ -799,41 +866,41 @@ class MidiEditor extends JDialog
 		boolean is_adjusting = e.getValueIsAdjusting();
 		if( is_adjusting ) return;
 		Object src = e.getSource();
-		if( src == track_selection_model ) {
+		if( src == trackSelectionModel ) {
 			if(
-				seqListModel.getSequenceModel(seqSelectionModel) == null
+				sequenceListTableModel.getSequenceModel(seqSelectionModel) == null
 				||
-				track_selection_model.isSelectionEmpty()
+				trackSelectionModel.isSelectionEmpty()
 			) {
-				midi_events_label.setText("MIDI Events (No track selected)");
-				event_table_view.setModel(new MidiTrackTableModel());
+				midiEventsLabel.setText("MIDI Events (No track selected)");
+				eventListTableView.setModel(new MidiTrackTableModel());
 			}
 			else {
-				int sel_index = track_selection_model.getMinSelectionIndex();
+				int sel_index = trackSelectionModel.getMinSelectionIndex();
 				MidiTrackTableModel track_model
-				= seqListModel.getSequenceModel(seqSelectionModel).getTrackModel(sel_index);
+				= sequenceListTableModel.getSequenceModel(seqSelectionModel).getTrackModel(sel_index);
 				if( track_model == null ) {
-					midi_events_label.setText("MIDI Events (No track selected)");
-					event_table_view.setModel(new MidiTrackTableModel());
+					midiEventsLabel.setText("MIDI Events (No track selected)");
+					eventListTableView.setModel(new MidiTrackTableModel());
 				}
 				else {
-					midi_events_label.setText(
+					midiEventsLabel.setText(
 						String.format("MIDI Events (in track No.%d)", sel_index)
 					);
-					event_table_view.setModel(track_model);
-					TableColumnModel tcm = event_table_view.getColumnModel();
+					eventListTableView.setModel(track_model);
+					TableColumnModel tcm = eventListTableView.getColumnModel();
 					track_model.sizeColumnWidthToFit(tcm);
-					tcm.getColumn( MidiTrackTableModel.COLUMN_MESSAGE ).setCellEditor(event_cell_editor);
+					tcm.getColumn( MidiTrackTableModel.COLUMN_MESSAGE ).setCellEditor(eventCellEditor);
 				}
 			}
 			updateButtonStatus();
-			event_selection_model.setSelectionInterval(0,0);
+			eventSelectionModel.setSelectionInterval(0,0);
 		}
-		else if( src == event_selection_model ) {
-			if( ! event_selection_model.isSelectionEmpty() ) {
+		else if( src == eventSelectionModel ) {
+			if( ! eventSelectionModel.isSelectionEmpty() ) {
 				MidiTrackTableModel track_model
-				= (MidiTrackTableModel)event_table_view.getModel();
-				int min_index = event_selection_model.getMinSelectionIndex();
+				= (MidiTrackTableModel)eventListTableView.getModel();
+				int min_index = eventSelectionModel.getMinSelectionIndex();
 				if( track_model.hasTrack() ) {
 					MidiEvent midi_event = track_model.getMidiEvent(min_index);
 					MidiMessage msg = midi_event.getMessage();
@@ -851,20 +918,20 @@ class MidiEditor extends JDialog
 						}
 					}
 				}
-				if( pair_note_checkbox.isSelected() ) {
-					int max_index = event_selection_model.getMaxSelectionIndex();
+				if( pairNoteCheckbox.isSelected() ) {
+					int max_index = eventSelectionModel.getMaxSelectionIndex();
 					int partner_index;
 					for( int i=min_index; i<=max_index; i++ ) {
 						if(
-								event_selection_model.isSelectedIndex(i)
-								&&
-								(partner_index = track_model.getIndexOfPartnerFor(i)) >= 0
-								&&
-								! event_selection_model.isSelectedIndex(partner_index)
-								) {
-							event_selection_model.addSelectionInterval(
-									partner_index, partner_index
-									);
+							eventSelectionModel.isSelectedIndex(i)
+							&&
+							(partner_index = track_model.getIndexOfPartnerFor(i)) >= 0
+							&&
+							! eventSelectionModel.isSelectedIndex(partner_index)
+						) {
+							eventSelectionModel.addSelectionInterval(
+								partner_index, partner_index
+							);
 						}
 					}
 				}
@@ -907,78 +974,70 @@ class MidiEditor extends JDialog
 	}
 	public void sequenceSelectionChanged() {
 		MidiSequenceTableModel seq_model
-		= seqListModel.getSequenceModel(seqSelectionModel);
-		jump_sequence_button.setEnabled( seq_model != null );
-		save_midi_file_button.setEnabled( seq_model != null );
-		add_track_button.setEnabled( seq_model != null );
-		if( base64_encode_button != null )
-			base64_encode_button.setEnabled( seq_model != null );
+		= sequenceListTableModel.getSequenceModel(seqSelectionModel);
+		jumpSequenceButton.setEnabled( seq_model != null );
+		saveMidiFileButton.setEnabled( seq_model != null );
+		addTrackButton.setEnabled( seq_model != null );
+		if( base64EncodeButton != null )
+			base64EncodeButton.setEnabled( seq_model != null );
 
 		if( seq_model != null ) {
 			int sel_index = seqSelectionModel.getMinSelectionIndex();
-			delete_sequence_button.setEnabled(true);
-			track_table_view.setModel(seq_model);
-			TableColumnModel tcm = track_table_view.getColumnModel();
+			deleteSequenceButton.setEnabled(true);
+			trackListTableView.setModel(seq_model);
+			TableColumnModel tcm = trackListTableView.getColumnModel();
 			seq_model.sizeColumnWidthToFit(tcm);
 			tcm.getColumn(MidiSequenceTableModel.COLUMN_RECORD_CHANNEL).setCellEditor(
 					seq_model.new RecordChannelCellEditor()
 					);
-			track_selection_model.setSelectionInterval(0,0);
-			tracks_label.setText(
-					String.format("Tracks (in MIDI file No.%d)", sel_index)
-					);
+			trackSelectionModel.setSelectionInterval(0,0);
+			tracksLabel.setText(String.format("Tracks (in MIDI file No.%d)", sel_index));
 			// event_cell_editor.setSequenceModel(seq_model);
 		}
 		else {
-			delete_sequence_button.setEnabled(false);
-			track_table_view.setModel(new MidiSequenceTableModel(seqListModel));
-			tracks_label.setText("Tracks (No MIDI file selected)");
+			deleteSequenceButton.setEnabled(false);
+			trackListTableView.setModel(new MidiSequenceTableModel(sequenceListTableModel));
+			tracksLabel.setText("Tracks (No MIDI file selected)");
 		}
 		updateButtonStatus();
 	}
 	public void updateButtonStatus() {
 		boolean is_track_selected = (
-				! track_selection_model.isSelectionEmpty()
-				&&
-				seqListModel.getSequenceModel(seqSelectionModel) != null
-				&&
-				seqListModel.getSequenceModel(seqSelectionModel).getRowCount() > 0
-				);
+			! trackSelectionModel.isSelectionEmpty()
+			&&
+			sequenceListTableModel.getSequenceModel(seqSelectionModel) != null
+			&&
+			sequenceListTableModel.getSequenceModel(seqSelectionModel).getRowCount() > 0
+		);
 		//
 		// Track list
-		remove_track_button.setEnabled( is_track_selected );
+		removeTrackButton.setEnabled( is_track_selected );
 		//
-		TableModel tm = event_table_view.getModel();
+		TableModel tm = eventListTableView.getModel();
 		if( ! (tm instanceof MidiTrackTableModel) ) return;
 		//
 		MidiTrackTableModel track_model = (MidiTrackTableModel)tm;
-		jump_sequence_button.setEnabled(
-				track_model != null && track_model.getRowCount() > 0
-				);
+		jumpSequenceButton.setEnabled(track_model != null && track_model.getRowCount() > 0);
 		// Event list
 		boolean is_event_selected = (
 				!(
-						event_selection_model.isSelectionEmpty() ||
+						eventSelectionModel.isSelectionEmpty() ||
 						track_model == null || track_model.getRowCount() == 0
 						) && is_track_selected
 				);
-		copy_event_button.setEnabled( is_event_selected );
-		remove_event_button.setEnabled( is_event_selected );
-		cut_event_button.setEnabled( is_event_selected );
-		jump_event_button.setEnabled(
-				track_model != null && is_track_selected
-				);
-		add_event_button.setEnabled(
-				track_model != null && is_track_selected
-				);
-		paste_event_button.setEnabled(
-				track_model != null && is_track_selected &&
-				copied_events != null && copied_events.length > 0
-				);
+		copyEventButton.setEnabled( is_event_selected );
+		removeEventButton.setEnabled( is_event_selected );
+		cutEventButton.setEnabled( is_event_selected );
+		jumpEventButton.setEnabled( track_model != null && is_track_selected );
+		addEventButton.setEnabled( track_model != null && is_track_selected );
+		pasteEventButton.setEnabled(
+			track_model != null && is_track_selected &&
+			copiedEventsToPaste != null && copiedEventsToPaste.length > 0
+		);
 	}
 	public String getMIDIdataBase64() {
 		base64Dialog.setMIDIData(
-			deviceManager.timeRangeModel.getSequenceTableModel().getMIDIdata()
+			deviceModelList.timeRangeModel.getSequenceTableModel().getMIDIdata()
 		);
 		return base64Dialog.getBase64Data();
 	}
@@ -986,9 +1045,9 @@ class MidiEditor extends JDialog
 		return addSequence(newSequenceDialog.getMidiSequence());
 	}
 	public int addSequence(Sequence seq) {
-		int lastIndex = seqListModel.addSequence(seq);
-		totalTimeLabel.setText( seqListModel.getTotalLength() );
-		if( ! deviceManager.getSequencer().isRunning() ) {
+		int lastIndex = sequenceListTableModel.addSequence(seq);
+		totalTimeLabel.setText( sequenceListTableModel.getTotalLength() );
+		if( ! deviceModelList.getSequencer().isRunning() ) {
 			loadAndPlay(lastIndex);
 		}
 		return lastIndex;
@@ -1003,18 +1062,18 @@ class MidiEditor extends JDialog
 	public int addSequenceFromMidiData(byte[] data, String filename) {
 		int last_index;
 		try {
-			last_index = seqListModel.addSequence(data,filename);
+			last_index = sequenceListTableModel.addSequence(data,filename);
 		} catch( InvalidMidiDataException e ) {
 			showWarning("MIDI data invalid");
 			return -1;
 		}
-		totalTimeLabel.setText( seqListModel.getTotalLength() );
+		totalTimeLabel.setText( sequenceListTableModel.getTotalLength() );
 		return last_index;
 	}
 	public int addSequenceFromMidiFile(File midi_file) {
 		int last_index;
 		try {
-			last_index = seqListModel.addSequence(midi_file);
+			last_index = sequenceListTableModel.addSequence(midi_file);
 		} catch( FileNotFoundException e ) {
 			showWarning( midi_file.getName() + " : not found" );
 			return -1;
@@ -1026,13 +1085,13 @@ class MidiEditor extends JDialog
 			e.printStackTrace();
 			return -1;
 		}
-		totalTimeLabel.setText( seqListModel.getTotalLength() );
+		totalTimeLabel.setText( sequenceListTableModel.getTotalLength() );
 		return last_index;
 	}
 	public int addSequenceFromURL(String midi_file_url) {
 		int last_index;
 		try {
-			last_index = seqListModel.addSequence(midi_file_url);
+			last_index = sequenceListTableModel.addSequence(midi_file_url);
 		} catch( InvalidMidiDataException e ) {
 			showWarning( midi_file_url + " : MIDI data invalid" );
 			return -1;
@@ -1041,21 +1100,21 @@ class MidiEditor extends JDialog
 			e.printStackTrace();
 			return -1;
 		}
-		totalTimeLabel.setText( seqListModel.getTotalLength() );
+		totalTimeLabel.setText( sequenceListTableModel.getTotalLength() );
 		return last_index;
 	}
 	public void load(int index) {
-		seqListModel.loadToSequencer(index);
+		sequenceListTableModel.loadToSequencer(index);
 		sequenceSelectionChanged();
 	}
 	public boolean loadNext(int offset) {
-		boolean retval = seqListModel.loadNext(offset);
+		boolean retval = sequenceListTableModel.loadNext(offset);
 		sequenceSelectionChanged();
 		return retval;
 	}
 	public void loadAndPlay(int index) {
 		load(index);
-		deviceManager.timeRangeModel.start();
+		deviceModelList.timeRangeModel.start();
 	}
 	public void loadAndPlay() {
 		loadAndPlay( seqSelectionModel.getMinSelectionIndex() );
@@ -1067,7 +1126,7 @@ class MidiEditor extends JDialog
 			lastIndex = addSequenceFromMidiFile(f);
 			if( nextIndex == -1 ) nextIndex = lastIndex;
 		}
-		if( deviceManager.getSequencer().isRunning() ) {
+		if( deviceModelList.getSequencer().isRunning() ) {
 			setVisible(true);
 		}
 		else if( nextIndex >= 0 ) {
@@ -1075,22 +1134,22 @@ class MidiEditor extends JDialog
 		}
 	}
 	public boolean isModified() {
-		return seqListModel.isModified();
+		return sequenceListTableModel.isModified();
 	}
 	public boolean isRecordable() {
 		MidiSequenceTableModel seq_model =
-				seqListModel.getSequenceModel(seqSelectionModel);
+			sequenceListTableModel.getSequenceModel(seqSelectionModel);
 		return seq_model == null ? false : seq_model.isRecordable();
 	}
 	public void scrollToEventAt( long tick ) {
-		MidiTrackTableModel track_model = (MidiTrackTableModel)event_table_view.getModel();
+		MidiTrackTableModel track_model = (MidiTrackTableModel)eventListTableView.getModel();
 		scrollToEventAt( track_model.tickToIndex(tick) );
 	}
 	public void scrollToEventAt( int index ) {
-		scrollable_event_table_view.getVerticalScrollBar().setValue(
-				index * event_table_view.getRowHeight()
-				);
-		event_selection_model.setSelectionInterval( index, index );
+		scrollableEventTableView.getVerticalScrollBar().setValue(
+			index * eventListTableView.getRowHeight()
+		);
+		eventSelectionModel.setSelectionInterval( index, index );
 	}
 }
 
@@ -1238,11 +1297,18 @@ class SequenceListTableModel extends AbstractTableModel implements ChangeListene
 			}
 		}
 	}
-	public MidiSequenceTableModel getSequenceModel(ListSelectionModel sel_model) {
-		if( sel_model.isSelectionEmpty() ) return null;
-		int sel_index = sel_model.getMinSelectionIndex();
-		if( sel_index >= sequenceList.size() ) return null;
-		return sequenceList.get(sel_index);
+	/**
+	 * 選択されたMIDIシーケンスのテーブルモデルを返します。
+	 * @param selectionModel 選択状態
+	 * @return 選択されたMIDIシーケンスのテーブルモデル
+	 */
+	public MidiSequenceTableModel getSequenceModel(ListSelectionModel selectionModel) {
+		if( selectionModel.isSelectionEmpty() )
+			return null;
+		int selectedIndex = selectionModel.getMinSelectionIndex();
+		if( selectedIndex >= sequenceList.size() )
+			return null;
+		return sequenceList.get(selectedIndex);
 	}
 	public void fireSequenceChanged( ListSelectionModel sel_model ) {
 		if( sel_model.isSelectionEmpty() ) return;

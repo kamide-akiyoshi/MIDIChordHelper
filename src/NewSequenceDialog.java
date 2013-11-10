@@ -176,9 +176,7 @@ class NewSequenceDialog extends JDialog implements ActionListener {
 			toggleKeyMajorMinor();
 		}
 		else if( obj == random_chord_button ) {
-			setRandomChordProgression(
-					measure_selecter.getMeasureDuration()
-					);
+			setRandomChordProgression(measure_selecter.getMeasureDuration());
 		}
 	}
 	// Methods

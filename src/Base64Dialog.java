@@ -94,7 +94,7 @@ public class Base64Dialog extends JDialog implements ActionListener {
 			int last_index = midiEditor.addSequenceFromMidiData( getMIDIData(), null );
 			if( last_index < 0 ) {
 				base64TextArea.requestFocusInWindow();
-				last_index = midiEditor.seqListModel.getRowCount() - 1;
+				last_index = midiEditor.sequenceListTableModel.getRowCount() - 1;
 			}
 			midiEditor.seqSelectionModel.setSelectionInterval( last_index, last_index );
 			setVisible(false);
