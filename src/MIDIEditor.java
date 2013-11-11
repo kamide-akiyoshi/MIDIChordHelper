@@ -465,9 +465,9 @@ class MidiEditor extends JDialog
 			putValue( LARGE_ICON_KEY, new ButtonIcon(ButtonIcon.TOP_ICON) );
 		}
 		public void actionPerformed( ActionEvent event ) {
-			if( deviceModelList.getSequencer().getTickPosition() <= 40 )
+			if( deviceModelList.sequencerModel.getSequencer().getTickPosition() <= 40 )
 				loadNext(-1);
-			deviceModelList.timeRangeModel.setValue(0);
+			deviceModelList.sequencerModel.timeRangeModel.setValue(0);
 		}
 	};
 	/**
@@ -480,7 +480,7 @@ class MidiEditor extends JDialog
 		}
 		public void actionPerformed( ActionEvent event ) {
 			if( loadNext(1) )
-				deviceModelList.timeRangeModel.setValue(0);
+				deviceModelList.sequencerModel.timeRangeModel.setValue(0);
 		}
 	};
 
@@ -577,7 +577,7 @@ class MidiEditor extends JDialog
 				}
 			);
 		}};
-		playPauseButton = new JToggleButton(deviceModelList.timeRangeModel.startStopAction);
+		playPauseButton = new JToggleButton(deviceModelList.sequencerModel.startStopAction);
 		saveMidiFileButton.addActionListener(
 			new ActionListener() {
 				public void actionPerformed(ActionEvent e) {
@@ -757,7 +757,7 @@ class MidiEditor extends JDialog
 			add( deleteSequenceButton );
 			add( Box.createRigidArea(new Dimension(5, 0)) );
 		}};
-		buttonPanel.add(new SequencerSpeedSlider(deviceModelList.speedSliderModel));
+		buttonPanel.add(new SequencerSpeedSlider(deviceModelList.sequencerModel.speedSliderModel));
 
 		JPanel playlistPanel = new JPanel() {{
 			setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
@@ -1037,7 +1037,7 @@ class MidiEditor extends JDialog
 	}
 	public String getMIDIdataBase64() {
 		base64Dialog.setMIDIData(
-			deviceModelList.timeRangeModel.getSequenceTableModel().getMIDIdata()
+			deviceModelList.sequencerModel.getSequenceTableModel().getMIDIdata()
 		);
 		return base64Dialog.getBase64Data();
 	}
@@ -1047,7 +1047,7 @@ class MidiEditor extends JDialog
 	public int addSequence(Sequence seq) {
 		int lastIndex = sequenceListTableModel.addSequence(seq);
 		totalTimeLabel.setText( sequenceListTableModel.getTotalLength() );
-		if( ! deviceModelList.getSequencer().isRunning() ) {
+		if( ! deviceModelList.sequencerModel.getSequencer().isRunning() ) {
 			loadAndPlay(lastIndex);
 		}
 		return lastIndex;
@@ -1114,7 +1114,7 @@ class MidiEditor extends JDialog
 	}
 	public void loadAndPlay(int index) {
 		load(index);
-		deviceModelList.timeRangeModel.start();
+		deviceModelList.sequencerModel.start();
 	}
 	public void loadAndPlay() {
 		loadAndPlay( seqSelectionModel.getMinSelectionIndex() );
@@ -1126,7 +1126,7 @@ class MidiEditor extends JDialog
 			lastIndex = addSequenceFromMidiFile(f);
 			if( nextIndex == -1 ) nextIndex = lastIndex;
 		}
-		if( deviceModelList.getSequencer().isRunning() ) {
+		if( deviceModelList.sequencerModel.getSequencer().isRunning() ) {
 			setVisible(true);
 		}
 		else if( nextIndex >= 0 ) {
@@ -1187,12 +1187,12 @@ class SequenceListTableModel extends AbstractTableModel implements ChangeListene
 	 * @param deviceManager MIDIデバイスマネージャ
 	 */
 	public SequenceListTableModel(MidiDeviceModelList deviceManager) {
-		(this.deviceManager = deviceManager).timeRangeModel.addChangeListener(this);
+		(this.deviceManager = deviceManager).sequencerModel.timeRangeModel.addChangeListener(this);
 	}
 	private int secondPosition = 0;
 	@Override
 	public void stateChanged(ChangeEvent e) {
-		int sec = deviceManager.timeRangeModel.getValue() / 1000;
+		int sec = deviceManager.sequencerModel.timeRangeModel.getValue() / 1000;
 		if( secondPosition == sec )
 			return;
 		secondPosition = sec;
@@ -1226,7 +1226,7 @@ class SequenceListTableModel extends AbstractTableModel implements ChangeListene
 		case COLUMN_RESOLUTION: return sequenceList.get(row).getSequence().getResolution();
 		case COLUMN_TRACKS: return sequenceList.get(row).getSequence().getTracks().length;
 		case COLUMN_SEQ_POSITION: {
-			Sequence loaded_seq = deviceManager.getSequencer().getSequence();
+			Sequence loaded_seq = deviceManager.sequencerModel.getSequencer().getSequence();
 			if( loaded_seq != null && loaded_seq == sequenceList.get(row).getSequence() )
 				return String.format("%02d:%02d", secondPosition/60, secondPosition%60);
 			else
@@ -1326,10 +1326,10 @@ class SequenceListTableModel extends AbstractTableModel implements ChangeListene
 		for( int index = min_index; index <= max_index; index++ ) {
 			MidiSequenceTableModel seq_model = sequenceList.get(index);
 			seq_model.setModified(true);
-			if( deviceManager.getSequencer().getSequence() == seq_model.getSequence() ) {
+			if( deviceManager.sequencerModel.getSequencer().getSequence() == seq_model.getSequence() ) {
 				// シーケンサーに対して、同じシーケンスを再度セットする。
 				// （これをやらないと更新が反映されないため）
-				deviceManager.timeRangeModel.setSequenceModel(seq_model);
+				deviceManager.sequencerModel.setSequenceTableModel(seq_model);
 			}
 		}
 		fireTableRowsUpdated( min_index, max_index );
@@ -1403,8 +1403,8 @@ class SequenceListTableModel extends AbstractTableModel implements ChangeListene
 	public void removeSequence( ListSelectionModel sel_model ) {
 		if( sel_model.isSelectionEmpty() ) return;
 		int sel_index = sel_model.getMinSelectionIndex();
-		if( sequenceList.get(sel_index) == deviceManager.timeRangeModel.getSequenceTableModel() )
-			deviceManager.timeRangeModel.setSequenceModel(null);
+		if( sequenceList.get(sel_index) == deviceManager.sequencerModel.getSequenceTableModel() )
+			deviceManager.sequencerModel.setSequenceTableModel(null);
 		sequenceList.remove(sel_index);
 		fireTableRowsDeleted( sel_index, sel_index );
 	}
@@ -1412,13 +1412,13 @@ class SequenceListTableModel extends AbstractTableModel implements ChangeListene
 		int loaded_index = getLoadedIndex();
 		if( loaded_index == index ) return;
 		MidiSequenceTableModel seq_model = sequenceList.get(index);
-		deviceManager.timeRangeModel.setSequenceModel(seq_model);
+		deviceManager.sequencerModel.setSequenceTableModel(seq_model);
 		seq_model.fireTableDataChanged();
 		fireTableCellUpdated( loaded_index, COLUMN_SEQ_POSITION );
 		fireTableCellUpdated( index, COLUMN_SEQ_POSITION );
 	}
 	public int getLoadedIndex() {
-		MidiSequenceTableModel seq_model = deviceManager.timeRangeModel.getSequenceTableModel();
+		MidiSequenceTableModel seq_model = deviceManager.sequencerModel.getSequenceTableModel();
 		for( int i=0; i<sequenceList.size(); i++ )
 			if( sequenceList.get(i) == seq_model ) return i;
 		return -1;
@@ -1785,7 +1785,7 @@ class MidiSequenceTableModel extends AbstractTableModel
 	 * @return MIDIシーケンサ
 	 */
 	public Sequencer getSequencer() {
-		return sequenceListTableModel.deviceManager.getSequencer();
+		return sequenceListTableModel.deviceManager.sequencerModel.getSequencer();
 	}
 	/**
 	 * 録音可能かどうかを返します。

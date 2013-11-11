@@ -134,7 +134,7 @@ public class ChordHelperApplet extends JApplet implements MetaEventListener {
 	 * @return 実行中のときtrue
 	 */
 	public boolean isRunning() {
-		return deviceModelList.getSequencer().isRunning();
+		return deviceModelList.sequencerModel.getSequencer().isRunning();
 	}
 	/**
 	 * シーケンサが再生中かどうかを返します。
@@ -154,7 +154,7 @@ public class ChordHelperApplet extends JApplet implements MetaEventListener {
 	 * @return MIDIファイル名（設定されていないときは空文字列）
 	 */
 	public String getMidiFilename() {
-		MidiSequenceTableModel seq_model = deviceModelList.timeRangeModel.getSequenceTableModel();
+		MidiSequenceTableModel seq_model = deviceModelList.sequencerModel.getSequenceTableModel();
 		if( seq_model == null ) return null;
 		String fn = seq_model.getFilename();
 		return fn == null ? "" : fn ;
@@ -241,7 +241,7 @@ public class ChordHelperApplet extends JApplet implements MetaEventListener {
 	 */
 	public static class VersionInfo {
 		public static final String	NAME = "MIDI Chord Helper";
-		public static final String	VERSION = "Ver.20131111.3";
+		public static final String	VERSION = "Ver.20131112.1";
 		public static final String	COPYRIGHT = "Copyright (C) 2004-2013";
 		public static final String	AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String	URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";
@@ -262,8 +262,8 @@ public class ChordHelperApplet extends JApplet implements MetaEventListener {
 			if( link_enabled && Desktop.isDesktopSupported() ) {
 				tooltip = "Click this URL to open with your web browser - URLをクリックしてWebブラウザで開く";
 				link_string =
-						"<a href=\"" + VersionInfo.URL + "\" title=\"" +
-								tooltip + "\">" + VersionInfo.URL + "</a>" ;
+					"<a href=\"" + VersionInfo.URL + "\" title=\"" +
+					tooltip + "\">" + VersionInfo.URL + "</a>" ;
 			}
 			else {
 				link_enabled = false; link_string = VersionInfo.URL;
@@ -453,11 +453,11 @@ public class ChordHelperApplet extends JApplet implements MetaEventListener {
 		//
 		// MIDI parts
 		//
-		deviceModelList.getSequencer().addMetaEventListener(this);
-		deviceModelList.timeRangeModel.addChangeListener(
+		deviceModelList.sequencerModel.getSequencer().addMetaEventListener(this);
+		deviceModelList.sequencerModel.timeRangeModel.addChangeListener(
 			new ChangeListener() {
 				public void stateChanged(ChangeEvent e) {
-					MidiSequenceTableModel sequenceTableModel = deviceModelList.timeRangeModel.getSequenceTableModel();
+					MidiSequenceTableModel sequenceTableModel = deviceModelList.sequencerModel.getSequenceTableModel();
 					int i = editorDialog.sequenceListTableModel.getLoadedIndex();
 					songTitleLabel.setText(
 						"<html>"+(
@@ -471,8 +471,8 @@ public class ChordHelperApplet extends JApplet implements MetaEventListener {
 							)
 						)+"</html>"
 					);
-					chordMatrix.setPlaying(deviceModelList.timeRangeModel.isRunning());
-					long currentTickPosition = deviceModelList.getSequencer().getTickPosition();
+					chordMatrix.setPlaying(deviceModelList.sequencerModel.isRunning());
+					long currentTickPosition = deviceModelList.sequencerModel.getSequencer().getTickPosition();
 					SequenceTickIndex tickIndex = null;
 					if( sequenceTableModel != null ) {
 						tickIndex = sequenceTableModel.getSequenceTickIndex();
@@ -481,11 +481,11 @@ public class ChordHelperApplet extends JApplet implements MetaEventListener {
 							(byte)(tickIndex.lastBeat), tickIndex.timesigUpper
 						);
 						if(
-							deviceModelList.timeRangeModel.getValueIsAdjusting()
+							deviceModelList.sequencerModel.timeRangeModel.getValueIsAdjusting()
 							|| (
-								! deviceModelList.getSequencer().isRunning()
+								! deviceModelList.sequencerModel.getSequencer().isRunning()
 								&&
-								! deviceModelList.getSequencer().isRecording()
+								! deviceModelList.sequencerModel.getSequencer().isRecording()
 							)
 						) {
 							MetaMessage msg = tickIndex.lastMetaMessageAt(
@@ -514,7 +514,7 @@ public class ChordHelperApplet extends JApplet implements MetaEventListener {
 				}
 			}
 		);
-		deviceModelList.timeRangeModel.fireStateChanged();
+		deviceModelList.sequencerModel.timeRangeModel.fireStateChanged();
 		chordGuide = new JPanel() {
 			{
 				setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
@@ -593,7 +593,7 @@ public class ChordHelperApplet extends JApplet implements MetaEventListener {
 					add( Box.createHorizontalStrut(12) );
 					add( tempoSelecter );
 					add( Box.createHorizontalStrut(12) );
-					add( new MeasureIndicator(deviceModelList.timeRangeModel) );
+					add( new MeasureIndicator(deviceModelList.sequencerModel.timeRangeModel) );
 					add( Box.createHorizontalStrut(12) );
 					add( songTitleLabel );
 					add( Box.createHorizontalStrut(12) );
@@ -605,23 +605,23 @@ public class ChordHelperApplet extends JApplet implements MetaEventListener {
 				add(new JPanel() {{
 					setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
 					add( Box.createHorizontalStrut(10) );
-					add( new JSlider(deviceModelList.timeRangeModel));
-					add( new TimeIndicator(deviceModelList.timeRangeModel) );
+					add( new JSlider(deviceModelList.sequencerModel.timeRangeModel));
+					add( new TimeIndicator(deviceModelList.sequencerModel.timeRangeModel) );
 					add( Box.createHorizontalStrut(5) );
 					add( new JButton(editorDialog.moveToTopAction) {{
 						setMargin(ZERO_INSETS);
 					}});
-					add(new JButton(deviceModelList.timeRangeModel.moveBackwardAction) {{
+					add(new JButton(deviceModelList.sequencerModel.moveBackwardAction) {{
 						setMargin(ZERO_INSETS);
 					}});
-					add(new JToggleButton(deviceModelList.timeRangeModel.startStopAction));
-					add(new JButton(deviceModelList.timeRangeModel.moveForwardAction) {{
+					add(new JToggleButton(deviceModelList.sequencerModel.startStopAction));
+					add(new JButton(deviceModelList.sequencerModel.moveForwardAction) {{
 						setMargin(ZERO_INSETS);
 					}});
 					add(new JButton(editorDialog.moveToBottomAction) {{
 						setMargin(ZERO_INSETS);
 					}});
-					add(new JToggleButton(deviceModelList.timeRangeModel.toggleRepeatAction) {{
+					add(new JToggleButton(deviceModelList.sequencerModel.toggleRepeatAction) {{
 						setMargin(ZERO_INSETS);
 					}});
 					add( Box.createHorizontalStrut(10) );
@@ -672,7 +672,7 @@ public class ChordHelperApplet extends JApplet implements MetaEventListener {
 	}
 	// アプレット終了
 	public void stop() {
-		deviceModelList.timeRangeModel.stop(); // MIDI再生を強制終了
+		deviceModelList.sequencerModel.stop(); // MIDI再生を強制終了
 		System.gc();
 	}
 	/////////////////////////////////////////

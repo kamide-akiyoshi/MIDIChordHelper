@@ -25,11 +25,15 @@ import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.ComponentListener;
 import java.beans.PropertyVetoException; // PropertyVetoException
+import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.List;
+import java.util.Map;
 import java.util.Vector; // Vector
 
 import javax.sound.midi.InvalidMidiDataException;
+import javax.sound.midi.MetaEventListener;
+import javax.sound.midi.MetaMessage;
 import javax.sound.midi.MidiChannel;
 import javax.sound.midi.MidiDevice;
 import javax.sound.midi.MidiMessage;
@@ -41,7 +45,9 @@ import javax.sound.midi.ShortMessage;
 import javax.sound.midi.Synthesizer;
 import javax.sound.midi.SysexMessage;
 import javax.sound.midi.Transmitter;
+import javax.swing.AbstractAction;
 import javax.swing.AbstractListModel;
+import javax.swing.Action;
 import javax.swing.BoxLayout;
 import javax.swing.Icon;
 import javax.swing.JButton;
@@ -694,7 +700,7 @@ class MidiConnecterListView extends JList<AutoCloseable>
  * １個の MIDI デバイスに属する Transmitter/Receiver のリストモデル
  */
 class MidiConnecterListModel extends AbstractListModel<AutoCloseable> {
-	private MidiDevice device;
+	protected MidiDevice device;
 	private List<MidiConnecterListModel> modelList;
 	/**
 	 * 指定のMIDIデバイスに属する
@@ -703,10 +709,7 @@ class MidiConnecterListModel extends AbstractListModel<AutoCloseable> {
 	 * @param device 対象MIDIデバイス
 	 * @param modelList リストモデルのリスト
 	 */
-	public MidiConnecterListModel(
-		MidiDevice device,
-		List<MidiConnecterListModel> modelList
-	) {
+	public MidiConnecterListModel(MidiDevice device, List<MidiConnecterListModel> modelList) {
 		this.device = device;
 		this.modelList = modelList;
 	}
@@ -1253,14 +1256,240 @@ class MidiDeviceTree extends JTree
 }
 
 /**
+ * MIDIシーケンサモデル
+ */
+class MidiSequencerModel extends MidiConnecterListModel
+	implements MetaEventListener
+{
+	private MidiDeviceModelList deviceModelList;
+	SequencerTimeRangeModel timeRangeModel = new SequencerTimeRangeModel(this);
+	SpeedSliderModel speedSliderModel;
+	/**
+	 * シーケンサに合わせてミリ秒位置を更新するタイマー
+	 */
+	private javax.swing.Timer timeRangeUpdater =
+		new javax.swing.Timer(20, timeRangeModel) {
+			@Override
+			public void start() {
+				startStopAction.setRunning(true);
+				super.start();
+			}
+			@Override
+			public void stop() {
+				startStopAction.setRunning(false);
+				super.stop();
+			}
+		};
+	public MidiSequencerModel(
+		MidiDeviceModelList deviceModelList,
+		Sequencer sequencer,
+		List<MidiConnecterListModel> modelList
+	) {
+		super(sequencer, modelList);
+		this.deviceModelList = deviceModelList;
+		speedSliderModel = new SpeedSliderModel(sequencer);
+		sequencer.addMetaEventListener(this);
+	}
+	/**
+	 * 繰り返し再生ON/OFF切り替えアクション
+	 */
+	public Action toggleRepeatAction = new AbstractAction() {
+		{
+			putValue(SHORT_DESCRIPTION, "Repeat - 繰り返し再生");
+			putValue(LARGE_ICON_KEY, new ButtonIcon(ButtonIcon.REPEAT_ICON));
+			putValue(SELECTED_KEY, false);
+		}
+		@Override
+		public void actionPerformed(ActionEvent event) {
+			// 特にやることなし
+		}
+	};
+	/**
+	 * 開始終了アクション
+	 */
+	StartStopAction startStopAction = new StartStopAction();
+	/**
+	 * 開始終了アクション
+	 */
+	class StartStopAction extends AbstractAction {
+		private Map<Boolean,Icon> iconMap = new HashMap<Boolean,Icon>() {
+			{
+				put(Boolean.FALSE, new ButtonIcon(ButtonIcon.PLAY_ICON));
+				put(Boolean.TRUE, new ButtonIcon(ButtonIcon.PAUSE_ICON));
+			}
+		};
+		{
+			putValue(
+				SHORT_DESCRIPTION,
+				"Start/Stop recording or playing - 録音または再生の開始／停止"
+			);
+			setRunning(false);
+		}
+		@Override
+		public void actionPerformed(ActionEvent event) {
+			if(timeRangeUpdater.isRunning()) stop(); else start();
+		}
+		/**
+		 * 開始されているかどうかを設定します。
+		 * @param isRunning 開始されていたらtrue
+		 */
+		public void setRunning(boolean isRunning) {
+			putValue(LARGE_ICON_KEY, iconMap.get(isRunning));
+			putValue(SELECTED_KEY, isRunning);
+		}
+	}
+	/**
+	 * MIDIシーケンサを返します。
+	 * @return MIDIシーケンサ
+	 */
+	public Sequencer getSequencer() { return (Sequencer)device; }
+	/**
+	 * このモデルのMIDIシーケンサを開始します。
+	 */
+	public void start() {
+		Sequencer sequencer = getSequencer();
+		if( ! sequencer.isOpen() || sequencer.getSequence() == null ) {
+			timeRangeUpdater.stop();
+			return;
+		}
+		timeRangeUpdater.start();
+		deviceModelList.startSequencer();
+		timeRangeModel.fireStateChanged();
+	}
+	/**
+	 * このモデルのMIDIシーケンサを停止します。
+	 */
+	public void stop() {
+		Sequencer sequencer = getSequencer();
+		if(sequencer.isOpen()) sequencer.stop();
+		timeRangeUpdater.stop();
+		timeRangeModel.fireStateChanged();
+	}
+	/**
+	 * このモデルのMIDIシーケンサが開始されているか調べます。
+	 * @return 開始されていたらtrue
+	 */
+	public boolean isRunning() {
+		return timeRangeUpdater.isRunning();
+	}
+	/**
+	 * {@link Sequencer#getMicrosecondLength()} と同じです。
+	 * @return マイクロ秒単位でのシーケンスの長さ
+	 */
+	public long getMicrosecondLength() {
+		//
+		// Sequencer.getMicrosecondLength() returns NEGATIVE value
+		//  when over 0x7FFFFFFF microseconds (== 35.7913941166666... minutes),
+		//  should be corrected when negative
+		//
+		long usLength = getSequencer().getMicrosecondLength();
+		return usLength < 0 ? 0x100000000L + usLength : usLength ;
+	}
+	/**
+	 * {@link Sequencer#getMicrosecondPosition()} と同じです。
+	 * @return マイクロ秒単位での現在の位置
+	 */
+	public long getMicrosecondPosition() {
+		long usPosition = getSequencer().getMicrosecondPosition();
+		return usPosition < 0 ? 0x100000000L + usPosition : usPosition ;
+	}
+	@Override
+	public void meta(MetaMessage msg) {
+		if( msg.getType() == 0x2F ) { // EOT (End Of Track) を受信した場合
+			timeRangeUpdater.stop();
+			// 先頭に戻す
+			getSequencer().setMicrosecondPosition(0);
+			// リピートモードの場合、同じ曲をもう一度再生する。
+			// そうでない場合、次の曲へ進んで再生する。
+			// 次の曲がなければ、そこで終了。
+			boolean isRepeatMode = (Boolean)toggleRepeatAction.getValue(Action.SELECTED_KEY);
+			if( isRepeatMode || deviceModelList.editorDialog.loadNext(1) )
+				start();
+			else
+				timeRangeModel.fireStateChanged();
+		}
+	}
+	private MidiSequenceTableModel sequenceTableModel = null;
+	public MidiSequenceTableModel getSequenceTableModel() {
+		return sequenceTableModel;
+	}
+	public boolean setSequenceTableModel(MidiSequenceTableModel sequenceTableModel) {
+		//
+		// javax.sound.midi:Sequencer.setSequence() のドキュメントにある
+		// 「このメソッドは、Sequencer が閉じている場合でも呼び出すことができます。 」
+		// という記述は、null をセットする場合には当てはまらない。
+		// 連鎖的に stop() が呼ばれるために IllegalStateException sequencer not open が出る。
+		// この現象を回避するため、あらかじめチェックしてから setSequence() を呼び出している。
+		//
+		if( sequenceTableModel != null || getSequencer().isOpen() ) {
+			try {
+				// Set new MIDI data
+				getSequencer().setSequence(sequenceTableModel==null ? null : sequenceTableModel.getSequence());
+			} catch ( InvalidMidiDataException e ) {
+				e.printStackTrace();
+				return false;
+			}
+		}
+		this.sequenceTableModel = sequenceTableModel;
+		timeRangeModel.fireStateChanged();
+		return true;
+	}
+	/**
+	 * 小節単位で位置を移動します。
+	 * @param measureOffset 何小節進めるか（戻したいときは負数を指定）
+	 */
+	private void moveMeasure(int measureOffset) {
+		if( measureOffset == 0 || sequenceTableModel == null )
+			return;
+		SequenceTickIndex seqIndex = sequenceTableModel.getSequenceTickIndex();
+		Sequencer sequencer = getSequencer();
+		int measurePosition = seqIndex.tickToMeasure(sequencer.getTickPosition());
+		long newTickPosition = seqIndex.measureToTick(measurePosition + measureOffset);
+		if( newTickPosition < 0 ) {
+			// 下限
+			newTickPosition = 0;
+		}
+		else {
+			long tickLength = sequencer.getTickLength();
+			if( newTickPosition > tickLength ) {
+				// 上限
+				newTickPosition = tickLength - 1;
+			}
+		}
+		sequencer.setTickPosition(newTickPosition);
+		timeRangeModel.fireStateChanged();
+	}
+	/**
+	 * １小節戻るアクション
+	 */
+	public Action moveBackwardAction = new AbstractAction() {
+		{
+			putValue(SHORT_DESCRIPTION, "Move backward 1 measure - １小節戻る");
+			putValue(LARGE_ICON_KEY, new ButtonIcon(ButtonIcon.BACKWARD_ICON));
+		}
+		@Override
+		public void actionPerformed(ActionEvent event) { moveMeasure(-1); }
+	};
+	/**
+	 *１小節進むアクション
+	 */
+	public Action moveForwardAction = new AbstractAction() {
+		{
+			putValue(SHORT_DESCRIPTION, "Move forward 1 measure - １小節進む");
+			putValue(LARGE_ICON_KEY, new ButtonIcon(ButtonIcon.FORWARD_ICON));
+		}
+		@Override
+		public void actionPerformed(ActionEvent event) { moveMeasure(1); }
+	};
+}
+
+/**
  * MIDIデバイスモデルリスト
  */
 class MidiDeviceModelList extends Vector<MidiConnecterListModel> {
-	private Sequencer sequencer = null;
-	SpeedSliderModel speedSliderModel = null;
-	SequencerTimeRangeModel timeRangeModel = null;
-	MidiEditor editorDialog = null;
-	private MidiConnecterListModel firstMidiOutModel = null;
+	MidiSequencerModel sequencerModel;
+	MidiEditor editorDialog;
+	private MidiConnecterListModel firstMidiOutModel;
 	/**
 	 * MIDIデバイスモデルリストを生成します。
 	 * @param vmdList 仮想MIDIデバイスのリスト
@@ -1268,12 +1497,13 @@ class MidiDeviceModelList extends Vector<MidiConnecterListModel> {
 	public MidiDeviceModelList(List<VirtualMidiDevice> vmdList) {
 		MidiDevice.Info[] devInfos = MidiSystem.getMidiDeviceInfo();
 		MidiConnecterListModel guiModels[] = new MidiConnecterListModel[vmdList.size()];
-		MidiConnecterListModel sequencerModel = null;
 		MidiConnecterListModel firstMidiInModel = null;
 		for( int i=0; i<vmdList.size(); i++ )
 			guiModels[i] = addMidiDevice(vmdList.get(i));
+		Sequencer sequencer;
 		try {
 			sequencer = MidiSystem.getSequencer(false);
+			sequencerModel = (MidiSequencerModel)addMidiDevice(sequencer);
 		} catch( MidiUnavailableException e ) {
 			System.out.println(
 				ChordHelperApplet.VersionInfo.NAME +
@@ -1281,9 +1511,6 @@ class MidiDeviceModelList extends Vector<MidiConnecterListModel> {
 			);
 			e.printStackTrace();
 		}
-		sequencerModel = addMidiDevice(sequencer);
-		speedSliderModel = new SpeedSliderModel(sequencer);
-		timeRangeModel = new SequencerTimeRangeModel(this);
 		for( MidiDevice.Info info : devInfos ) {
 			MidiDevice device;
 			try {
@@ -1350,7 +1577,11 @@ class MidiDeviceModelList extends Vector<MidiConnecterListModel> {
 	 * @return 生成されたMIDIデバイスモデル
 	 */
 	private MidiConnecterListModel addMidiDevice(MidiDevice device) {
-		MidiConnecterListModel m = new MidiConnecterListModel(device,this);
+		MidiConnecterListModel m;
+		if( device instanceof Sequencer )
+			m = new MidiSequencerModel(this,(Sequencer)device,this);
+		else
+			m = new MidiConnecterListModel(device,this);
 		addElement(m);
 		return m;
 	}
@@ -1374,16 +1605,20 @@ class MidiDeviceModelList extends Vector<MidiConnecterListModel> {
 		mclm.connectToReceiverOf(firstMidiOutModel);
 	}
 	/**
-	 * MIDIシーケンサを返します。
-	 * @return MIDIシーケンサ
+	 * シーケンサを開始します。
 	 */
-	public Sequencer getSequencer() { return sequencer; }
-	/**
-	 * 録音可能かどうか調べます。
-	 * @return 録音可能ならtrue
-	 */
-	public boolean isRecordable() {
-		return editorDialog != null && editorDialog.isRecordable();
+	public void startSequencer() {
+		Sequencer sequencer = sequencerModel.getSequencer();
+		if( editorDialog != null && editorDialog.isRecordable() ) {
+			for( MidiConnecterListModel m : this )
+				m.resetMicrosecondPosition();
+			System.gc();
+			sequencer.startRecording();
+		}
+		else {
+			System.gc();
+			sequencer.start();
+		}
 	}
 }
 

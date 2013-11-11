@@ -61,7 +61,9 @@ public class MidiChordHelper {
 	}
 }
 
-class AppletFrame extends JFrame implements AppletStub, AppletContext {
+class AppletFrame extends JFrame implements
+	AppletStub, AppletContext, ChangeListener, TableModelListener
+{
 	JLabel status_;
 	ChordHelperApplet applet = null;
 	public AppletFrame(ChordHelperApplet applet) {
@@ -77,33 +79,30 @@ class AppletFrame extends JFrame implements AppletStub, AppletContext {
 		setIconImage(iconImage);
 		setDefaultCloseOperation( WindowConstants.DO_NOTHING_ON_CLOSE );
 		addWindowListener( new WindowAdapter() {
+			@Override
 			public void windowClosing(WindowEvent evt) {
 				if( AppletFrame.this.applet.isConfirmedToExit() )
 					System.exit(0);
 			}
 		});
-		applet.editorDialog.sequenceListTableModel.addTableModelListener(
-			new TableModelListener() {
-				public void tableChanged(TableModelEvent e) {
-					if( e.getColumn() == SequenceListTableModel.COLUMN_FILENAME )
-						setFilenameToTitle();
-				}
-			}
-		);
-		applet.deviceModelList.timeRangeModel.addChangeListener(
-			new ChangeListener() {
-				public void stateChanged(ChangeEvent e) {
-					setFilenameToTitle();
-				}
-			}
-		);
+		applet.editorDialog.sequenceListTableModel.addTableModelListener(this);
+		applet.deviceModelList.sequencerModel.timeRangeModel.addChangeListener(this);
 		pack();
 		setLocationRelativeTo(null);
 		setVisible(true);
 		applet.start();
 	}
+	@Override
+	public void tableChanged(TableModelEvent e) {
+		if( e.getColumn() == SequenceListTableModel.COLUMN_FILENAME )
+			setFilenameToTitle();
+	}
+	@Override
+	public void stateChanged(ChangeEvent e) {
+		setFilenameToTitle();
+	}
 	private void setFilenameToTitle() {
-		MidiSequenceTableModel seqModel = applet.deviceModelList.timeRangeModel.getSequenceTableModel();
+		MidiSequenceTableModel seqModel = applet.deviceModelList.sequencerModel.getSequenceTableModel();
 		String filename = ( seqModel == null ? null : seqModel.getFilename() );
 		String title = ChordHelperApplet.VersionInfo.NAME;
 		if( filename != null && ! filename.isEmpty() ) {
@@ -111,6 +110,7 @@ class AppletFrame extends JFrame implements AppletStub, AppletContext {
 		}
 		setTitle(title);
 	}
+	@Override
 	public boolean isActive() { return true; }
 	public URL getDocumentBase() { return null; }
 	public URL getCodeBase() { return null; }
