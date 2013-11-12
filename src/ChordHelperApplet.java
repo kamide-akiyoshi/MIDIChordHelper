@@ -241,7 +241,7 @@ public class ChordHelperApplet extends JApplet implements MetaEventListener {
 	 */
 	public static class VersionInfo {
 		public static final String	NAME = "MIDI Chord Helper";
-		public static final String	VERSION = "Ver.20131112.1";
+		public static final String	VERSION = "Ver.20131113.1";
 		public static final String	COPYRIGHT = "Copyright (C) 2004-2013";
 		public static final String	AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String	URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";
@@ -454,7 +454,7 @@ public class ChordHelperApplet extends JApplet implements MetaEventListener {
 		// MIDI parts
 		//
 		deviceModelList.sequencerModel.getSequencer().addMetaEventListener(this);
-		deviceModelList.sequencerModel.timeRangeModel.addChangeListener(
+		deviceModelList.sequencerModel.addChangeListener(
 			new ChangeListener() {
 				public void stateChanged(ChangeEvent e) {
 					MidiSequenceTableModel sequenceTableModel = deviceModelList.sequencerModel.getSequenceTableModel();
@@ -481,7 +481,7 @@ public class ChordHelperApplet extends JApplet implements MetaEventListener {
 							(byte)(tickIndex.lastBeat), tickIndex.timesigUpper
 						);
 						if(
-							deviceModelList.sequencerModel.timeRangeModel.getValueIsAdjusting()
+							deviceModelList.sequencerModel.getValueIsAdjusting()
 							|| (
 								! deviceModelList.sequencerModel.getSequencer().isRunning()
 								&&
@@ -491,30 +491,21 @@ public class ChordHelperApplet extends JApplet implements MetaEventListener {
 							MetaMessage msg = tickIndex.lastMetaMessageAt(
 								SequenceTickIndex.TIME_SIGNATURE, currentTickPosition
 							);
-							if( msg == null )
-								timesigSelecter.clear();
-							else
-								meta(msg);
+							if( msg == null ) timesigSelecter.clear(); else meta(msg);
 							msg = tickIndex.lastMetaMessageAt(
 								SequenceTickIndex.TEMPO, currentTickPosition
 							);
-							if( msg == null )
-								tempoSelecter.clear();
-							else
-								meta(msg);
+							if( msg == null ) tempoSelecter.clear(); else meta(msg);
 							msg = tickIndex.lastMetaMessageAt(
 								SequenceTickIndex.KEY_SIGNATURE, currentTickPosition
 							);
-							if( msg == null )
-								keysigLabel.clear();
-							else
-								meta(msg);
+							if( msg == null ) keysigLabel.clear(); else meta(msg);
 						}
 					}
 				}
 			}
 		);
-		deviceModelList.sequencerModel.timeRangeModel.fireStateChanged();
+		deviceModelList.sequencerModel.fireStateChanged();
 		chordGuide = new JPanel() {
 			{
 				setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
@@ -593,7 +584,7 @@ public class ChordHelperApplet extends JApplet implements MetaEventListener {
 					add( Box.createHorizontalStrut(12) );
 					add( tempoSelecter );
 					add( Box.createHorizontalStrut(12) );
-					add( new MeasureIndicator(deviceModelList.sequencerModel.timeRangeModel) );
+					add( new MeasureIndicator(deviceModelList.sequencerModel) );
 					add( Box.createHorizontalStrut(12) );
 					add( songTitleLabel );
 					add( Box.createHorizontalStrut(12) );
@@ -605,8 +596,8 @@ public class ChordHelperApplet extends JApplet implements MetaEventListener {
 				add(new JPanel() {{
 					setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
 					add( Box.createHorizontalStrut(10) );
-					add( new JSlider(deviceModelList.sequencerModel.timeRangeModel));
-					add( new TimeIndicator(deviceModelList.sequencerModel.timeRangeModel) );
+					add( new JSlider(deviceModelList.sequencerModel) );
+					add( new TimeIndicator(deviceModelList.sequencerModel) );
 					add( Box.createHorizontalStrut(5) );
 					add( new JButton(editorDialog.moveToTopAction) {{
 						setMargin(ZERO_INSETS);

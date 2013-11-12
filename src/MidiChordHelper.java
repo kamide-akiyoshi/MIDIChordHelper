@@ -41,12 +41,11 @@ public class MidiChordHelper {
 		ChordHelperApplet applet;
 		if( count++ > 0 && frame != null) {
 			applet = frame.applet;
-			int window_state = frame.getExtendedState();
-			if( ( window_state & Frame.ICONIFIED ) == 0 ) {
+			int windowState = frame.getExtendedState();
+			if( ( windowState & Frame.ICONIFIED ) == 0 ) {
 				frame.toFront();
 			} else {
-				window_state &= ~(Frame.ICONIFIED) ;
-				frame.setExtendedState( window_state );
+				frame.setExtendedState(windowState &= ~(Frame.ICONIFIED));
 			}
 		} else {
 			frame = new AppletFrame(applet = new ChordHelperApplet());
@@ -85,13 +84,17 @@ class AppletFrame extends JFrame implements
 					System.exit(0);
 			}
 		});
+		// シーケンスファイル名の変更監視
 		applet.editorDialog.sequenceListTableModel.addTableModelListener(this);
-		applet.deviceModelList.sequencerModel.timeRangeModel.addChangeListener(this);
+		applet.deviceModelList.sequencerModel.addChangeListener(this);
 		pack();
 		setLocationRelativeTo(null);
 		setVisible(true);
 		applet.start();
 	}
+	/**
+	 * プレイリストで変更されたファイル名をタイトルバーに反映します。
+	 */
 	@Override
 	public void tableChanged(TableModelEvent e) {
 		if( e.getColumn() == SequenceListTableModel.COLUMN_FILENAME )

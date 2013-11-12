@@ -52,6 +52,7 @@ import javax.sound.midi.Track;
 import javax.swing.AbstractAction;
 import javax.swing.AbstractCellEditor;
 import javax.swing.Action;
+import javax.swing.BoundedRangeModel;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.DefaultCellEditor;
@@ -65,6 +66,7 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JSlider;
 import javax.swing.JSplitPane;
 import javax.swing.JTable;
 import javax.swing.JToggleButton;
@@ -467,7 +469,7 @@ class MidiEditor extends JDialog
 		public void actionPerformed( ActionEvent event ) {
 			if( deviceModelList.sequencerModel.getSequencer().getTickPosition() <= 40 )
 				loadNext(-1);
-			deviceModelList.sequencerModel.timeRangeModel.setValue(0);
+			deviceModelList.sequencerModel.setValue(0);
 		}
 	};
 	/**
@@ -480,7 +482,7 @@ class MidiEditor extends JDialog
 		}
 		public void actionPerformed( ActionEvent event ) {
 			if( loadNext(1) )
-				deviceModelList.sequencerModel.timeRangeModel.setValue(0);
+				deviceModelList.sequencerModel.setValue(0);
 		}
 	};
 
@@ -1020,11 +1022,11 @@ class MidiEditor extends JDialog
 		jumpSequenceButton.setEnabled(track_model != null && track_model.getRowCount() > 0);
 		// Event list
 		boolean is_event_selected = (
-				!(
-						eventSelectionModel.isSelectionEmpty() ||
-						track_model == null || track_model.getRowCount() == 0
-						) && is_track_selected
-				);
+			!(
+				eventSelectionModel.isSelectionEmpty() ||
+				track_model == null || track_model.getRowCount() == 0
+				) && is_track_selected
+			);
 		copyEventButton.setEnabled( is_event_selected );
 		removeEventButton.setEnabled( is_event_selected );
 		cutEventButton.setEnabled( is_event_selected );
@@ -1154,6 +1156,51 @@ class MidiEditor extends JDialog
 }
 
 /**
+ * シーケンサーの再生スピード調整スライダビュー
+ */
+class SequencerSpeedSlider extends JPanel implements ActionListener {
+	static String items[] = {
+		"x 1.0",
+		"x 1.5",
+		"x 2",
+		"x 4",
+		"x 8",
+		"x 16",
+	};
+	JSlider slider;
+	JLabel titleLabel;
+	JComboBox<String> scaleComboBox;
+	public SequencerSpeedSlider(BoundedRangeModel model) {
+		add( titleLabel = new JLabel("Speed:") );
+		add( slider = new JSlider(model) );
+		add( scaleComboBox = new JComboBox<String>(items) );
+		scaleComboBox.addActionListener(this);
+		slider.setPaintTicks(true);
+		slider.setMajorTickSpacing(12);
+		slider.setMinorTickSpacing(1);
+		slider.setVisible(false);
+	}
+	public void actionPerformed(ActionEvent e) {
+		int index = scaleComboBox.getSelectedIndex();
+		BoundedRangeModel model = slider.getModel();
+		if( index == 0 ) {
+			model.setValue(0);
+			slider.setVisible(false);
+			titleLabel.setVisible(true);
+		}
+		else {
+			int max_val = ( index == 1 ? 7 : (index-1)*12 );
+			model.setMinimum(-max_val);
+			model.setMaximum(max_val);
+			slider.setMajorTickSpacing( index == 1 ? 7 : 12 );
+			slider.setMinorTickSpacing( index > 3 ? 12 : 1 );
+			slider.setVisible(true);
+			titleLabel.setVisible(false);
+		}
+	}
+}
+
+/**
  * プレイリスト（MIDIシーケンスリスト）のテーブルモデル
  */
 class SequenceListTableModel extends AbstractTableModel implements ChangeListener {
@@ -1187,12 +1234,12 @@ class SequenceListTableModel extends AbstractTableModel implements ChangeListene
 	 * @param deviceManager MIDIデバイスマネージャ
 	 */
 	public SequenceListTableModel(MidiDeviceModelList deviceManager) {
-		(this.deviceManager = deviceManager).sequencerModel.timeRangeModel.addChangeListener(this);
+		(this.deviceManager = deviceManager).sequencerModel.addChangeListener(this);
 	}
 	private int secondPosition = 0;
 	@Override
 	public void stateChanged(ChangeEvent e) {
-		int sec = deviceManager.sequencerModel.timeRangeModel.getValue() / 1000;
+		int sec = deviceManager.sequencerModel.getValue() / 1000;
 		if( secondPosition == sec )
 			return;
 		secondPosition = sec;
