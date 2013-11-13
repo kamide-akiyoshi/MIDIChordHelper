@@ -1346,7 +1346,10 @@ class MidiSequencerModel extends MidiConnecterListModel
 	 * このモデルのMIDIシーケンサが開始されているか調べます。
 	 * @return 開始されていたらtrue
 	 */
-	public boolean isRunning() { return timeRangeUpdater.isRunning(); }
+	public boolean isRunning() {
+		// return timeRangeUpdater.isRunning();
+		return getSequencer().isRunning();
+	}
 	/**
 	 * このモデルのMIDIシーケンサを開始します。
 	 */
@@ -1443,7 +1446,11 @@ class MidiSequencerModel extends MidiConnecterListModel
 		listenerList.remove(ChangeListener.class, listener);
 	}
 	/**
-	 * 状態が変わったことをリスナーに通知します。
+	 * 状態の変化をリスナーに通知します。
+	 * <p>登録中のすべての {@link ChangeListener} について
+	 * {@link ChangeListener#stateChanged(ChangeEvent)}
+	 * を呼び出すことによって通知します。
+	 * </p>
 	 */
 	public void fireStateChanged() {
 		Object[] listeners = listenerList.getListenerList();

@@ -60,7 +60,7 @@ import javax.swing.event.PopupMenuListener;
  *		Copyright (C) 2004-2013 ＠きよし - Akiyoshi Kamide
  *		http://www.yk.rim.or.jp/~kamide/music/chordhelper/
  */
-public class ChordHelperApplet extends JApplet implements MetaEventListener {
+public class ChordHelperApplet extends JApplet {
 	/////////////////////////////////////////////////////////////////////
 	//
 	// JavaScript などからの呼び出しインターフェース
@@ -241,7 +241,7 @@ public class ChordHelperApplet extends JApplet implements MetaEventListener {
 	 */
 	public static class VersionInfo {
 		public static final String	NAME = "MIDI Chord Helper";
-		public static final String	VERSION = "Ver.20131113.1";
+		public static final String	VERSION = "Ver.20131114.1";
 		public static final String	COPYRIGHT = "Copyright (C) 2004-2013";
 		public static final String	AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String	URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";
@@ -453,33 +453,58 @@ public class ChordHelperApplet extends JApplet implements MetaEventListener {
 		//
 		// MIDI parts
 		//
-		deviceModelList.sequencerModel.getSequencer().addMetaEventListener(this);
+		deviceModelList.sequencerModel.getSequencer().addMetaEventListener(
+			new MetaEventListener() {
+				@Override
+				public void meta(MetaMessage msg) {
+					switch(msg.getType()) {
+					case 0x01: // Text（任意のテキスト：コメントなど）
+					case 0x02: // Copyright（著作権表示）
+					case 0x05: // Lyrics（歌詞）
+					case 0x06: // Marker
+					case 0x03: // Sequence Name / Track Name（曲名またはトラック名）
+						lyricDisplay.addLyric(msg.getData());
+						break;
+					case 0x51: // Tempo (3 bytes) - テンポ
+						tempoSelecter.setTempo(msg.getData());
+						break;
+					case 0x58: // Time signature (4 bytes) - 拍子
+						timesigSelecter.setValue(msg.getData());
+						break;
+					case 0x59: // Key signature (2 bytes) : 調号
+						Music.Key key = new Music.Key(msg.getData());
+						keysigLabel.setKeySignature(key);
+						chordMatrix.setKeySignature(key);
+						break;
+					}
+				}
+			}
+		);
 		deviceModelList.sequencerModel.addChangeListener(
 			new ChangeListener() {
+				@Override
 				public void stateChanged(ChangeEvent e) {
 					MidiSequenceTableModel sequenceTableModel = deviceModelList.sequencerModel.getSequenceTableModel();
-					int i = editorDialog.sequenceListTableModel.getLoadedIndex();
+					int loadedSequenceIndex = editorDialog.sequenceListTableModel.getLoadedIndex();
 					songTitleLabel.setText(
 						"<html>"+(
-							i < 0 ? "[No MIDI file loaded]" :
-							"MIDI file " + i + ": " + (
-							sequenceTableModel == null ||
-							sequenceTableModel.toString() == null ||
-							sequenceTableModel.toString().isEmpty() ?
+							loadedSequenceIndex < 0 ? "[No MIDI file loaded]" :
+							"MIDI file " + loadedSequenceIndex + ": " + (
+								sequenceTableModel == null ||
+								sequenceTableModel.toString() == null ||
+								sequenceTableModel.toString().isEmpty() ?
 								"[Untitled]" :
 								"<font color=maroon>"+sequenceTableModel+"</font>"
 							)
 						)+"</html>"
 					);
 					chordMatrix.setPlaying(deviceModelList.sequencerModel.isRunning());
-					long currentTickPosition = deviceModelList.sequencerModel.getSequencer().getTickPosition();
+					long tickPos = deviceModelList.sequencerModel.getSequencer().getTickPosition();
 					SequenceTickIndex tickIndex = null;
 					if( sequenceTableModel != null ) {
 						tickIndex = sequenceTableModel.getSequenceTickIndex();
-						tickIndex.tickToMeasure(currentTickPosition);
-						chordMatrix.setBeat(
-							(byte)(tickIndex.lastBeat), tickIndex.timesigUpper
-						);
+						tickIndex.tickToMeasure(tickPos);
+						chordMatrix.setBeat(tickIndex);
 						if(
 							deviceModelList.sequencerModel.getValueIsAdjusting()
 							|| (
@@ -488,18 +513,19 @@ public class ChordHelperApplet extends JApplet implements MetaEventListener {
 								! deviceModelList.sequencerModel.getSequencer().isRecording()
 							)
 						) {
-							MetaMessage msg = tickIndex.lastMetaMessageAt(
-								SequenceTickIndex.TIME_SIGNATURE, currentTickPosition
-							);
-							if( msg == null ) timesigSelecter.clear(); else meta(msg);
-							msg = tickIndex.lastMetaMessageAt(
-								SequenceTickIndex.TEMPO, currentTickPosition
-							);
-							if( msg == null ) tempoSelecter.clear(); else meta(msg);
-							msg = tickIndex.lastMetaMessageAt(
-								SequenceTickIndex.KEY_SIGNATURE, currentTickPosition
-							);
-							if( msg == null ) keysigLabel.clear(); else meta(msg);
+							MetaMessage msg;
+							msg = tickIndex.lastMetaMessageAt(SequenceTickIndex.TIME_SIGNATURE, tickPos);
+							timesigSelecter.setValue(msg==null ? null : msg.getData());
+							msg = tickIndex.lastMetaMessageAt(SequenceTickIndex.TEMPO, tickPos);
+							tempoSelecter.setTempo(msg==null ? null : msg.getData());
+							msg = tickIndex.lastMetaMessageAt(SequenceTickIndex.KEY_SIGNATURE, tickPos);
+							if( msg == null )
+								keysigLabel.clear();
+							else {
+								Music.Key key = new Music.Key(msg.getData());
+								keysigLabel.setKeySignature(key);
+								chordMatrix.setKeySignature(key);
+							}
 						}
 					}
 				}
@@ -665,35 +691,6 @@ public class ChordHelperApplet extends JApplet implements MetaEventListener {
 	public void stop() {
 		deviceModelList.sequencerModel.stop(); // MIDI再生を強制終了
 		System.gc();
-	}
-	/////////////////////////////////////////
-	//
-	// MetaEventListener
-	//
-	public void meta(MetaMessage msg) {
-		int msgtype = msg.getType();
-		switch( msgtype ) {
-
-		case 0x01: // Text（任意のテキスト：コメントなど）
-		case 0x02: // Copyright（著作権表示）
-		case 0x05: // Lyrics（歌詞）
-		case 0x06: // Marker
-		case 0x03: // Sequence Name / Track Name（曲名またはトラック名）
-			lyricDisplay.addLyric(msg.getData());
-			break;
-
-		case 0x51: // Tempo (3 bytes) - テンポ
-			tempoSelecter.setTempo(msg.getData());
-			break;
-		case 0x58: // Time signature (4 bytes) - 拍子
-			timesigSelecter.setValue(msg.getData());
-			break;
-		case 0x59: // Key signature (2 bytes) : 調号
-			keysigLabel.setKeySignature( new Music.Key(msg.getData()) );
-			chordMatrix.setKeySignature( new Music.Key(msg.getData()) );
-			break;
-
-		}
 	}
 	private void innerSetDarkMode(boolean is_dark) {
 		Color col = is_dark ? Color.black : null;

@@ -381,9 +381,9 @@ class MidiMessageForm extends JPanel implements ActionListener {
 			}
 			else if( status == 0xFF ) {
 				switch( data1 ) { // Data type -> Selecter
-				case 0x51: dataText.setValue( tempoSelecter.getTempoByteArray() ); break;
-				case 0x58: dataText.setValue( timesigSelecter.getByteArray() ); break;
-				case 0x59: dataText.setValue( keysigSelecter.getKey().getBytes() ); break;
+				case 0x51: dataText.setValue(tempoSelecter.getTempoByteArray()); break;
+				case 0x58: dataText.setValue(timesigSelecter.getByteArray()); break;
+				case 0x59: dataText.setValue(keysigSelecter.getKey().getBytes()); break;
 				default: break;
 				}
 			}
@@ -1196,43 +1196,44 @@ class DurationForm extends JPanel implements ActionListener, ChangeListener {
  */
 class TempoSelecter extends JPanel implements MouseListener {
 	static final int DEFAULT_QPM = 120;
-	JSpinner		tempo_spinner;
+	JSpinner		tempoSpinner;
 	SpinnerNumberModel	tempoSpinnerModel;
-	JLabel		tempo_label, tempo_value_label;
+	JLabel		tempoLabel, tempoValueLabel;
 	private boolean	editable;
-	private long	prev_beat_us_pos = 0;
+	private long	prevBeatMicrosecondPosition = 0;
 
 	public TempoSelecter() {
-		String tool_tip = "Tempo in quatrers per minute - テンポ（１分あたりの四分音符の数）";
-		tempo_label = new JLabel(
+		String tooltip = "Tempo in quatrers per minute - テンポ（１分あたりの四分音符の数）";
+		tempoLabel = new JLabel(
 			"=",
-			new ButtonIcon( ButtonIcon.QUARTER_NOTE_ICON ),
+			new ButtonIcon(ButtonIcon.QUARTER_NOTE_ICON),
 			JLabel.CENTER
 		);
-		tempo_label.setVerticalAlignment( JLabel.CENTER );
+		tempoLabel.setVerticalAlignment(JLabel.CENTER);
 		tempoSpinnerModel = new SpinnerNumberModel(DEFAULT_QPM, 1, 999, 1);
-		tempo_spinner = new JSpinner( tempoSpinnerModel );
-		tempo_spinner.setToolTipText( tool_tip );
-		tempo_value_label = new JLabel( ""+DEFAULT_QPM );
-		tempo_value_label.setToolTipText( tool_tip );
-		setLayout( new BoxLayout(this,BoxLayout.X_AXIS) );
-		add( tempo_label );
+		tempoSpinner = new JSpinner(tempoSpinnerModel);
+		tempoSpinner.setToolTipText(tooltip);
+		tempoValueLabel = new JLabel(""+DEFAULT_QPM);
+		tempoValueLabel.setToolTipText(tooltip);
+		setLayout(new BoxLayout(this,BoxLayout.X_AXIS));
+		add( tempoLabel );
 		add( Box.createHorizontalStrut(5) );
-		add( tempo_spinner );
-		add( tempo_value_label );
+		add( tempoSpinner );
+		add( tempoValueLabel );
 		setEditable(true);
-		tempo_label.addMouseListener(this);
+		tempoLabel.addMouseListener(this);
 	}
+	@Override
 	public void mousePressed(MouseEvent e) {
 		Component obj = e.getComponent();
-		if( obj == tempo_label && isEditable() ) {
+		if(obj == tempoLabel && isEditable()) {
 			//
 			// Adjust tempo by interval time between two clicks
 			//
-			long current_us = System.nanoTime()/1000;
+			long currentMicrosecond = System.nanoTime()/1000;
 			// midi_ch_selecter.noteOn( 9, 37, 100 );
-			long interval_us = current_us - prev_beat_us_pos;
-			prev_beat_us_pos = current_us;
+			long interval_us = currentMicrosecond - prevBeatMicrosecondPosition;
+			prevBeatMicrosecondPosition = currentMicrosecond;
 			if( interval_us < 2000000L /* Shorter than 2 sec only */ ) {
 				int tempo_in_bpm = (int)(240000000L / interval_us) >> 2; //  n/4拍子の場合のみを想定
 			int old_tempo_in_bpm = getTempoInQpm();
@@ -1244,37 +1245,60 @@ class TempoSelecter extends JPanel implements MouseListener {
 	public void mouseEntered(MouseEvent e) { }
 	public void mouseExited(MouseEvent e) { }
 	public void mouseClicked(MouseEvent e) { }
+	/**
+	 * 編集可能かどうかを返します。
+	 * @return 編集可能ならtrue
+	 */
 	public boolean isEditable() { return editable; }
+	/**
+	 * 編集可能かどうかを設定します。
+	 * @param editable 編集可能ならtrue
+	 */
 	public void setEditable( boolean editable ) {
 		this.editable = editable;
-		tempo_spinner.setVisible( editable );
-		tempo_value_label.setVisible( !editable );
+		tempoSpinner.setVisible( editable );
+		tempoValueLabel.setVisible( !editable );
 		if( !editable ) {
 			// Copy spinner's value to label
-			tempo_value_label.setText(
+			tempoValueLabel.setText(
 				""+tempoSpinnerModel.getNumber().intValue()
 			);
 		}
-		tempo_label.setToolTipText(
+		tempoLabel.setToolTipText(
 			editable ?
 			"Click rhythmically to adjust tempo - ここをクリックしてリズムをとるとテンポを合わせられます"
 			: null
 		);
 	}
+	/**
+	 * テンポを返します。
+	 * @return テンポ [BPM](QPM)
+	 */
 	public int getTempoInQpm() {
 		return tempoSpinnerModel.getNumber().intValue();
 	}
+	/**
+	 * テンポをMIDIメタメッセージのバイト列として返します。
+	 * @return MIDIメタメッセージのバイト列
+	 */
 	public byte[] getTempoByteArray() {
-		return MIDISpec.qpmTempoToByteArray( getTempoInQpm() );
+		return MIDISpec.qpmTempoToByteArray(getTempoInQpm());
 	}
-	public void setTempo( int qpm ) {
+	/**
+	 * テンポを設定します。
+	 * @param qpm BPM(QPM)の値
+	 */
+	public void setTempo(int qpm) {
 		tempoSpinnerModel.setValue(new Integer(qpm));
-		tempo_value_label.setText(""+qpm);
+		tempoValueLabel.setText(""+qpm);
 	}
-	public void setTempo( byte msgdata[] ) {
-		setTempo( MIDISpec.byteArrayToQpmTempo( msgdata ) );
+	/**
+	 * MIDIメタメッセージのバイト列からテンポを設定します。
+	 * @param msgdata MIDIメタメッセージのバイト列（null を指定した場合はデフォルトに戻る）
+	 */
+	public void setTempo(byte msgdata[]) {
+		setTempo(msgdata==null ? DEFAULT_QPM: MIDISpec.byteArrayToQpmTempo(msgdata));
 	}
-	public void clear() { setTempo( DEFAULT_QPM ); }
 }
 
 /**
@@ -1341,13 +1365,16 @@ class TimeSignatureSelecter extends JPanel {
 		data[3] = 8;
 		return data;
 	}
-	public void setValue( byte upper, byte lower_index ) {
+	public void setValue(byte upper, byte lowerIndex) {
 		upperTimesigSpinnerModel.setValue( upper );
-		lowerTimesigCombobox.setSelectedIndex( lower_index );
-		timesigValueLabel.setTimeSignature( upper, lower_index );
+		lowerTimesigCombobox.setSelectedIndex( lowerIndex );
+		timesigValueLabel.setTimeSignature( upper, lowerIndex );
 	}
-	public void setValue( byte[] data ) {
-		setValue( data[0], data[1] );
+	public void setValue(byte[] data) {
+		if(data == null)
+			clear();
+		else
+			setValue(data[0], data[1]);
 	}
 	public boolean isEditable() { return editable; }
 	public void setEditable( boolean editable ) {

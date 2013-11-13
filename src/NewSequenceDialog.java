@@ -189,22 +189,22 @@ class NewSequenceDialog extends JDialog implements ActionListener {
 	}
 	public Sequence getMidiSequence() {
 		Music.FirstTrackSpec first_track_spec = new Music.FirstTrackSpec(
-				seq_name_text.getText(),
-				tempo_selecter.getTempoByteArray(),
-				timesig_selecter.getByteArray()
-				);
+			seq_name_text.getText(),
+			tempo_selecter.getTempoByteArray(),
+			timesig_selecter.getByteArray()
+		);
 		return getChordProgression().toMidiSequence(
-				ppq_combo_box.getPPQ(),
-				measure_selecter.getStartMeasurePosition(),
-				measure_selecter.getEndMeasurePosition(),
-				first_track_spec,
-				track_spec_panel.getTrackSpecs()
-				);
+			ppq_combo_box.getPPQ(),
+			measure_selecter.getStartMeasurePosition(),
+			measure_selecter.getEndMeasurePosition(),
+			first_track_spec,
+			track_spec_panel.getTrackSpecs()
+		);
 	}
-	public void setChordProgression( Music.ChordProgression cp ) {
-		chord_text.setText( cp.toString() );
+	public void setChordProgression(Music.ChordProgression cp) {
+		chord_text.setText(cp.toString());
 	}
-	public void setRandomChordProgression( int measure_length ) {
+	public void setRandomChordProgression(int measureLength) {
 		//
 		// テンポ・拍子・コード進行をランダムに設定
 		//
@@ -212,15 +212,10 @@ class NewSequenceDialog extends JDialog implements ActionListener {
 		int timesig_upper = 4;
 		int timesig_lower_index = 2;
 		switch( (int)(Math.random() * 10) ) {
-		case 0: timesig_upper = 3; break; // 3/4
+			case 0: timesig_upper = 3; break; // 3/4
 		}
-		timesig_selecter.setValue(
-				(byte)timesig_upper,
-				(byte)timesig_lower_index
-				);
-		setChordProgression(
-				new Music.ChordProgression( measure_length, timesig_upper )
-				);
+		timesig_selecter.setValue((byte)timesig_upper, (byte)timesig_lower_index);
+		setChordProgression(new Music.ChordProgression(measureLength, timesig_upper));
 	}
 	public void transpose(int chromatic_offset) {
 		Music.ChordProgression cp = getChordProgression();
@@ -265,11 +260,11 @@ implements PianoKeyboardListener, ActionListener, ChangeListener
 		//
 		// 音色（プログラム）設定
 		pg_family_selecter = new MidiProgramFamilySelecter(
-				pg_selecter = new MidiProgramSelecter()
-				);
+			pg_selecter = new MidiProgramSelecter()
+		);
 		pg_selecter.setFamilySelecter(
-				pg_family_selecter
-				);
+			pg_family_selecter
+		);
 		// 音域指定
 		//
 		keyboard_panel = new PianoKeyboardPanel();
@@ -284,8 +279,8 @@ implements PianoKeyboardListener, ActionListener, ChangeListener
 		JPanel track_selecter_panel = new JPanel();
 		track_selecter_panel.add( new JLabel("Track select:") );
 		track_selecter_panel.add(
-				trackSelecter = new JComboBox<Music.AbstractNoteTrackSpec>()
-				);
+			trackSelecter = new JComboBox<Music.AbstractNoteTrackSpec>()
+		);
 		add( track_selecter_panel );
 
 		add( track_type_label = new JLabel() );

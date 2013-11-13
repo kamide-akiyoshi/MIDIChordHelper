@@ -1089,7 +1089,9 @@ public class ChordMatrix extends JPanel
 
 	private byte currentBeat = 0;
 	private byte timesigUpper = 4;
-	public void setBeat(byte beat, byte tsu) {
+	public void setBeat(SequenceTickIndex sequenceTickIndex) {
+		byte beat = (byte)(sequenceTickIndex.lastBeat);
+		byte tsu = sequenceTickIndex.timesigUpper;
 		if( currentBeat == beat && timesigUpper == tsu )
 			return;
 		timesigUpper = tsu;
