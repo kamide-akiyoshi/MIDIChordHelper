@@ -71,7 +71,7 @@ public class ChordHelperApplet extends JApplet {
 	 * @return 未保存の修正済み MIDI ファイルがあれば true
 	 */
 	public boolean isModified() {
-		return editorDialog.isModified();
+		return editorDialog.sequenceListTableModel.isModified();
 	}
 	/**
 	 * 指定された小節数の曲を、乱数で自動作曲してプレイリストへ追加します。
@@ -80,7 +80,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public int addRandomSongToPlaylist(int measureLength) {
 		editorDialog.newSequenceDialog.setRandomChordProgression(measureLength);
-		return editorDialog.addSequence();
+		return editorDialog.addSequence(editorDialog.newSequenceDialog.getMidiSequence());
 	}
 	/**
 	 * URLで指定されたMIDIファイルをプレイリストへ追加します。
@@ -112,9 +112,7 @@ public class ChordHelperApplet extends JApplet {
 	 * @return 追加先のインデックス値（０から始まる）。追加できなかったときは -1
 	 */
 	public int addToPlaylistBase64(String base64EncodedText, String filename) {
-		return editorDialog.addSequenceFromBase64Text(
-			base64EncodedText, filename
-		);
+		return editorDialog.addSequenceFromBase64Text(base64EncodedText, filename);
 	}
 	/**
 	 * プレイリスト上で現在選択されているMIDIシーケンスを、
@@ -241,7 +239,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public static class VersionInfo {
 		public static final String	NAME = "MIDI Chord Helper";
-		public static final String	VERSION = "Ver.20131114.1";
+		public static final String	VERSION = "Ver.20131117.2";
 		public static final String	COPYRIGHT = "Copyright (C) 2004-2013";
 		public static final String	AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String	URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";
@@ -428,7 +426,7 @@ public class ChordHelperApplet extends JApplet {
 				}
 			}
 		);
-		editorDialog = new MidiEditor(deviceModelList);
+		editorDialog = new MidiEditor(deviceModelList.sequencerModel);
 		editorDialog.setIconImage(iconImage);
 		new DropTarget(this, DnDConstants.ACTION_COPY_OR_MOVE, editorDialog, true);
 		deviceModelList.setMidiEditor(editorDialog);
@@ -480,57 +478,51 @@ public class ChordHelperApplet extends JApplet {
 				}
 			}
 		);
-		deviceModelList.sequencerModel.addChangeListener(
-			new ChangeListener() {
-				@Override
-				public void stateChanged(ChangeEvent e) {
-					MidiSequenceTableModel sequenceTableModel = deviceModelList.sequencerModel.getSequenceTableModel();
-					int loadedSequenceIndex = editorDialog.sequenceListTableModel.getLoadedIndex();
-					songTitleLabel.setText(
-						"<html>"+(
-							loadedSequenceIndex < 0 ? "[No MIDI file loaded]" :
-							"MIDI file " + loadedSequenceIndex + ": " + (
-								sequenceTableModel == null ||
-								sequenceTableModel.toString() == null ||
-								sequenceTableModel.toString().isEmpty() ?
-								"[Untitled]" :
-								"<font color=maroon>"+sequenceTableModel+"</font>"
-							)
-						)+"</html>"
-					);
-					chordMatrix.setPlaying(deviceModelList.sequencerModel.isRunning());
-					long tickPos = deviceModelList.sequencerModel.getSequencer().getTickPosition();
-					SequenceTickIndex tickIndex = null;
-					if( sequenceTableModel != null ) {
-						tickIndex = sequenceTableModel.getSequenceTickIndex();
-						tickIndex.tickToMeasure(tickPos);
-						chordMatrix.setBeat(tickIndex);
-						if(
-							deviceModelList.sequencerModel.getValueIsAdjusting()
-							|| (
-								! deviceModelList.sequencerModel.getSequencer().isRunning()
-								&&
-								! deviceModelList.sequencerModel.getSequencer().isRecording()
-							)
-						) {
-							MetaMessage msg;
-							msg = tickIndex.lastMetaMessageAt(SequenceTickIndex.TIME_SIGNATURE, tickPos);
-							timesigSelecter.setValue(msg==null ? null : msg.getData());
-							msg = tickIndex.lastMetaMessageAt(SequenceTickIndex.TEMPO, tickPos);
-							tempoSelecter.setTempo(msg==null ? null : msg.getData());
-							msg = tickIndex.lastMetaMessageAt(SequenceTickIndex.KEY_SIGNATURE, tickPos);
-							if( msg == null )
-								keysigLabel.clear();
-							else {
-								Music.Key key = new Music.Key(msg.getData());
-								keysigLabel.setKeySignature(key);
-								chordMatrix.setKeySignature(key);
-							}
+		deviceModelList.sequencerModel.addChangeListener(new ChangeListener() {
+			@Override
+			public void stateChanged(ChangeEvent e) {
+				MidiSequenceTableModel sequenceTableModel = deviceModelList.sequencerModel.getSequenceTableModel();
+				int loadedSequenceIndex = editorDialog.sequenceListTableModel.getLoadedIndex();
+				songTitleLabel.setText(
+					"<html>"+(
+						loadedSequenceIndex < 0 ? "[No MIDI file loaded]" :
+						"MIDI file " + loadedSequenceIndex + ": " + (
+							sequenceTableModel == null ||
+							sequenceTableModel.toString() == null ||
+							sequenceTableModel.toString().isEmpty() ?
+							"[Untitled]" :
+							"<font color=maroon>"+sequenceTableModel+"</font>"
+						)
+					)+"</html>"
+				);
+				Sequencer sequencer = deviceModelList.sequencerModel.getSequencer();
+				chordMatrix.setPlaying(sequencer.isRunning());
+				if( sequenceTableModel != null ) {
+					SequenceTickIndex tickIndex = sequenceTableModel.getSequenceTickIndex();
+					long tickPos = sequencer.getTickPosition();
+					tickIndex.tickToMeasure(tickPos);
+					chordMatrix.setBeat(tickIndex);
+					if(
+						deviceModelList.sequencerModel.getValueIsAdjusting() ||
+						! (sequencer.isRunning() || sequencer.isRecording())
+					) {
+						MetaMessage msg;
+						msg = tickIndex.lastMetaMessageAt(SequenceTickIndex.TIME_SIGNATURE, tickPos);
+						timesigSelecter.setValue(msg==null ? null : msg.getData());
+						msg = tickIndex.lastMetaMessageAt(SequenceTickIndex.TEMPO, tickPos);
+						tempoSelecter.setTempo(msg==null ? null : msg.getData());
+						msg = tickIndex.lastMetaMessageAt(SequenceTickIndex.KEY_SIGNATURE, tickPos);
+						if( msg == null )
+							keysigLabel.clear();
+						else {
+							Music.Key key = new Music.Key(msg.getData());
+							keysigLabel.setKeySignature(key);
+							chordMatrix.setKeySignature(key);
 						}
 					}
 				}
 			}
-		);
+		});
 		deviceModelList.sequencerModel.fireStateChanged();
 		chordGuide = new JPanel() {
 			{

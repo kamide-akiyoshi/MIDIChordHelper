@@ -1923,23 +1923,33 @@ public class Music {
 				}
 			}
 		}
-		// コード進行をもとに MIDI シーケンスを生成
-		//
+		/**
+		 * コード進行をもとに MIDI シーケンスを生成します。
+		 * @return MIDIシーケンス
+		 */
 		public Sequence toMidiSequence() {
 			return toMidiSequence(48);
 		}
-		public Sequence toMidiSequence( int ppq ) {
+		/**
+		 * 指定のタイミング解像度で、
+		 * コード進行をもとに MIDI シーケンスを生成します。
+		 * @return MIDIシーケンス
+		 */
+		public Sequence toMidiSequence(int ppq) {
 			//
 			// PPQ = Pulse Per Quarter (TPQN = Tick Per Quearter Note)
 			//
 			return toMidiSequence( ppq, 0, 0, null, null );
 		}
+		/**
+		 * 小節数、トラック仕様、コード進行をもとに MIDI シーケンスを生成します。
+		 * @return MIDIシーケンス
+		 */
 		public Sequence toMidiSequence(
-				int ppq, int start_measure_pos, int end_measure_pos,
-				FirstTrackSpec first_track,
-				Vector<AbstractNoteTrackSpec> track_specs
-				) {
-			// MIDIシーケンスの生成
+			int ppq, int start_measure_pos, int end_measure_pos,
+			FirstTrackSpec first_track,
+			Vector<AbstractNoteTrackSpec> track_specs
+		) {
 			Sequence seq;
 			try {
 				seq = new Sequence(Sequence.PPQ, ppq);
@@ -2019,16 +2029,10 @@ public class Music {
 			return addMetaEventTo( type, str.getBytes(), tick_pos );
 		}
 		public boolean addStringTo( int type, ChordProgression.ChordStroke cs ) {
-			return addStringTo(
-					type,
-					cs.chord.toString(),
-					cs.tick_range.start_tick_pos
-					);
+			return addStringTo(type, cs.chord.toString(), cs.tick_range.start_tick_pos);
 		}
 		public boolean addStringTo( int type, ChordProgression.Lyrics lyrics ) {
-			return addStringTo(
-					type, lyrics.text, lyrics.start_tick_pos
-					);
+			return addStringTo(type, lyrics.text, lyrics.start_tick_pos);
 		}
 		public boolean addEOT( long tick_pos ) {
 			return addMetaEventTo( 0x2F, new byte[0], tick_pos );
@@ -2103,21 +2107,21 @@ public class Music {
 	// 一般のトラック（メロディ、ドラム共通）
 	//
 	public static abstract class AbstractNoteTrackSpec extends AbstractTrackSpec {
-		int midi_channel = -1;
-		int program_no = -1;
+		int midiChannel = -1;
+		int programNumber = -1;
 		int velocity = 64;
 
 		public AbstractNoteTrackSpec() {}
 		public AbstractNoteTrackSpec(int ch) {
-			midi_channel = ch;
+			midiChannel = ch;
 		}
 		public AbstractNoteTrackSpec(int ch, String name) {
-			midi_channel = ch;
+			midiChannel = ch;
 			this.name = name;
 		}
 		public AbstractNoteTrackSpec(int ch, String name, int program_no) {
 			this(ch,name);
-			this.program_no = program_no;
+			this.programNumber = program_no;
 		}
 		public AbstractNoteTrackSpec(int ch, String name, int program_no, int velocity) {
 			this(ch,name,program_no);
@@ -2125,14 +2129,14 @@ public class Music {
 		}
 		public Track createTrack( Sequence seq, FirstTrackSpec first_track_spec ) {
 			Track track = super.createTrack( seq, first_track_spec );
-			if( program_no >= 0 ) addProgram( program_no, 0 );
+			if( programNumber >= 0 ) addProgram( programNumber, 0 );
 			return track;
 		}
 		public boolean addProgram( int program_no, long tick_pos ) {
 			ShortMessage short_msg;
 			try {
 				(short_msg = new ShortMessage()).setMessage(
-					ShortMessage.PROGRAM_CHANGE, midi_channel, program_no, 0
+					ShortMessage.PROGRAM_CHANGE, midiChannel, program_no, 0
 				);
 			} catch( InvalidMidiDataException ex ) {
 				ex.printStackTrace();
@@ -2151,7 +2155,7 @@ public class Music {
 			//
 			try {
 				(short_msg = new ShortMessage()).setMessage(
-					ShortMessage.NOTE_ON, midi_channel, note_no, velocity
+					ShortMessage.NOTE_ON, midiChannel, note_no, velocity
 				);
 			} catch( InvalidMidiDataException ex ) {
 				ex.printStackTrace();
@@ -2162,7 +2166,7 @@ public class Music {
 			//
 			try {
 				(short_msg = new ShortMessage()).setMessage(
-						ShortMessage.NOTE_OFF, midi_channel, note_no, velocity
+						ShortMessage.NOTE_OFF, midiChannel, note_no, velocity
 						);
 			} catch( InvalidMidiDataException ex ) {
 				ex.printStackTrace();

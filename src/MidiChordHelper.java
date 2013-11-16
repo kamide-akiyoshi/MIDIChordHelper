@@ -52,9 +52,7 @@ public class MidiChordHelper {
 		}
 		if( args.length > 0 ) {
 			Vector<File> fileList = new Vector<File>();
-			for( String arg : args ) {
-				fileList.add(new File(arg));
-			}
+			for( String arg : args ) fileList.add(new File(arg));
 			applet.editorDialog.loadAndPlay(fileList);
 		}
 	}
@@ -97,7 +95,7 @@ class AppletFrame extends JFrame implements
 	 */
 	@Override
 	public void tableChanged(TableModelEvent e) {
-		if( e.getColumn() == SequenceListTableModel.COLUMN_FILENAME )
+		if( e.getColumn() == SequenceListTableModel.Column.FILENAME.ordinal() )
 			setFilenameToTitle();
 	}
 	@Override

@@ -55,34 +55,62 @@ import javax.swing.event.ListSelectionListener;
  */
 class MidiEventDialog extends JDialog implements ActionListener {
 	MidiMessageForm midiMessageForm = new MidiMessageForm();
-	TickPositionForm tickPositionForm = new TickPositionForm();
+	/**
+	 * tick位置入力フォーム
+	 */
+	class TickPositionInputForm extends JPanel {
+		private JSpinner tickSpinner = new JSpinner();
+		private JSpinner measureSpinner = new JSpinner();
+		private JSpinner beatSpinner = new JSpinner();
+		private JSpinner extraTickSpinner = new JSpinner();
+		public TickPositionInputForm() {
+			setLayout(new GridLayout(2,4));
+			add( new JLabel() );
+			add( new JLabel() );
+			add( new JLabel("Measure:") );
+			add( new JLabel("Beat:") );
+			add( new JLabel("ExTick:") );
+			add( new JLabel("Tick position : ",JLabel.RIGHT) );
+			add( tickSpinner );
+			add( measureSpinner );
+			add( beatSpinner );
+			add( extraTickSpinner );
+		}
+		public void setModel(TickPositionModel model) {
+			tickSpinner.setModel(model.tickModel);
+			measureSpinner.setModel(model.measureModel);
+			beatSpinner.setModel(model.beatModel);
+			extraTickSpinner.setModel(model.extraTickModel);
+		}
+	}
+	TickPositionInputForm tickPositionInputForm = new TickPositionInputForm();
 	JButton okButton = new JButton("OK");
 	JButton cancelButton = new JButton("Cancel");
 	public MidiEventDialog() {
 		setLayout(new FlowLayout());
-		add( tickPositionForm );
-		add( midiMessageForm );
-		add( new JPanel() {{ add(okButton); add(cancelButton); }} );
+		add(tickPositionInputForm);
+		add(midiMessageForm);
+		add(new JPanel(){{add(okButton); add(cancelButton);}});
 		cancelButton.addActionListener(this);
 	}
 	public void actionPerformed(ActionEvent e) {
 		setVisible(false);
 	}
 	public void openTickForm() {
-		tickPositionForm.setVisible(true);
+		tickPositionInputForm.setVisible(true);
 		midiMessageForm.setVisible(false);
 		setBounds( 200, 300, 500, 120 );
 		setVisible(true);
 	}
 	public void openEventForm() {
-		tickPositionForm.setVisible(true);
+		tickPositionInputForm.setVisible(true);
 		midiMessageForm.setVisible(true);
 		midiMessageForm.setDurationVisible(true);
 		setBounds( 200, 300, 630, 320 );
 		setVisible(true);
 	}
 	public void openMessageForm() {
-		tickPositionForm.setVisible(false);
+		tickPositionInputForm.setVisible(false);
 		midiMessageForm.setVisible(true);
 		midiMessageForm.setDurationVisible(false);
 		setBounds( 200, 300, 630, 270 );
@@ -214,38 +242,38 @@ class MidiMessageForm extends JPanel implements ActionListener {
 			}
 		};
 	// データ選択操作部
-	HexSelecter statusText = new HexSelecter("Status/Command");
-	HexSelecter data1Text = new HexSelecter("[Data1] ");
-	HexSelecter data2Text = new HexSelecter("[Data2] ");
+	private HexSelecter statusText = new HexSelecter("Status/Command");
+	private HexSelecter data1Text = new HexSelecter("[Data1] ");
+	private HexSelecter data2Text = new HexSelecter("[Data2] ");
 	MidiChannelComboSelecter channelText =
 		new MidiChannelComboSelecter("MIDI Channel");
 
-	JComboBox<String> statusComboBox = statusText.getComboBox();
-	JComboBox<String> data1ComboBox = data1Text.getComboBox();
-	JComboBox<String> data2ComboBox = data2Text.getComboBox();
-	JComboBox<Integer> channelComboBox = channelText.getComboBox();
+	private JComboBox<String> statusComboBox = statusText.getComboBox();
+	private JComboBox<String> data1ComboBox = data1Text.getComboBox();
+	private JComboBox<String> data2ComboBox = data2Text.getComboBox();
+	private JComboBox<Integer> channelComboBox = channelText.getComboBox();
 
 	/**
 	 * 長い値（テキストまたは数値）の入力欄
 	 */
-	HexTextForm dataText = new HexTextForm("Data:",3,50);
+	private HexTextForm dataText = new HexTextForm("Data:",3,50);
 	/**
 	 * 音階入力用ピアノキーボード
 	 */
-	PianoKeyboardPanel keyboardPanel = new PianoKeyboardPanel() {
+	private PianoKeyboardPanel keyboardPanel = new PianoKeyboardPanel() {
 		{
 			keyboard.setPreferredSize(new Dimension(300,40));
 			keyboard.addPianoKeyboardListener(
 				new PianoKeyboardAdapter() {
 					public void pianoKeyPressed(int n, InputEvent e) {
 						data1Text.setValue(n);
-						if( midi_channels != null )
-							midi_channels[channelText.getSelectedChannel()].
+						if( midiChannels != null )
+							midiChannels[channelText.getSelectedChannel()].
 							noteOn( n, data2Text.getValue() );
 					}
 					public void pianoKeyReleased(int n, InputEvent e) {
-						if( midi_channels != null ) {
-							midi_channels[channelText.getSelectedChannel()].
+						if( midiChannels != null ) {
+							midiChannels[channelText.getSelectedChannel()].
 							noteOff( n, data2Text.getValue() );
 						}
 					}
@@ -322,51 +350,30 @@ class MidiMessageForm extends JPanel implements ActionListener {
 	/**
 	 * 音を鳴らす出力MIDIチャンネル
 	 */
-	private MidiChannel[] midi_channels = null;
+	private MidiChannel[] midiChannels = null;
 
 	/**
 	 * Note on/off のときに Duration フォームを表示するか
 	 */
-	private boolean is_duration_visible = true;
+	private boolean isDurationVisible = true;
 
 	public MidiMessageForm() {
-		//
-		// Set models
-		//
-		statusComboBox.setModel( statusComboBoxModel );
+		statusComboBox.setModel(statusComboBoxModel);
 		statusComboBox.setSelectedIndex(1); // NoteOn
-		data2ComboBox.setModel( hexData2ComboBoxModel );
+		data2ComboBox.setModel(hexData2ComboBoxModel);
 		data2ComboBox.setSelectedIndex(64); // Center
-		//
-		// Add listener
-		//
 		statusComboBox.addActionListener(this);
 		channelComboBox.addActionListener(this);
 		data1ComboBox.addActionListener(this);
-		//
-		// Layout
-		//
-		JPanel panel1 = new JPanel();
-		panel1.add( statusText );
-		panel1.add( channelText );
-
-		JPanel panel2 = new JPanel();
-		panel2.add( data1Text );
-		panel2.add( keyboardPanel );
-
-		JPanel panel3 = new JPanel();
-		panel3.add( data2Text );
-
 		setLayout(new BoxLayout( this, BoxLayout.Y_AXIS ));
-		add( panel1 );
-		add( durationForm );
-		add( panel2 );
-		add( panel3 );
+		add(new JPanel() {{ add(statusText); add(channelText); }});
+		add(durationForm);
+		add(new JPanel() {{ add(data1Text); add(keyboardPanel); }});
+		add(new JPanel() {{ add(data2Text); }});
 		add( tempoSelecter );
 		add( timesigSelecter );
 		add( keysigSelecter );
 		add( dataText );
-
 		updateVisible();
 	}
 	// ActionListener
@@ -394,81 +401,60 @@ class MidiMessageForm extends JPanel implements ActionListener {
 	// Methods
 	//
 	public void setOutputMidiChannels( MidiChannel midi_channels[] ) {
-		this.midi_channels = midi_channels;
+		this.midiChannels = midi_channels;
 	}
 	public void setDurationVisible(boolean is_visible) {
-		is_duration_visible = is_visible;
+		isDurationVisible = is_visible;
 		updateVisible();
 	}
 	public boolean isDurationVisible() {
-		return is_duration_visible;
+		return isDurationVisible;
 	}
 	public void updateVisible() {
-		int msg_status = statusText.getValue();
-		boolean is_ch_msg = MIDISpec.isChannelMessage(msg_status);
+		int msgStatus = statusText.getValue();
+		boolean is_ch_msg = MIDISpec.isChannelMessage(msgStatus);
 		channelText.setVisible(is_ch_msg);
-		statusText.setTitle(
-				"[Status] "+(is_ch_msg ? "Command" : "")
-				);
-		durationForm.setVisible( is_duration_visible && isNote(msg_status) );
-		keyboardPanel.setVisible( msg_status <= 0xAF );
-
-		if(
-				msg_status <= 0xEF
+		statusText.setTitle("[Status] "+(is_ch_msg ? "Command" : ""));
+		durationForm.setVisible( isDurationVisible && isNote(msgStatus) );
+		keyboardPanel.setVisible( msgStatus <= 0xAF );
+		data1Text.setVisible(
+			msgStatus <= 0xEF ||
+			msgStatus >= 0xF1 && msgStatus <= 0xF3 ||
+			msgStatus == 0xFF
+		);
+		data2Text.setVisible(
+			!(
+				(msgStatus >= 0xC0 && msgStatus <= 0xDF)
 				||
-				msg_status >= 0xF1 && msg_status <= 0xF3
+				msgStatus == 0xF0 || msgStatus == 0xF1
 				||
-				msg_status == 0xFF
-				) {
-			data1Text.setVisible( true );
-		}
-		else {
-			data1Text.setVisible( false );
-		}
-
-		if(
-				(msg_status >= 0xC0 && msg_status <= 0xDF) ||
-				msg_status == 0xF0 || msg_status == 0xF1 ||
-				msg_status == 0xF3 || msg_status >= 0xF6
-				) {
-			data2Text.setVisible( false );
-		}
-		else {
-			data2Text.setVisible( true );
-		}
+				msgStatus == 0xF3 || msgStatus >= 0xF6
+			)
+		);
 		data2Text.setTitle("[Data2] "+(
-				msg_status <= 0x9F ? "Velocity" :
-					msg_status <= 0xAF ? "Pressure" :
-						msg_status <= 0xBF ? "Value" :
-							(msg_status & 0xF0) == 0xE0 ? "High 7bit value" : ""
-				));
-
+			msgStatus <= 0x9F ? "Velocity" :
+			msgStatus <= 0xAF ? "Pressure" :
+			msgStatus <= 0xBF ? "Value" :
+			(msgStatus & 0xF0) == 0xE0 ? "High 7bit value" : ""
+		));
 		// Show if Sysex or Meta
 		dataText.setVisible(
-				msg_status == 0xF0 ||
-				msg_status == 0xF7 ||
-				msg_status == 0xFF
-				);
-
-		if( msg_status != 0xFF ) {
+			msgStatus == 0xF0 || msgStatus == 0xF7 || msgStatus == 0xFF
+		);
+		if( msgStatus != 0xFF ) {
 			tempoSelecter.setVisible(false);
 			timesigSelecter.setVisible(false);
 			keysigSelecter.setVisible(false);
 		}
-
-		switch( msg_status & 0xF0 ) {
+		switch( msgStatus & 0xF0 ) {
 		// ステータスに応じて、１バイト目のデータモデルを切り替える。
 
 		case 0x80: // Note Off
 		case 0x90: // Note On
 		case 0xA0: // Polyphonic Key Pressure
 			int ch = channelText.getSelectedChannel();
-			data1Text.setTitle(
-					"[Data1] "+( ch == 9 ? "Percussion" : "Note No." )
-					);
-			data1ComboBox.setModel(
-					ch == 9 ? percussionComboBoxModel : noteComboBoxModel
-					);
+			data1Text.setTitle("[Data1] "+(ch == 9 ? "Percussion" : "Note No."));
+			data1ComboBox.setModel(ch == 9 ? percussionComboBoxModel : noteComboBoxModel);
 			break;
 
 		case 0xB0: // Control Change / Mode Change
@@ -492,22 +478,20 @@ class MidiMessageForm extends JPanel implements ActionListener {
 			break;
 
 		default:
-			if( msg_status == 0xFF ) { // MetaMessage
+			if( msgStatus == 0xFF ) { // MetaMessage
 				data1Text.setTitle("[Data1] MetaEvent Type");
 				data1ComboBox.setModel(metaTypeComboBoxModel);
-				int msg_type = data1Text.getValue();
-				tempoSelecter.setVisible( msg_type == 0x51 );
-				timesigSelecter.setVisible( msg_type == 0x58 );
-				keysigSelecter.setVisible( msg_type == 0x59 );
+				int msgType = data1Text.getValue();
+				tempoSelecter.setVisible( msgType == 0x51 );
+				timesigSelecter.setVisible( msgType == 0x58 );
+				keysigSelecter.setVisible( msgType == 0x59 );
 				//
-				if( MIDISpec.isEOT(msg_type) ) {
+				if( MIDISpec.isEOT(msgType) ) {
 					dataText.clear();
 					dataText.setVisible(false);
 				}
 				else {
-					dataText.setTitle(
-							MIDISpec.hasMetaText( msg_type ) ? "Text:":"Data:"
-							);
+					dataText.setTitle(MIDISpec.hasMetaText(msgType)?"Text:":"Data:");
 				}
 			}
 			else {
@@ -569,10 +553,10 @@ class MidiMessageForm extends JPanel implements ActionListener {
 		try {
 			if( MIDISpec.isChannelMessage( msg_status ) ) {
 				msg.setMessage(
-						(msg_status & 0xF0),
-						channelText.getSelectedChannel(),
-						msg_data1, msg_data2
-						);
+					(msg_status & 0xF0),
+					channelText.getSelectedChannel(),
+					msg_data1, msg_data2
+				);
 			}
 			else {
 				msg.setMessage( msg_status, msg_data1, msg_data2 );
@@ -645,10 +629,9 @@ class MidiMessageForm extends JPanel implements ActionListener {
 				note_on && cmd == ShortMessage.NOTE_ON && data2Text.getValue() > 0
 				||
 				!note_on && (
-						cmd == ShortMessage.NOTE_ON && data2Text.getValue() <= 0
-						||
-						cmd == ShortMessage.NOTE_OFF
-						)
+					cmd == ShortMessage.NOTE_ON && data2Text.getValue() <= 0 ||
+					cmd == ShortMessage.NOTE_OFF
+					)
 				);
 	}
 	public ShortMessage getPartnerMessage() {
@@ -657,27 +640,26 @@ class MidiMessageForm extends JPanel implements ActionListener {
 		ShortMessage partner_sm;
 		if( isNote(true) ) { // NoteOn
 			partner_sm = new ShortMessage();
-		try{
-			partner_sm.setMessage(
+			try{
+				partner_sm.setMessage(
 					ShortMessage.NOTE_OFF,
-					sm.getChannel(),
-					sm.getData1(), sm.getData2()
-					);
-		} catch( InvalidMidiDataException e ) {
-			e.printStackTrace();
-			return null;
-		}
-		return partner_sm;
+					sm.getChannel(), sm.getData1(), sm.getData2()
+				);
+			} catch( InvalidMidiDataException e ) {
+				e.printStackTrace();
+				return null;
+			}
+			return partner_sm;
 		}
 		else if( isNote(false) ) { // NoteOff
 			partner_sm = new ShortMessage();
 			try{
 				partner_sm.setMessage(
-						ShortMessage.NOTE_ON,
-						sm.getChannel(),
-						sm.getData1() == 0 ? 100 : sm.getData1(),
-								sm.getData2()
-						);
+					ShortMessage.NOTE_ON,
+					sm.getChannel(),
+					sm.getData1() == 0 ? 100 : sm.getData1(),
+					sm.getData2()
+				);
 			} catch( InvalidMidiDataException e ) {
 				e.printStackTrace();
 				return null;
@@ -693,21 +675,22 @@ class MidiMessageForm extends JPanel implements ActionListener {
  * 16進数テキスト入力フォーム [0x00 0x00 0x00 ... ]
  */
 class HexTextForm extends JPanel {
-	public JTextArea text_area;
-	public JLabel title_label;
+	public JTextArea textArea;
+	public JLabel titleLabel;
 	public HexTextForm(String title) {
 		this(title,1,3);
 	}
 	public HexTextForm(String title, int rows, int columns) {
-		if( title != null ) add(title_label = new JLabel(title));
-		text_area = new JTextArea(rows, columns);
-		text_area.setLineWrap(true);
-		JScrollPane text_scroll_pane = new JScrollPane(text_area);
-		add(text_scroll_pane);
+		if( title != null )
+			add(titleLabel = new JLabel(title));
+		textArea = new JTextArea(rows, columns) {{
+			setLineWrap(true);
+		}};
+		add(new JScrollPane(textArea));
 		setLayout(new FlowLayout());
 	}
 	public String getString() {
-		return text_area.getText();
+		return textArea.getText();
 	}
 	public byte[] getBytesFromString() {
 		return getString().getBytes();
@@ -739,55 +722,50 @@ class HexTextForm extends JPanel {
 		return ba;
 	}
 	public void setTitle( String str ) {
-		title_label.setText( str );
+		titleLabel.setText( str );
 	}
 	public void setString( String str ) {
-		text_area.setText( str );
+		textArea.setText( str );
 	}
 	public void setValue( int val ) {
-		text_area.setText( String.format( " 0x%02X", val ) );
+		textArea.setText( String.format( " 0x%02X", val ) );
 	}
 	public void setValue( byte val ) {
-		text_area.setText( String.format( " 0x%02X", val ) );
+		textArea.setText( String.format( " 0x%02X", val ) );
 	}
 	public void setValue( byte ba[] ) {
 		String str = "";
 		for( byte b : ba ) {
 			str += String.format( " 0x%02X", b );
 		}
-		text_area.setText(str);
+		textArea.setText(str);
 	}
-	public void clear() { text_area.setText(""); }
+	public void clear() { textArea.setText(""); }
 }
 /**
  * 16進数選択 [0x00 0x00 0x00 ... ] v -> Select
  */
 class HexSelecter extends JPanel {
-	private JComboBox<String> comboBox = new JComboBox<String>();
+	private JComboBox<String> comboBox = new JComboBox<String>() {{
+		setEditable(true);
+		setMaximumRowCount(16);
+	}};
 	private JLabel title;
 	public HexSelecter( String title ) {
 		if( title != null )
 			add( this.title = new JLabel(title) );
 		add(comboBox);
 		setLayout(new FlowLayout());
-		comboBox.setEditable(true);
-		comboBox.setMaximumRowCount(16);
 	}
-	public JComboBox<String> getComboBox() {
-		return comboBox;
-	}
-	public void setTitle( String title ) {
-		this.title.setText(title);
-	}
-	public String getString() {
-		return (String)( comboBox.getSelectedItem() );
-	}
+	public JComboBox<String> getComboBox() { return comboBox; }
+	public void setTitle(String title) { this.title.setText(title); }
 	public int getValue() {
 		ArrayList<Integer> ia = getIntegerList();
 		return ia.size() == 0 ? -1 : ia.get(0);
 	}
 	public ArrayList<Integer> getIntegerList() {
-		String words[], str = getString();
+		String words[];
+		String str = (String)(comboBox.getSelectedItem());
 		if( str == null )
 			words = new String[0];
 		else
@@ -957,9 +935,9 @@ class MidiChannelButtonSelecter extends JList<Integer>
 				setForeground(list.getSelectionForeground());
 			} else {
 				setBackground(
-						keyboard != null && keyboard.countKeyOn(index) > 0 ?
-								Color.pink : list.getBackground()
-						);
+					keyboard != null && keyboard.countKeyOn(index) > 0 ?
+					Color.pink : list.getBackground()
+				);
 				setForeground(list.getForeground());
 			}
 			setEnabled(list.isEnabled());
@@ -978,7 +956,7 @@ class MidiChannelButtonSelecter extends JList<Integer>
 }
 
 /**
- * tick位置 Mesausre:[xxxx] Beat:[xx] ExTick:[xxx]
+ * tick位置入力モデル Mesausre:[xxxx] Beat:[xx] ExTick:[xxx]
  */
 class TickPositionModel implements ChangeListener {
 	public SpinnerNumberModel tickModel = new SpinnerNumberModel(0L, 0L, 999999L, 1L);
@@ -1032,34 +1010,6 @@ class TickPositionModel implements ChangeListener {
 	}
 }
 
-/**
- * tick位置入力フォーム
- */
-class TickPositionForm extends JPanel {
-	JSpinner tickSpinner = new JSpinner();
-	JSpinner measureSpinner = new JSpinner();
-	JSpinner beatSpinner = new JSpinner();
-	JSpinner extraTickSpinner = new JSpinner();
-	public TickPositionForm() {
-		setLayout(new GridLayout(2,4));
-		add( new JLabel() );
-		add( new JLabel() );
-		add( new JLabel("Measure:") );
-		add( new JLabel("Beat:") );
-		add( new JLabel("ExTick:") );
-		add( new JLabel("Tick position : ",JLabel.RIGHT) );
-		add( tickSpinner );
-		add( measureSpinner );
-		add( beatSpinner );
-		add( extraTickSpinner );
-	}
-	public void setModel(TickPositionModel model) {
-		tickSpinner.setModel(model.tickModel);
-		measureSpinner.setModel(model.measureModel);
-		beatSpinner.setModel(model.beatModel);
-		extraTickSpinner.setModel(model.extraTickModel);
-	}
-}
 
 /**
  * 音長入力フォーム
@@ -1196,33 +1146,28 @@ class DurationForm extends JPanel implements ActionListener, ChangeListener {
  */
 class TempoSelecter extends JPanel implements MouseListener {
 	static final int DEFAULT_QPM = 120;
-	JSpinner		tempoSpinner;
-	SpinnerNumberModel	tempoSpinnerModel;
-	JLabel		tempoLabel, tempoValueLabel;
-	private boolean	editable;
-	private long	prevBeatMicrosecondPosition = 0;
-
+	protected SpinnerNumberModel tempoSpinnerModel =
+		new SpinnerNumberModel(DEFAULT_QPM, 1, 999, 1);
+	private JLabel tempoLabel = new JLabel(
+		"=", new ButtonIcon(ButtonIcon.QUARTER_NOTE_ICON), JLabel.CENTER
+	) {{
+		setVerticalAlignment(JLabel.CENTER);
+	}};
+	private JLabel tempoValueLabel = new JLabel(""+DEFAULT_QPM);
+	private JSpinner tempoSpinner = new JSpinner(tempoSpinnerModel);
 	public TempoSelecter() {
 		String tooltip = "Tempo in quatrers per minute - テンポ（１分あたりの四分音符の数）";
-		tempoLabel = new JLabel(
-			"=",
-			new ButtonIcon(ButtonIcon.QUARTER_NOTE_ICON),
-			JLabel.CENTER
-		);
-		tempoLabel.setVerticalAlignment(JLabel.CENTER);
-		tempoSpinnerModel = new SpinnerNumberModel(DEFAULT_QPM, 1, 999, 1);
-		tempoSpinner = new JSpinner(tempoSpinnerModel);
 		tempoSpinner.setToolTipText(tooltip);
-		tempoValueLabel = new JLabel(""+DEFAULT_QPM);
 		tempoValueLabel.setToolTipText(tooltip);
 		setLayout(new BoxLayout(this,BoxLayout.X_AXIS));
-		add( tempoLabel );
-		add( Box.createHorizontalStrut(5) );
-		add( tempoSpinner );
-		add( tempoValueLabel );
+		add(tempoLabel);
+		add(Box.createHorizontalStrut(5));
+		add(tempoSpinner);
+		add(tempoValueLabel);
 		setEditable(true);
 		tempoLabel.addMouseListener(this);
 	}
+	private long prevBeatMicrosecondPosition = 0;
 	@Override
 	public void mousePressed(MouseEvent e) {
 		Component obj = e.getComponent();
@@ -1245,6 +1190,7 @@ class TempoSelecter extends JPanel implements MouseListener {
 	public void mouseEntered(MouseEvent e) { }
 	public void mouseExited(MouseEvent e) { }
 	public void mouseClicked(MouseEvent e) { }
+	private boolean	editable;
 	/**
 	 * 編集可能かどうかを返します。
 	 * @return 編集可能ならtrue

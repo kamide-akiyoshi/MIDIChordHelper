@@ -18,13 +18,11 @@ import org.apache.commons.codec.binary.Base64;
 /**
  * Base64テキスト入力ダイアログ
  */
-public class Base64Dialog extends JDialog implements ActionListener {
+public class Base64Dialog extends JDialog {
 	private static final Insets ZERO_INSETS = new Insets(0,0,0,0);
 	private Base64TextArea base64TextArea = null;
 	private JButton addBase64Button;
 	private JButton clearButton;
-	private JPanel base64Panel;
-	private MidiEditor midiEditor;
 	private boolean base64Available;
 	private static class Base64TextArea extends JTextArea {
 		private static final Pattern headerLine =
@@ -62,47 +60,49 @@ public class Base64Dialog extends JDialog implements ActionListener {
 			base64Available = false;
 		}
 		if( base64Available ) {
-			base64TextArea = new Base64TextArea(8,56);
-			JScrollPane scrollable_media_text = new JScrollPane(base64TextArea);
-			addBase64Button = new JButton( "Base64 Decode & Add to PlayList", new ButtonIcon(ButtonIcon.EJECT_ICON) );
-			addBase64Button.setMargin(ZERO_INSETS);
-			addBase64Button.addActionListener(this);
-			addBase64Button.setToolTipText("Base64デコードして、プレイリストへ追加");
-			clearButton = new JButton( "Clear" );
-			clearButton.setMargin(ZERO_INSETS);
-			clearButton.addActionListener(this);
-
-			base64Panel = new JPanel();
-			base64Panel.setLayout( new BoxLayout( base64Panel, BoxLayout.PAGE_AXIS ) );
-			JPanel base64_button_panel = new JPanel();
-			base64_button_panel.setLayout( new BoxLayout( base64_button_panel, BoxLayout.LINE_AXIS ) );
-			base64_button_panel.add( new JLabel("Base64-encoded MIDI sequence:") );
-			base64_button_panel.add( Box.createRigidArea(new Dimension(10, 0)) );
-			base64_button_panel.add( addBase64Button );
-			base64_button_panel.add( clearButton );
-			base64Panel.add( base64_button_panel );
-			base64Panel.add( scrollable_media_text );
-			add(base64Panel);
+			add(new JPanel() {{
+				setLayout(new BoxLayout(this, BoxLayout.PAGE_AXIS));
+				add(new JPanel() {{
+					setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS ));
+					add(new JLabel("Base64-encoded MIDI sequence:"));
+					add(Box.createRigidArea(new Dimension(10, 0)));
+					add(addBase64Button = new JButton(
+						"Base64 Decode & Add to PlayList",
+						new ButtonIcon(ButtonIcon.EJECT_ICON)
+					) {{
+						setMargin(ZERO_INSETS);
+						setToolTipText("Base64デコードして、プレイリストへ追加");
+					}});
+					add(clearButton = new JButton("Clear") {{
+						setMargin(ZERO_INSETS);
+					}});
+				}});
+				add(new JScrollPane(base64TextArea = new Base64TextArea(8,56)));
+			}});
+			addBase64Button.addActionListener(new ActionListener() {
+				@Override
+				public void actionPerformed(ActionEvent e) {
+					MidiEditor midiEditor = Base64Dialog.this.midiEditor;
+					int lastIndex = midiEditor.addSequenceFromMidiData(getMIDIData(), null);
+					if( lastIndex < 0 ) {
+						base64TextArea.requestFocusInWindow();
+						lastIndex = midiEditor.sequenceListTableModel.getRowCount() - 1;
+					}
+					midiEditor.seqSelectionModel.setSelectionInterval(lastIndex, lastIndex);
+					setVisible(false);
+				}
+			});
+			clearButton.addActionListener(new ActionListener() {
+				@Override
+				public void actionPerformed(ActionEvent e) {
+					base64TextArea.setText(null);
+				}
+			});
 		}
 		// setLocationRelativeTo(applet);
 		setBounds( 300, 250, 660, 300 );
 	}
-	@Override
-	public void actionPerformed(ActionEvent event) {
-		Object obj = event.getSource();
-		if( obj == addBase64Button ) {
-			int last_index = midiEditor.addSequenceFromMidiData( getMIDIData(), null );
-			if( last_index < 0 ) {
-				base64TextArea.requestFocusInWindow();
-				last_index = midiEditor.sequenceListTableModel.getRowCount() - 1;
-			}
-			midiEditor.seqSelectionModel.setSelectionInterval( last_index, last_index );
-			setVisible(false);
-		}
-		else if( obj == clearButton ) {
-			base64TextArea.setText(null);
-		}
-	}
+	private MidiEditor midiEditor;
 	/**
 	 * {@link Base64} が使用できるかどうかを返します。
 	 * @return Apache Commons Codec ライブラリが利用できる状態ならtrue

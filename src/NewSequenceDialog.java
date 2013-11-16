@@ -36,105 +36,136 @@ import javax.swing.SpinnerNumberModel;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
-class NewSequenceDialog extends JDialog implements ActionListener {
+/**
+ * 新しいMIDIシーケンスを生成するダイアログ
+ */
+class NewSequenceDialog extends JDialog {
 	public static final Insets	ZERO_INSETS = new Insets(0,0,0,0);
-	JTextArea		chord_text;
-	JTextField		seq_name_text;
-	PPQSelectionComboBox	ppq_combo_box;
-	TimeSignatureSelecter	timesig_selecter;
-	TempoSelecter		tempo_selecter;
-	MeasureSelecter	measure_selecter;
-	JButton add_new_button;
-	JButton transpose_up_button;
-	JButton transpose_down_button;
-	JButton enharmonic_button;
-	JButton random_chord_button;
-	JButton toggle_major_minor_button;
-	JPanel new_file_panel;
-	TrackSpecPanel track_spec_panel;
-	JTabbedPane tabbed_pane;
-	MidiEditor midi_editor;
-
-	public NewSequenceDialog(MidiEditor midi_editor) {
-		this.midi_editor = midi_editor;
+	private JTextArea chordText = new JTextArea(
+		"Key: C\nC G/B | Am Em/G | F C/E | Dm7 G7 C % | F G7 | Csus4 C\n",
+		18, 30
+	);
+	private JTextField seqNameText = new JTextField();
+	private static class PPQSelectionComboBox extends JComboBox<Integer> {
+		private static final int[] PPQList = {
+			48,60,80,96,120,160,192,240,320,384,480,960
+		};
+		public PPQSelectionComboBox() {
+			for(int ppq : PPQList) addItem(ppq);
+		}
+		public int getPPQ() {
+			return (Integer) getSelectedItem();
+		}
+	}
+	private PPQSelectionComboBox ppqComboBox = new PPQSelectionComboBox();
+	private TimeSignatureSelecter timesigSelecter = new TimeSignatureSelecter();
+	private TempoSelecter tempoSelecter = new TempoSelecter();
+	private MeasureSelecter measureSelecter = new MeasureSelecter();
+	private TrackSpecPanel trackSpecPanel = new TrackSpecPanel();
+	private MidiEditor midiEditor;
+	public NewSequenceDialog(MidiEditor midiEditor) {
+		this.midiEditor = midiEditor;
 		setTitle("Generate new sequence - " + ChordHelperApplet.VersionInfo.NAME);
-		tabbed_pane = new JTabbedPane();
-		ppq_combo_box = new PPQSelectionComboBox();
-		seq_name_text = new JTextField();
-		timesig_selecter = new TimeSignatureSelecter();
-		tempo_selecter = new TempoSelecter();
-		measure_selecter = new MeasureSelecter();
-		chord_text = new JTextArea( "Key: C\nC G/B | Am Em/G | F C/E | Dm7 G7 C % | F G7 | Csus4 C\n", 18, 30 );
-		JScrollPane chord_text_scroll_area = new JScrollPane( (Component)chord_text );
-
-		add_new_button = new JButton("Generate & Add to PlayList", new ButtonIcon(ButtonIcon.EJECT_ICON));
-		add_new_button.setMargin(ZERO_INSETS);
-		add_new_button.addActionListener(this);
-		transpose_up_button = new JButton(" + Up ");
-		transpose_up_button.setMargin(ZERO_INSETS);
-		transpose_up_button.addActionListener(this);
-		transpose_down_button = new JButton(" - Down ");
-		transpose_down_button.setMargin(ZERO_INSETS);
-		transpose_down_button.addActionListener(this);
-		enharmonic_button = new JButton(" Enharmonic ");
-		enharmonic_button.setMargin(ZERO_INSETS);
-		enharmonic_button.addActionListener(this);
-		random_chord_button = new JButton("Randomize (Tempo, Time signature, Chord progression)");
-		random_chord_button.setMargin(ZERO_INSETS);
-		random_chord_button.addActionListener(this);
-		toggle_major_minor_button = new JButton("Relative key");
-		toggle_major_minor_button.setMargin(ZERO_INSETS);
-		toggle_major_minor_button.addActionListener(this);
-
-		JPanel sequence_name_panel = new JPanel();
-		sequence_name_panel.setLayout(new BoxLayout(sequence_name_panel, BoxLayout.LINE_AXIS));
-		sequence_name_panel.add( new JLabel("Sequence name:") );
-		sequence_name_panel.add( seq_name_text );
-
-		JPanel new_file_panel_2 = new JPanel();
-		new_file_panel_2.setLayout(new BoxLayout(new_file_panel_2, BoxLayout.LINE_AXIS));
-		new_file_panel_2.add( new JLabel("Resolution in PPQ =") );
-		new_file_panel_2.add( ppq_combo_box );
-		new_file_panel_2.add( measure_selecter );
-
-		JPanel timesig_panel = new JPanel();
-		timesig_panel.add( new JLabel("Time signature =") );
-		timesig_panel.add( timesig_selecter );
-
-		JPanel new_file_panel_5 = new JPanel();
-		new_file_panel_5.setLayout( new BoxLayout( new_file_panel_5, BoxLayout.LINE_AXIS ) );
-		new_file_panel_5.add( tempo_selecter );
-		new_file_panel_5.add( timesig_panel );
-
-		JPanel new_file_panel_6 = new JPanel();
-		new_file_panel_6.setLayout( new BoxLayout( new_file_panel_6, BoxLayout.LINE_AXIS ) );
-		new_file_panel_6.add( new JLabel("Chord progression :") );
-		new_file_panel_6.add( new JLabel("Transpose") );
-		new_file_panel_6.add( transpose_up_button );
-		new_file_panel_6.add( transpose_down_button );
-		new_file_panel_6.add( enharmonic_button );
-		new_file_panel_6.add( toggle_major_minor_button );
-
-		JPanel new_file_panel_10 = new JPanel();
-		new_file_panel_10.setLayout( new BoxLayout( new_file_panel_10, BoxLayout.LINE_AXIS ) );
-		new_file_panel_10.add( add_new_button );
-
-		new_file_panel = new JPanel();
-		new_file_panel.setLayout( new BoxLayout( new_file_panel, BoxLayout.PAGE_AXIS ) );
-		new_file_panel.add( sequence_name_panel );
-		new_file_panel.add( new_file_panel_2 );
-		new_file_panel.add( random_chord_button );
-		new_file_panel.add( new_file_panel_5 );
-		new_file_panel.add( new_file_panel_6 );
-		new_file_panel.add( chord_text_scroll_area );
-		new_file_panel.add( new_file_panel_10 );
-
-		track_spec_panel = new TrackSpecPanel();
-
-		tabbed_pane.add( "Sequence", new_file_panel );
-		tabbed_pane.add( "Track", track_spec_panel );
-		add(tabbed_pane);
-		// setLocationRelativeTo(applet);
+		add(new JTabbedPane() {{
+			add("Sequence", new JPanel() {{
+				setLayout(new BoxLayout(this, BoxLayout.PAGE_AXIS));
+				add(new JPanel() {{
+					setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
+					add(new JLabel("Sequence name:"));
+					add(seqNameText);
+				}});
+				add(new JPanel() {{
+					setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
+					add(new JLabel("Resolution in PPQ ="));
+					add(ppqComboBox);
+					add(measureSelecter);
+				}});
+				add(new JButton("Randomize (Tempo, Time signature, Chord progression)") {{
+					setMargin(ZERO_INSETS);
+					addActionListener(new ActionListener() {
+						@Override
+						public void actionPerformed(ActionEvent e) {
+							setRandomChordProgression(measureSelecter.getMeasureDuration());
+						}
+					});
+				}});
+				add(new JPanel() {{
+					setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
+					add(tempoSelecter);
+					add(new JPanel() {{
+						add(new JLabel("Time signature ="));
+						add(timesigSelecter);
+					}});
+				}});
+				add(new JPanel() {{
+					setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
+					add(new JLabel("Chord progression :"));
+					add(new JLabel("Transpose"));
+					add(new JButton(" + Up ") {{
+						setMargin(ZERO_INSETS);
+						addActionListener(new ActionListener() {
+							@Override
+							public void actionPerformed(ActionEvent e) {
+								Music.ChordProgression cp = getChordProgression();
+								cp.transpose(1);
+								setChordProgression(cp);
+							}
+						});
+					}});
+					add(new JButton(" - Down ") {{
+						setMargin(ZERO_INSETS);
+						addActionListener(new ActionListener() {
+							@Override
+							public void actionPerformed(ActionEvent e) {
+								Music.ChordProgression cp = getChordProgression();
+								cp.transpose(-1);
+								setChordProgression(cp);
+							}
+						});
+					}});
+					add(new JButton(" Enharmonic ") {{
+						setMargin(ZERO_INSETS);
+						addActionListener(new ActionListener() {
+							@Override
+							public void actionPerformed(ActionEvent e) {
+								Music.ChordProgression cp = getChordProgression();
+								cp.toggleEnharmonically();
+								setChordProgression(cp);
+							}
+						});
+					}});
+					add(new JButton("Relative key") {{
+						setMargin(ZERO_INSETS);
+						addActionListener(new ActionListener() {
+							@Override
+							public void actionPerformed(ActionEvent e) {
+								Music.ChordProgression cp = getChordProgression();
+								cp.toggleKeyMajorMinor();
+								setChordProgression(cp);
+							}
+						});
+					}});
+				}});
+				add(new JScrollPane((Component)chordText));
+				add(new JPanel() {{
+					setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
+					add(new JButton(
+						"Generate & Add to PlayList",
+						new ButtonIcon(ButtonIcon.EJECT_ICON)
+					) {{
+						setMargin(ZERO_INSETS);
+						addActionListener(new ActionListener() {
+							@Override
+							public void actionPerformed(ActionEvent e) {
+								NewSequenceDialog.this.midiEditor.addSequence(getMidiSequence());
+								NewSequenceDialog.this.setVisible(false);
+							}
+						});
+					}});
+				}});
+			}});
+			add("Track", trackSpecPanel);
+		}});
 		setBounds( 250, 200, 600, 540 );
 		//
 		// Create track specs
@@ -144,339 +175,261 @@ class NewSequenceDialog extends JDialog implements ActionListener {
 		//
 		dts = new Music.DrumTrackSpec( 9, "Percussion track" );
 		dts.velocity = 127;
-		track_spec_panel.addTrackSpec(dts);
+		trackSpecPanel.addTrackSpec(dts);
 		//
 		mts = new Music.MelodyTrackSpec(0, "Bass track", new Music.Range(36,48));
 		mts.is_bass = true;
 		mts.velocity = 96;
-		track_spec_panel.addTrackSpec(mts);
+		trackSpecPanel.addTrackSpec(mts);
 		//
 		mts =  new Music.MelodyTrackSpec(1, "Chord track", new Music.Range(60,72));
-		track_spec_panel.addTrackSpec(mts);
+		trackSpecPanel.addTrackSpec(mts);
 		//
 		mts = new Music.MelodyTrackSpec(2, "Melody track", new Music.Range(60,84));
 		mts.random_melody = true;
 		mts.beat_pattern = 0xFFFF;
 		mts.continuous_beat_pattern = 0x820A;
-		track_spec_panel.addTrackSpec(mts);
+		trackSpecPanel.addTrackSpec(mts);
 	}
-	//
-	// ActionListener for JButton
-	//
-	public void actionPerformed(ActionEvent event) {
-		Object obj = event.getSource();
-		if( obj == add_new_button ) {
-			midi_editor.addSequence(getMidiSequence());
-			setVisible(false);
-		}
-		else if( obj == transpose_up_button ) { transpose(1); }
-		else if( obj == transpose_down_button ) { transpose(-1); }
-		else if( obj == enharmonic_button ) { enharmonic(); }
-		else if( obj == toggle_major_minor_button ) {
-			toggleKeyMajorMinor();
-		}
-		else if( obj == random_chord_button ) {
-			setRandomChordProgression(measure_selecter.getMeasureDuration());
-		}
+	private Music.ChordProgression getChordProgression() {
+		return new Music.ChordProgression(chordText.getText());
 	}
-	// Methods
-	//
-	public void setChannels( MidiChannel[] midi_channels ) {
-		track_spec_panel.setChannels(midi_channels);
+	/**
+	 * 送信用のMIDIチャンネルを設定します。
+	 * @param midiChannels MIDIチャンネル
+	 */
+	public void setChannels(MidiChannel[] midiChannels) {
+		trackSpecPanel.setChannels(midiChannels);
 	}
-	public Music.ChordProgression getChordProgression() {
-		return new Music.ChordProgression( chord_text.getText() );
-	}
+	/**
+	 * MIDIシーケンスを生成して返します。
+	 * @return MIDIシーケンス
+	 */
 	public Sequence getMidiSequence() {
-		Music.FirstTrackSpec first_track_spec = new Music.FirstTrackSpec(
-			seq_name_text.getText(),
-			tempo_selecter.getTempoByteArray(),
-			timesig_selecter.getByteArray()
+		Music.FirstTrackSpec firstTrackSpec = new Music.FirstTrackSpec(
+			seqNameText.getText(),
+			tempoSelecter.getTempoByteArray(),
+			timesigSelecter.getByteArray()
 		);
 		return getChordProgression().toMidiSequence(
-			ppq_combo_box.getPPQ(),
-			measure_selecter.getStartMeasurePosition(),
-			measure_selecter.getEndMeasurePosition(),
-			first_track_spec,
-			track_spec_panel.getTrackSpecs()
+			ppqComboBox.getPPQ(),
+			measureSelecter.getStartMeasurePosition(),
+			measureSelecter.getEndMeasurePosition(),
+			firstTrackSpec,
+			trackSpecPanel.getTrackSpecs()
 		);
 	}
+	/**
+	 * コード進行を設定します。テキスト欄に反映されます。
+	 * @param cp コード進行
+	 */
 	public void setChordProgression(Music.ChordProgression cp) {
-		chord_text.setText(cp.toString());
+		chordText.setText(cp.toString());
 	}
+	/**
+	 * テンポ・拍子・コード進行をランダムに設定
+	 * @param measureLength 小節数
+	 */
 	public void setRandomChordProgression(int measureLength) {
-		//
-		// テンポ・拍子・コード進行をランダムに設定
-		//
-		tempo_selecter.setTempo( 80 + (int)(Math.random() * 100) );
+		tempoSelecter.setTempo( 80 + (int)(Math.random() * 100) );
 		int timesig_upper = 4;
 		int timesig_lower_index = 2;
 		switch( (int)(Math.random() * 10) ) {
 			case 0: timesig_upper = 3; break; // 3/4
 		}
-		timesig_selecter.setValue((byte)timesig_upper, (byte)timesig_lower_index);
+		timesigSelecter.setValue((byte)timesig_upper, (byte)timesig_lower_index);
 		setChordProgression(new Music.ChordProgression(measureLength, timesig_upper));
-	}
-	public void transpose(int chromatic_offset) {
-		Music.ChordProgression cp = getChordProgression();
-		cp.transpose( chromatic_offset );
-		setChordProgression( cp );
-	}
-	public void enharmonic() {
-		Music.ChordProgression cp = getChordProgression();
-		cp.toggleEnharmonically();
-		setChordProgression( cp );
-	}
-	public void toggleKeyMajorMinor() {
-		Music.ChordProgression cp = getChordProgression();
-		cp.toggleKeyMajorMinor();
-		setChordProgression( cp );
 	}
 }
 
-// トラック設定画面
-//
+/**
+ * トラック設定画面
+ */
 class TrackSpecPanel extends JPanel
-implements PianoKeyboardListener, ActionListener, ChangeListener
+	implements PianoKeyboardListener, ActionListener, ChangeListener
 {
-	JComboBox<Music.AbstractNoteTrackSpec> trackSelecter;
-	JLabel track_type_label;
-	JTextField name_text_field;
-	MidiChannelComboSelecter ch_selecter;
-	MidiProgramSelecter pg_selecter;
-	MidiProgramFamilySelecter pg_family_selecter;
-	PianoKeyboardPanel keyboard_panel;
-	JPanel range_panel;
-	JCheckBox random_melody_checkbox;
-	JCheckBox bass_checkbox;
-	JCheckBox random_lyric_checkbox;
-	BeatPadPanel beat_pad_panel;
-	private MidiChannel[] midi_channels;
+	JComboBox<Music.AbstractNoteTrackSpec> trackSelecter =
+		new JComboBox<Music.AbstractNoteTrackSpec>();
+	JLabel trackTypeLabel = new JLabel();
+	JTextField nameTextField = new JTextField(20);
+	MidiChannelComboSelecter chSelecter =
+		new MidiChannelComboSelecter("MIDI Channel:");
+	MidiProgramSelecter pgSelecter = new MidiProgramSelecter();
+	MidiProgramFamilySelecter pgFamilySelecter =
+		new MidiProgramFamilySelecter(pgSelecter) {{
+			pgSelecter.setFamilySelecter(pgFamilySelecter);
+		}};
+	PianoKeyboardPanel keyboardPanel = new PianoKeyboardPanel() {{
+		keyboard.octaveSizeModel.setValue(6);
+		keyboard.setPreferredSize(new Dimension(400,40));
+		keyboard.setMaxSelectable(2);
+	}};
+	JPanel rangePanel = new JPanel() {{
+		add( new JLabel("Range:") );
+		add(keyboardPanel);
+	}};
+	JCheckBox randomMelodyCheckbox = new JCheckBox("Random melody");
+	JCheckBox bassCheckbox = new JCheckBox("Bass note");
+	JCheckBox randomLyricCheckbox = new JCheckBox("Random lyrics");;
+	BeatPadPanel beatPadPanel = new BeatPadPanel(this);
+	private MidiChannel[] midiChannels;
 
 	public TrackSpecPanel() {
-		//
-		name_text_field = new JTextField(20);
-		name_text_field.addActionListener(this);
-		//
-		// 音色（プログラム）設定
-		pg_family_selecter = new MidiProgramFamilySelecter(
-			pg_selecter = new MidiProgramSelecter()
-		);
-		pg_selecter.setFamilySelecter(
-			pg_family_selecter
-		);
-		// 音域指定
-		//
-		keyboard_panel = new PianoKeyboardPanel();
-		keyboard_panel.keyboard.octaveSizeModel.setValue(6);
-		keyboard_panel.keyboard.setPreferredSize(new Dimension(400,40));
-		keyboard_panel.keyboard.setMaxSelectable(2);
-		keyboard_panel.keyboard.addPianoKeyboardListener(this);
-		//
-		// ビート設定
-		beat_pad_panel = new BeatPadPanel(this);
-		//
-		JPanel track_selecter_panel = new JPanel();
-		track_selecter_panel.add( new JLabel("Track select:") );
-		track_selecter_panel.add(
-			trackSelecter = new JComboBox<Music.AbstractNoteTrackSpec>()
-		);
-		add( track_selecter_panel );
-
-		add( track_type_label = new JLabel() );
-
-		JPanel track_name_panel = new JPanel();
-		track_name_panel.add( new JLabel(
-				"Track name (Press [Enter] key to change):"
-				) );
-		track_name_panel.add( name_text_field );
-		add( track_name_panel );
-
-		add( ch_selecter = new MidiChannelComboSelecter(
-				"MIDI Channel:"
-				) );
-		add(new VelocitySelecter(
-				keyboard_panel.keyboard.velocityModel
-				));
-
-		JPanel pg_panel = new JPanel();
-		pg_panel.add( pg_family_selecter );
-		pg_panel.add( pg_selecter );
-		add(pg_panel);
-
-		range_panel = new JPanel();
-		range_panel.add( new JLabel("Range:") );
-		range_panel.add( keyboard_panel );
-		add(range_panel);
-
-		bass_checkbox = new JCheckBox("Bass note");
-		bass_checkbox.addChangeListener(this);
-		add(bass_checkbox);
-
-		random_melody_checkbox = new JCheckBox("Random melody");
-		random_melody_checkbox.addChangeListener(this);
-		add(random_melody_checkbox);
-
-		random_lyric_checkbox = new JCheckBox("Random lyrics");
-		random_lyric_checkbox.addChangeListener(this);
-		add(random_lyric_checkbox);
-
-		add(beat_pad_panel);
-
+		nameTextField.addActionListener(this);
+		keyboardPanel.keyboard.addPianoKeyboardListener(this);
+		add(new JPanel() {{
+			add(new JLabel("Track select:"));
+			add(trackSelecter);
+		}});
+		add(trackTypeLabel);
+		add(new JPanel() {{
+			add(new JLabel("Track name (Press [Enter] key to change):"));
+			add(nameTextField);
+		}});
+		add(chSelecter);
+		add(new VelocitySelecter(keyboardPanel.keyboard.velocityModel));
+		add(new JPanel() {{
+			add(pgFamilySelecter);
+			add(pgSelecter);
+		}});
+		add(rangePanel);
+		bassCheckbox.addChangeListener(this);
+		add(bassCheckbox);
+		randomMelodyCheckbox.addChangeListener(this);
+		add(randomMelodyCheckbox);
+		randomLyricCheckbox.addChangeListener(this);
+		add(randomLyricCheckbox);
+		add(beatPadPanel);
 		trackSelecter.addActionListener(this);
-		ch_selecter.comboBox.addActionListener(this);
-		keyboard_panel.keyboard.velocityModel.addChangeListener(
-				new ChangeListener() {
-					public void stateChanged(ChangeEvent e) {
-						Music.AbstractNoteTrackSpec ants = getTrackSpec();
-						ants.velocity = keyboard_panel.keyboard.velocityModel.getValue();
-					}
+		chSelecter.comboBox.addActionListener(this);
+		keyboardPanel.keyboard.velocityModel.addChangeListener(
+			new ChangeListener() {
+				public void stateChanged(ChangeEvent e) {
+					Music.AbstractNoteTrackSpec ants = getTrackSpec();
+					ants.velocity = keyboardPanel.keyboard.velocityModel.getValue();
 				}
-				);
-		pg_selecter.addActionListener(this);
+			}
+		);
+		pgSelecter.addActionListener(this);
 	}
-
-	// ChangeListener
-	//
+	@Override
 	public void stateChanged(ChangeEvent e) {
 		Object src = e.getSource();
-		if( src == bass_checkbox ) {
+		if( src == bassCheckbox ) {
 			Music.AbstractNoteTrackSpec ants = getTrackSpec();
 			if( ants instanceof Music.MelodyTrackSpec ) {
 				Music.MelodyTrackSpec mts = (Music.MelodyTrackSpec)ants;
-				mts.is_bass = bass_checkbox.isSelected();
+				mts.is_bass = bassCheckbox.isSelected();
 			}
 		}
-		else if( src == random_melody_checkbox ) {
+		else if( src == randomMelodyCheckbox ) {
 			Music.AbstractNoteTrackSpec ants = getTrackSpec();
 			if( ants instanceof Music.MelodyTrackSpec ) {
 				Music.MelodyTrackSpec mts = (Music.MelodyTrackSpec)ants;
-				mts.random_melody = random_melody_checkbox.isSelected();
+				mts.random_melody = randomMelodyCheckbox.isSelected();
 			}
 		}
-		else if( src == random_lyric_checkbox ) {
+		else if( src == randomLyricCheckbox ) {
 			Music.AbstractNoteTrackSpec ants = getTrackSpec();
 			if( ants instanceof Music.MelodyTrackSpec ) {
 				Music.MelodyTrackSpec mts = (Music.MelodyTrackSpec)ants;
-				mts.random_lyric = random_lyric_checkbox.isSelected();
+				mts.random_lyric = randomLyricCheckbox.isSelected();
 			}
 		}
 	}
-	// ActionListener
-	//
+	@Override
 	public void actionPerformed(ActionEvent e) {
 		Object src = e.getSource();
 		Music.AbstractNoteTrackSpec ants;
-		if( src == name_text_field ) {
-			getTrackSpec().name = name_text_field.getText();
+		if( src == nameTextField ) {
+			getTrackSpec().name = nameTextField.getText();
 		}
 		else if( src == trackSelecter ) {
-			ants = (Music.AbstractNoteTrackSpec)(
-					trackSelecter.getSelectedItem()
-					);
-			String track_type_string = "Track type: " + (
-					ants instanceof Music.DrumTrackSpec ? "Percussion" :
-						ants instanceof Music.MelodyTrackSpec ? "Melody" :
-							"(Unknown)"
-					);
-			track_type_label.setText(track_type_string);
-			name_text_field.setText( ants.name );
-			ch_selecter.setSelectedChannel( ants.midi_channel );
-			keyboard_panel.keyboard.velocityModel.setValue( ants.velocity );
-			pg_selecter.setProgram( ants.program_no );
-			keyboard_panel.keyboard.clear();
+			ants = (Music.AbstractNoteTrackSpec)(trackSelecter.getSelectedItem());
+			String trackTypeString = "Track type: " + (
+				ants instanceof Music.DrumTrackSpec ? "Percussion" :
+				ants instanceof Music.MelodyTrackSpec ? "Melody" : "(Unknown)"
+			);
+			trackTypeLabel.setText(trackTypeString);
+			nameTextField.setText(ants.name);
+			chSelecter.setSelectedChannel(ants.midiChannel);
+			keyboardPanel.keyboard.velocityModel.setValue(ants.velocity);
+			pgSelecter.setProgram(ants.programNumber);
+			keyboardPanel.keyboard.clear();
 			if( ants instanceof Music.DrumTrackSpec ) {
-				range_panel.setVisible(false);
-				random_melody_checkbox.setVisible(false);
-				random_lyric_checkbox.setVisible(false);
-				bass_checkbox.setVisible(false);
+				rangePanel.setVisible(false);
+				randomMelodyCheckbox.setVisible(false);
+				randomLyricCheckbox.setVisible(false);
+				bassCheckbox.setVisible(false);
 			}
 			else if( ants instanceof Music.MelodyTrackSpec ) {
 				Music.MelodyTrackSpec ts = (Music.MelodyTrackSpec)ants;
-				range_panel.setVisible(true);
-				keyboard_panel.keyboard.setSelectedNote(ts.range.min_note);
-				keyboard_panel.keyboard.setSelectedNote(ts.range.max_note);
-				keyboard_panel.keyboard.autoScroll(ts.range.min_note);
-				random_melody_checkbox.setSelected(ts.random_melody);
-				random_lyric_checkbox.setSelected(ts.random_lyric);
-				bass_checkbox.setSelected(ts.is_bass);
-				random_melody_checkbox.setVisible(true);
-				random_lyric_checkbox.setVisible(true);
-				bass_checkbox.setVisible(true);
+				rangePanel.setVisible(true);
+				keyboardPanel.keyboard.setSelectedNote(ts.range.min_note);
+				keyboardPanel.keyboard.setSelectedNote(ts.range.max_note);
+				keyboardPanel.keyboard.autoScroll(ts.range.min_note);
+				randomMelodyCheckbox.setSelected(ts.random_melody);
+				randomLyricCheckbox.setSelected(ts.random_lyric);
+				bassCheckbox.setSelected(ts.is_bass);
+				randomMelodyCheckbox.setVisible(true);
+				randomLyricCheckbox.setVisible(true);
+				bassCheckbox.setVisible(true);
 			}
-			beat_pad_panel.setTrackSpec(ants);
+			beatPadPanel.setTrackSpec(ants);
 		}
-		else if( src == ch_selecter.comboBox ) {
-			getTrackSpec().midi_channel = ch_selecter.getSelectedChannel();
+		else if( src == chSelecter.comboBox ) {
+			getTrackSpec().midiChannel = chSelecter.getSelectedChannel();
 		}
-		else if( src == pg_selecter ) {
-			getTrackSpec().program_no = pg_selecter.getProgram();
+		else if( src == pgSelecter ) {
+			getTrackSpec().programNumber = pgSelecter.getProgram();
 		}
 	}
-	// PianoKeyboardListener
-	//
+	@Override
 	public void pianoKeyPressed(int n, InputEvent e) {
 		noteOn(n);
 		Music.AbstractNoteTrackSpec ants = getTrackSpec();
 		if( ants instanceof Music.MelodyTrackSpec ) {
 			Music.MelodyTrackSpec ts = (Music.MelodyTrackSpec)ants;
-			ts.range = new Music.Range(
-					keyboard_panel.keyboard.getSelectedNotes()
-					);
+			ts.range = new Music.Range(keyboardPanel.keyboard.getSelectedNotes());
 		}
 	}
+	@Override
 	public void pianoKeyReleased(int n, InputEvent e) {
 		noteOff(n);
 	}
 	public void octaveMoved(ChangeEvent event) {}
 	public void octaveResized(ChangeEvent event) {}
-	//
 	public void noteOn(int n) {
-		if( midi_channels != null ) {
-			midi_channels[ch_selecter.getSelectedChannel()].
-			noteOn( n, keyboard_panel.keyboard.velocityModel.getValue() );
+		if( midiChannels != null ) {
+			midiChannels[chSelecter.getSelectedChannel()].
+			noteOn( n, keyboardPanel.keyboard.velocityModel.getValue() );
 		}
 	}
 	public void noteOff(int n) {
-		if( midi_channels != null ) {
-			midi_channels[ch_selecter.getSelectedChannel()].
-			noteOff( n, keyboard_panel.keyboard.velocityModel.getValue() );
+		if( midiChannels != null ) {
+			midiChannels[chSelecter.getSelectedChannel()].
+			noteOff( n, keyboardPanel.keyboard.velocityModel.getValue() );
 		}
 	}
-	public void setChannels( MidiChannel midi_channels[] ) {
-		this.midi_channels = midi_channels;
+	public void setChannels( MidiChannel midiChannels[] ) {
+		this.midiChannels = midiChannels;
 	}
 	public Music.AbstractNoteTrackSpec getTrackSpec() {
-		Object track_spec_obj = trackSelecter.getSelectedItem();
-		Music.AbstractNoteTrackSpec ants = (Music.AbstractNoteTrackSpec)track_spec_obj;
-		ants.name = name_text_field.getText();
+		Object trackSpecObj = trackSelecter.getSelectedItem();
+		Music.AbstractNoteTrackSpec ants = (Music.AbstractNoteTrackSpec)trackSpecObj;
+		ants.name = nameTextField.getText();
 		return ants;
 	}
 	public Vector<Music.AbstractNoteTrackSpec> getTrackSpecs() {
-		Vector<Music.AbstractNoteTrackSpec> track_specs = new Vector<>();
+		Vector<Music.AbstractNoteTrackSpec> trackSpecs = new Vector<>();
 		int i=0, n_items = trackSelecter.getItemCount();
 		while( i < n_items ) {
-			track_specs.add(
-					(Music.AbstractNoteTrackSpec)trackSelecter.getItemAt(i++)
-					);
+			trackSpecs.add((Music.AbstractNoteTrackSpec)trackSelecter.getItemAt(i++));
 		}
-		return track_specs;
+		return trackSpecs;
 	}
-	public void addTrackSpec( Music.AbstractNoteTrackSpec track_spec ) {
-		trackSelecter.addItem(track_spec);
-	}
-}
-
-class PPQSelectionComboBox extends JComboBox<Integer> {
-	private static final int[] PPQList = {
-		48,60,80,96,120,160,192,240,320,384,480,960
-	};
-	public PPQSelectionComboBox() {
-		for( int ppq : PPQList ) addItem(ppq);
-	}
-	public int getPPQ() {
-		return (Integer) getSelectedItem();
-		// Integer.decode( (String) ).intValue();
+	public void addTrackSpec(Music.AbstractNoteTrackSpec trackSpec) {
+		trackSelecter.addItem(trackSpec);
 	}
 }
 
@@ -569,9 +522,7 @@ class BeatPadPanel extends JPanel implements ActionListener {
 	}
 }
 
-class BeatPad extends JComponent
-implements MouseListener, ComponentListener
-{
+class BeatPad extends JComponent implements MouseListener, ComponentListener {
 	PianoKeyboardListener piano_keyboard_listener;
 	private int on_note_no = -1;
 	Music.AbstractNoteTrackSpec track_spec;
@@ -622,16 +573,12 @@ implements MouseListener, ComponentListener
 		}
 
 	}
-	// ComponentListener
-	//
 	public void componentShown(ComponentEvent e) { }
 	public void componentHidden(ComponentEvent e) { }
 	public void componentMoved(ComponentEvent e) { }
 	public void componentResized(ComponentEvent e) {
 		sizeChanged();
 	}
-	// MouseListener
-	//
 	public void mousePressed(MouseEvent e) {
 		catchEvent(e);
 		if( on_note_no >= 0 ) {
@@ -645,36 +592,20 @@ implements MouseListener, ComponentListener
 		on_note_no = -1;
 	}
 	public void mouseEntered(MouseEvent e) {
-		if( (e.getModifiers() & InputEvent.BUTTON1_MASK)
-				== InputEvent.BUTTON1_MASK
-				) {
+		if((e.getModifiers() & InputEvent.BUTTON1_MASK) == InputEvent.BUTTON1_MASK) {
 			catchEvent(e);
 		}
 	}
 	public void mouseExited(MouseEvent e) { }
 	public void mouseClicked(MouseEvent e) { }
-	//
-	// MouseMotionListener
-	//
-	/*
-  public void mouseDragged(MouseEvent e) {
-    catchEvent(e);
-  }
-  public void mouseMoved(MouseEvent e) { }
-	 */
-	//
-	// Methods
-	//
 	private void sizeChanged() {
 		int beat, note, width, height;
 		Dimension d = getSize();
-
 		int num_notes = 1;
 		if( track_spec instanceof Music.DrumTrackSpec ) {
 			Music.DrumTrackSpec dts = (Music.DrumTrackSpec)track_spec;
 			num_notes = dts.models.length;
 		}
-
 		beat_buttons = new Rectangle[num_notes][];
 		continuous_beat_buttons = new Rectangle[num_notes][];
 		for( note=0; note<beat_buttons.length; note++ ) {
@@ -684,18 +615,18 @@ implements MouseListener, ComponentListener
 				width = (d.width * 3) / (MAX_BEATS * 4);
 				height = d.height / num_notes - 1;
 				beat_buttons[note][beat] = new Rectangle(
-						beat * d.width / MAX_BEATS,
-						note * height,
-						width,
-						height
-						);
+					beat * d.width / MAX_BEATS,
+					note * height,
+					width,
+					height
+				);
 				width = d.width / (MAX_BEATS * 3);
 				continuous_beat_buttons[note][beat] = new Rectangle(
-						(beat+1) * d.width / MAX_BEATS - width + 1,
-						note * height + height / 3,
-						width-1,
-						height / 3
-						);
+					(beat+1) * d.width / MAX_BEATS - width + 1,
+					note * height + height / 3,
+					width-1,
+					height / 3
+				);
 			}
 		}
 	}
