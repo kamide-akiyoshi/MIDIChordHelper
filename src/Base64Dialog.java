@@ -83,7 +83,7 @@ public class Base64Dialog extends JDialog {
 				@Override
 				public void actionPerformed(ActionEvent e) {
 					MidiEditor midiEditor = Base64Dialog.this.midiEditor;
-					int lastIndex = midiEditor.addSequenceFromMidiData(getMIDIData(), null);
+					int lastIndex = midiEditor.addSequence(getMIDIData(), null);
 					if( lastIndex < 0 ) {
 						base64TextArea.requestFocusInWindow();
 						lastIndex = midiEditor.sequenceListTableModel.getRowCount() - 1;

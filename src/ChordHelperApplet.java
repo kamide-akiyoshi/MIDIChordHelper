@@ -80,7 +80,9 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public int addRandomSongToPlaylist(int measureLength) {
 		editorDialog.newSequenceDialog.setRandomChordProgression(measureLength);
-		return editorDialog.addSequence(editorDialog.newSequenceDialog.getMidiSequence());
+		return editorDialog.addSequenceAndPlay(
+			editorDialog.newSequenceDialog.getMidiSequence()
+		);
 	}
 	/**
 	 * URLで指定されたMIDIファイルをプレイリストへ追加します。
@@ -112,19 +114,26 @@ public class ChordHelperApplet extends JApplet {
 	 * @return 追加先のインデックス値（０から始まる）。追加できなかったときは -1
 	 */
 	public int addToPlaylistBase64(String base64EncodedText, String filename) {
-		return editorDialog.addSequenceFromBase64Text(base64EncodedText, filename);
+		Base64Dialog d = editorDialog.base64Dialog;
+		d.setBase64Data(base64EncodedText);
+		return editorDialog.addSequence(d.getMIDIData(), filename);
 	}
 	/**
 	 * プレイリスト上で現在選択されているMIDIシーケンスを、
 	 * シーケンサへロードして再生します。
 	 */
-	public void play() { editorDialog.loadAndPlay(); }
+	public void play() {
+		play(editorDialog.seqSelectionModel.getMinSelectionIndex());
+	}
 	/**
 	 * 指定されたインデックス値が示すプレイリスト上のMIDIシーケンスを、
 	 * シーケンサへロードして再生します。
 	 * @param index インデックス値（０から始まる）
 	 */
-	public void play(int index) { editorDialog.loadAndPlay(index); }
+	public void play(int index) {
+		editorDialog.load(index);
+		deviceModelList.sequencerModel.start();
+	}
 	/**
 	 * シーケンサが実行中かどうかを返します。
 	 * {@link Sequencer#isRunning()} の戻り値をそのまま返します。
@@ -239,7 +248,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public static class VersionInfo {
 		public static final String	NAME = "MIDI Chord Helper";
-		public static final String	VERSION = "Ver.20131117.2";
+		public static final String	VERSION = "Ver.20131118.1";
 		public static final String	COPYRIGHT = "Copyright (C) 2004-2013";
 		public static final String	AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String	URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";

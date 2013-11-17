@@ -1,5 +1,4 @@
 
-import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
@@ -40,28 +39,19 @@ import javax.swing.event.ChangeListener;
  * 新しいMIDIシーケンスを生成するダイアログ
  */
 class NewSequenceDialog extends JDialog {
-	public static final Insets	ZERO_INSETS = new Insets(0,0,0,0);
-	private JTextArea chordText = new JTextArea(
-		"Key: C\nC G/B | Am Em/G | F C/E | Dm7 G7 C % | F G7 | Csus4 C\n",
-		18, 30
-	);
-	private JTextField seqNameText = new JTextField();
-	private static class PPQSelectionComboBox extends JComboBox<Integer> {
-		private static final int[] PPQList = {
-			48,60,80,96,120,160,192,240,320,384,480,960
-		};
-		public PPQSelectionComboBox() {
-			for(int ppq : PPQList) addItem(ppq);
-		}
-		public int getPPQ() {
-			return (Integer) getSelectedItem();
-		}
-	}
-	private PPQSelectionComboBox ppqComboBox = new PPQSelectionComboBox();
-	private TimeSignatureSelecter timesigSelecter = new TimeSignatureSelecter();
-	private TempoSelecter tempoSelecter = new TempoSelecter();
-	private MeasureSelecter measureSelecter = new MeasureSelecter();
-	private TrackSpecPanel trackSpecPanel = new TrackSpecPanel();
+	public static final Insets ZERO_INSETS = new Insets(0,0,0,0);
+	private static final Integer[] PPQList = {
+		48,60,80,96,120,160,192,240,320,384,480,960
+	};
+	private static final String INITIAL_CHORD_STRING =
+		"Key: C\nC G/B | Am Em/G | F C/E | Dm7 G7 C % | F G7 | Csus4 C\n";
+	private JTextArea chordText;
+	private JTextField seqNameText;
+	private JComboBox<Integer> ppqComboBox;
+	private TimeSignatureSelecter timesigSelecter;
+	private TempoSelecter tempoSelecter;
+	private MeasureSelecter measureSelecter;
+	private TrackSpecPanel trackSpecPanel;
 	private MidiEditor midiEditor;
 	public NewSequenceDialog(MidiEditor midiEditor) {
 		this.midiEditor = midiEditor;
@@ -72,29 +62,31 @@ class NewSequenceDialog extends JDialog {
 				add(new JPanel() {{
 					setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
 					add(new JLabel("Sequence name:"));
-					add(seqNameText);
+					add(seqNameText = new JTextField());
 				}});
 				add(new JPanel() {{
 					setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
 					add(new JLabel("Resolution in PPQ ="));
-					add(ppqComboBox);
-					add(measureSelecter);
+					add(ppqComboBox = new JComboBox<Integer>(PPQList));
+					add(measureSelecter = new MeasureSelecter());
 				}});
 				add(new JButton("Randomize (Tempo, Time signature, Chord progression)") {{
 					setMargin(ZERO_INSETS);
 					addActionListener(new ActionListener() {
 						@Override
 						public void actionPerformed(ActionEvent e) {
-							setRandomChordProgression(measureSelecter.getMeasureDuration());
+							setRandomChordProgression(
+								measureSelecter.getMeasureDuration()
+							);
 						}
 					});
 				}});
 				add(new JPanel() {{
 					setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
-					add(tempoSelecter);
+					add(tempoSelecter = new TempoSelecter());
 					add(new JPanel() {{
 						add(new JLabel("Time signature ="));
-						add(timesigSelecter);
+						add(timesigSelecter = new TimeSignatureSelecter());
 					}});
 				}});
 				add(new JPanel() {{
@@ -146,7 +138,9 @@ class NewSequenceDialog extends JDialog {
 						});
 					}});
 				}});
-				add(new JScrollPane((Component)chordText));
+				add(new JScrollPane(
+					chordText = new JTextArea(INITIAL_CHORD_STRING, 18, 30)
+				));
 				add(new JPanel() {{
 					setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
 					add(new JButton(
@@ -157,14 +151,14 @@ class NewSequenceDialog extends JDialog {
 						addActionListener(new ActionListener() {
 							@Override
 							public void actionPerformed(ActionEvent e) {
-								NewSequenceDialog.this.midiEditor.addSequence(getMidiSequence());
+								NewSequenceDialog.this.midiEditor.addSequenceAndPlay(getMidiSequence());
 								NewSequenceDialog.this.setVisible(false);
 							}
 						});
 					}});
 				}});
 			}});
-			add("Track", trackSpecPanel);
+			add("Track", trackSpecPanel = new TrackSpecPanel());
 		}});
 		setBounds( 250, 200, 600, 540 );
 		//
@@ -212,7 +206,7 @@ class NewSequenceDialog extends JDialog {
 			timesigSelecter.getByteArray()
 		);
 		return getChordProgression().toMidiSequence(
-			ppqComboBox.getPPQ(),
+			(int)ppqComboBox.getSelectedItem(),
 			measureSelecter.getStartMeasurePosition(),
 			measureSelecter.getEndMeasurePosition(),
 			firstTrackSpec,

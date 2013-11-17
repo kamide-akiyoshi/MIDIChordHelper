@@ -1648,10 +1648,17 @@ public class Music {
 			return str;
 		}
 
-		// 指定された小節数、キー、拍子に合わせたコード進行をランダムに自動生成
-		//
+		/**
+		 * デフォルトの設定でコード進行を構築します。
+		 */
 		public ChordProgression() { }
-		public ChordProgression( int measure_length, int timesig_upper ) {
+		/**
+		 * 指定された小節数、キー、拍子に合わせたコード進行を構築します。
+		 * コード進行の内容は、ランダムに自動生成されます。
+		 * @param measureLength 小節の長さ
+		 * @param timeSignatureUpper 拍子の分子
+		 */
+		public ChordProgression( int measureLength, int timeSignatureUpper ) {
 			int key_co5 = (int)(Math.random() * 12) - 5;
 			key = new Key( key_co5, Key.MAJOR );
 			lines = new Vector<Line>();
@@ -1660,11 +1667,11 @@ public class Music {
 			Chord chord, prev_chord = new Chord(new NoteSymbol(key_co5));
 			int co5_offset, prev_co5_offset;
 			double r;
-			for( int mp=0; mp<measure_length; mp++ ) {
-				is_end = (mp == 0 || mp == measure_length - 1); // 最初または最後の小節かを覚えておく
+			for( int mp=0; mp<measureLength; mp++ ) {
+				is_end = (mp == 0 || mp == measureLength - 1); // 最初または最後の小節かを覚えておく
 				Measure measure = new Measure();
 				ChordStroke last_chord_stroke = null;
-				for( int i=0; i<timesig_upper; i++ ) {
+				for( int i=0; i<timeSignatureUpper; i++ ) {
 					if(
 						i % 4 == 2 && Math.random() < 0.8
 						||

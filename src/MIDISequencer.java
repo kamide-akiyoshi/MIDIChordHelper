@@ -103,7 +103,7 @@ class MeasureIndicator extends JPanel implements ChangeListener {
 		public MeasurePositionLabel() {
 			setFont( getFont().deriveFont(getFont().getSize2D() + 4) );
 			setForeground( new Color(0x80,0x00,0x00) );
-			setText( "0001:01" );
+			setText("0001:01");
 			setToolTipText("Measure:beat position - 何小節目：何拍目");
 		}
 		public boolean setMeasure(int measure, int beat) {
@@ -115,7 +115,7 @@ class MeasureIndicator extends JPanel implements ChangeListener {
 	}
 	private static class MeasureLengthLabel extends MeasureLabel {
 		public MeasureLengthLabel() {
-			setText( "/0000" );
+			setText("/0000");
 			setToolTipText("Measure length - 小節の数");
 		}
 		public boolean setMeasure(int measure) {
@@ -171,9 +171,46 @@ class MeasureIndicator extends JPanel implements ChangeListener {
 /**
  * MIDIシーケンサモデル
  */
-class MidiSequencerModel extends MidiConnecterListModel
-	implements MetaEventListener, BoundedRangeModel, ActionListener
-{
+class MidiSequencerModel extends MidiConnecterListModel implements BoundedRangeModel {
+	/**
+	 * MIDIシーケンサモデルを構築します。
+	 * @param deviceModelList 親のMIDIデバイスモデルリスト
+	 * @param sequencer シーケンサーMIDIデバイス
+	 * @param modelList MIDIコネクタリストモデルのリスト
+	 */
+	public MidiSequencerModel(
+		MidiDeviceModelList deviceModelList,
+		Sequencer sequencer,
+		List<MidiConnecterListModel> modelList
+	) {
+		super(sequencer, modelList);
+		this.deviceModelList = deviceModelList;
+		sequencer.addMetaEventListener(new MetaEventListener() {
+			/**
+			 * {@inheritDoc}
+			 *
+			 * この実装では EOT (End Of Track、type==0x2F) を受信したときに、
+			 * 曲の先頭に戻し、次の曲があればその曲を再生し、
+			 * なければ秒位置更新タイマーを停止します。
+			 */
+			@Override
+			public void meta(MetaMessage msg) {
+				if( msg.getType() == 0x2F ) {
+					getSequencer().setMicrosecondPosition(0);
+					// リピートモードの場合、同じ曲をもう一度再生する。
+					// そうでない場合、次の曲へ進んで再生する。
+					// 次の曲がなければ、そこで終了。
+					boolean isRepeatMode = (Boolean)toggleRepeatAction.getValue(Action.SELECTED_KEY);
+					if( isRepeatMode || MidiSequencerModel.this.deviceModelList.editorDialog.loadNext(1) ) {
+						start();
+					}
+					else {
+						stop();
+					}
+				}
+			}
+		});
+	}
 	/**
 	 * MIDIデバイスモデルリスト
 	 */
@@ -194,21 +231,6 @@ class MidiSequencerModel extends MidiConnecterListModel
 			}
 		);
 	}};
-	/**
-	 * MIDIシーケンサモデルを構築します。
-	 * @param deviceModelList 親のMIDIデバイスモデルリスト
-	 * @param sequencer シーケンサーMIDIデバイス
-	 * @param modelList MIDIコネクタリストモデルのリスト
-	 */
-	public MidiSequencerModel(
-		MidiDeviceModelList deviceModelList,
-		Sequencer sequencer,
-		List<MidiConnecterListModel> modelList
-	) {
-		super(sequencer, modelList);
-		this.deviceModelList = deviceModelList;
-		sequencer.addMetaEventListener(this);
-	}
 	/**
 	 * MIDIシーケンサを返します。
 	 * @return MIDIシーケンサ
@@ -251,16 +273,21 @@ class MidiSequencerModel extends MidiConnecterListModel
 	/**
 	 * シーケンサに合わせてミリ秒位置を更新するタイマー
 	 */
-	private javax.swing.Timer timeRangeUpdater = new javax.swing.Timer(20,this);
-	@Override
-	public void actionPerformed(ActionEvent e) {
-		if( valueIsAdjusting ) {
-			// 手動で移動中の場合、タイマーによる更新は不要
-			return;
+	private javax.swing.Timer timeRangeUpdater = new javax.swing.Timer(
+		20,
+		new ActionListener(){
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if( valueIsAdjusting || ! getSequencer().isRunning() ) {
+					// 手動で移動中の場合や、シーケンサが止まっている場合は、
+					// タイマーによる更新は不要
+					return;
+				}
+				// リスナーに読み込みを促す
+				fireStateChanged();
+			}
 		}
-		// リスナーに読み込みを促す
-		fireStateChanged();
-	}
+	);
 	/**
 	 * このモデルのMIDIシーケンサを開始します。
 	 */
@@ -385,29 +412,6 @@ class MidiSequencerModel extends MidiConnecterListModel
 			// 特にやることなし
 		}
 	};
-	/**
-	 * {@inheritDoc}
-	 *
-	 * この実装では EOT (End Of Track、type==0x2F) を受信したときに、
-	 * 曲の先頭に戻し、次の曲があればその曲を再生し、
-	 * なければ秒位置更新タイマーを停止します。
-	 */
-	@Override
-	public void meta(MetaMessage msg) {
-		if( msg.getType() == 0x2F ) {
-			getSequencer().setMicrosecondPosition(0);
-			// リピートモードの場合、同じ曲をもう一度再生する。
-			// そうでない場合、次の曲へ進んで再生する。
-			// 次の曲がなければ、そこで終了。
-			boolean isRepeatMode = (Boolean)toggleRepeatAction.getValue(Action.SELECTED_KEY);
-			if( isRepeatMode || deviceModelList.editorDialog.loadNext(1) ) {
-				start();
-			}
-			else {
-				stop();
-			}
-		}
-	}
 	/**
 	 * MIDIトラックリストテーブルモデル
 	 */

@@ -1,3 +1,6 @@
+import java.util.HashMap;
+import java.util.Map;
+
 import javax.sound.midi.InvalidMidiDataException;
 import javax.sound.midi.MetaMessage;
 import javax.sound.midi.MidiEvent;
@@ -12,40 +15,71 @@ public class MIDISpec {
 	public static final int MAX_CHANNELS = 16;
 	public static final int PITCH_BEND_NONE = 8192;
 	/**
+	 * メタメッセージタイプ名マップ
+	 */
+	private static final Map<Integer,String>
+		META_MESSAGE_TYPE_NAMES = new HashMap<Integer,String>() {
+			{
+				put(0x00, "Seq Number");
+				put(0x01, "Text");
+				put(0x02, "Copyright");
+				put(0x03, "Seq/Track Name");
+				put(0x04, "Instrument Name");
+				put(0x05, "Lyric");
+				put(0x06, "Marker");
+				put(0x07, "Cue Point");
+				put(0x08, "Program Name");
+				put(0x09, "Device Name");
+				put(0x20, "MIDI Ch.Prefix");
+				put(0x21, "MIDI Output Port");
+				put(0x2F, "End Of Track");
+				put(0x51, "Tempo");
+				put(0x54, "SMPTE Offset");
+				put(0x58, "Time Signature");
+				put(0x59, "Key Signature");
+				put(0x7F, "Sequencer Specific");
+			}
+		};
+	/**
 	 * メタメッセージタイプの名前を返します。
 	 * @param metaMessageType メタメッセージタイプ
 	 * @return メタメッセージタイプの名前
 	 */
-	public static String getMetaName( int metaMessageType ) {
-		if( metaMessageType < 0x10 ) {
-			return META_MESSAGE_TYPE_NAMES[metaMessageType];
-		}
-		switch( metaMessageType ) {
-		case 0x20: return "MIDI Ch.Prefix";
-		case 0x21: return "MIDI Output Port";
-		case 0x2F: return "End Of Track";
-		case 0x51: return "Tempo";
-		case 0x54: return "SMPTE Offset";
-		case 0x58: return "Time Signature";
-		case 0x59: return "Key Signature";
-		case 0x7F: return "Sequencer Specific";
-		}
-		return null;
+	public static String getMetaName(int metaMessageType) {
+		return META_MESSAGE_TYPE_NAMES.get(metaMessageType);
 	}
 	/**
 	 * メタメッセージタイプがテキストのつくものか調べます。
 	 * @param metaMessageType メタメッセージタイプ
 	 * @return テキストがつくときtrue
 	 */
-	public static boolean hasMetaText( int metaMessageType ) {
+	public static boolean hasMetaText(int metaMessageType) {
 		return (metaMessageType > 0 && metaMessageType < 10);
+	}
+	/**
+	 * メタメッセージタイプが拍子記号か調べます。
+	 * @param metaMessageType メタメッセージタイプ
+	 * @return 拍子記号ならtrue
+	 */
+	public static boolean isTimeSignature(int metaMessageType) {
+		return metaMessageType == 0x58;
+	}
+	/**
+	 * MIDIメッセージが拍子記号か調べます。
+	 * @param msg MIDIメッセージ
+	 * @return 拍子記号ならtrue
+	 */
+	public static boolean isTimeSignature(MidiMessage midiMessage) {
+		if ( !(midiMessage instanceof MetaMessage) )
+			return false;
+		return isTimeSignature( ((MetaMessage)midiMessage).getType() );
 	}
 	/**
 	 * メタメッセージタイプが EOT (End Of Track) か調べます。
 	 * @param metaMessageType メタメッセージタイプ
 	 * @return EOTならtrue
 	 */
-	public static boolean isEOT( int metaMessageType ) {
+	public static boolean isEOT(int metaMessageType) {
 		return metaMessageType == 0x2F;
 	}
 	/**
@@ -53,7 +87,7 @@ public class MIDISpec {
 	 * @param midiMessage MIDIメッセージ
 	 * @return EOTならtrue
 	 */
-	public static boolean isEOT( MidiMessage midiMessage ) {
+	public static boolean isEOT(MidiMessage midiMessage) {
 		if ( !(midiMessage instanceof MetaMessage) )
 			return false;
 		return isEOT( ((MetaMessage)midiMessage).getType() );
@@ -184,12 +218,6 @@ public class MIDISpec {
 			if( setNameOf(track,name) ) return true;
 		return false;
 	}
-	private static final String META_MESSAGE_TYPE_NAMES[] = {
-		"Seq Number", "Text", "Copyright", "Seq/Track Name",
-		"Instrument Name", "Lyric", "Marker","Cue Point",
-		"Program Name", "Device Name", null, null,
-		null, null, null, null
-	};
 	///////////////////////////////////////////////////////////////////
 	//
 	// Channel Message / System Message
