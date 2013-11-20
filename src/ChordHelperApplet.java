@@ -248,7 +248,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public static class VersionInfo {
 		public static final String	NAME = "MIDI Chord Helper";
-		public static final String	VERSION = "Ver.20131118.1";
+		public static final String	VERSION = "Ver.20131121.1";
 		public static final String	COPYRIGHT = "Copyright (C) 2004-2013";
 		public static final String	AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String	URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";
@@ -626,7 +626,7 @@ public class ChordHelperApplet extends JApplet {
 					add( new JSlider(deviceModelList.sequencerModel) );
 					add( new TimeIndicator(deviceModelList.sequencerModel) );
 					add( Box.createHorizontalStrut(5) );
-					add( new JButton(editorDialog.moveToTopAction) {{
+					add( new JButton(editorDialog.sequenceListTableModel.moveToTopAction) {{
 						setMargin(ZERO_INSETS);
 					}});
 					add(new JButton(deviceModelList.sequencerModel.moveBackwardAction) {{
@@ -636,7 +636,7 @@ public class ChordHelperApplet extends JApplet {
 					add(new JButton(deviceModelList.sequencerModel.moveForwardAction) {{
 						setMargin(ZERO_INSETS);
 					}});
-					add(new JButton(editorDialog.moveToBottomAction) {{
+					add(new JButton(editorDialog.sequenceListTableModel.moveToBottomAction) {{
 						setMargin(ZERO_INSETS);
 					}});
 					add(new JToggleButton(deviceModelList.sequencerModel.toggleRepeatAction) {{
