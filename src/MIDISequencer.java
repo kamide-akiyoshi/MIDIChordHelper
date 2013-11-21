@@ -141,7 +141,7 @@ class MeasureIndicator extends JPanel implements ChangeListener {
 	@Override
 	public void stateChanged(ChangeEvent e) {
 		Sequencer sequencer = model.getSequencer();
-		MidiSequenceTableModel sequenceTableModel = model.getSequenceTableModel();
+		SequenceTrackListTableModel sequenceTableModel = model.getSequenceTableModel();
 		SequenceTickIndex tickIndex = (
 			sequenceTableModel == null ? null : sequenceTableModel.getSequenceTickIndex()
 		);
@@ -415,12 +415,12 @@ class MidiSequencerModel extends MidiConnecterListModel implements BoundedRangeM
 	/**
 	 * MIDIトラックリストテーブルモデル
 	 */
-	private MidiSequenceTableModel sequenceTableModel = null;
+	private SequenceTrackListTableModel sequenceTableModel = null;
 	/**
 	 * このシーケンサーに現在ロードされているシーケンスのMIDIトラックリストテーブルモデルを返します。
 	 * @return MIDIトラックリストテーブルモデル
 	 */
-	public MidiSequenceTableModel getSequenceTableModel() {
+	public SequenceTrackListTableModel getSequenceTableModel() {
 		return sequenceTableModel;
 	}
 	/**
@@ -429,7 +429,7 @@ class MidiSequencerModel extends MidiConnecterListModel implements BoundedRangeM
 	 * @param sequenceTableModel MIDIトラックリストテーブルモデル
 	 * @return 成功したらtrue
 	 */
-	public boolean setSequenceTableModel(MidiSequenceTableModel sequenceTableModel) {
+	public boolean setSequenceTableModel(SequenceTrackListTableModel sequenceTableModel) {
 		//
 		// javax.sound.midi:Sequencer.setSequence() のドキュメントにある
 		// 「このメソッドは、Sequencer が閉じている場合でも呼び出すことができます。 」

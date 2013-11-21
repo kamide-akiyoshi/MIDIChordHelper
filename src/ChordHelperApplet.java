@@ -154,14 +154,17 @@ public class ChordHelperApplet extends JApplet {
 	 * @return MIDIデータをBase64テキストに変換した結果
 	 */
 	public String getMidiDataBase64() {
-		return editorDialog.getMIDIdataBase64();
+		SequenceTrackListTableModel sequenceModel =
+			editorDialog.sequenceListTableModel.sequencerModel.getSequenceTableModel();
+		editorDialog.base64Dialog.setMIDIData(sequenceModel.getMIDIdata());
+		return editorDialog.base64Dialog.getBase64Data();
 	}
 	/**
 	 * 現在シーケンサにロードされているMIDIファイルのファイル名を返します。
 	 * @return MIDIファイル名（設定されていないときは空文字列）
 	 */
 	public String getMidiFilename() {
-		MidiSequenceTableModel seq_model = deviceModelList.sequencerModel.getSequenceTableModel();
+		SequenceTrackListTableModel seq_model = deviceModelList.sequencerModel.getSequenceTableModel();
 		if( seq_model == null ) return null;
 		String fn = seq_model.getFilename();
 		return fn == null ? "" : fn ;
@@ -248,7 +251,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public static class VersionInfo {
 		public static final String	NAME = "MIDI Chord Helper";
-		public static final String	VERSION = "Ver.20131121.1";
+		public static final String	VERSION = "Ver.20131122.1";
 		public static final String	COPYRIGHT = "Copyright (C) 2004-2013";
 		public static final String	AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String	URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";
@@ -490,7 +493,7 @@ public class ChordHelperApplet extends JApplet {
 		deviceModelList.sequencerModel.addChangeListener(new ChangeListener() {
 			@Override
 			public void stateChanged(ChangeEvent e) {
-				MidiSequenceTableModel sequenceTableModel = deviceModelList.sequencerModel.getSequenceTableModel();
+				SequenceTrackListTableModel sequenceTableModel = deviceModelList.sequencerModel.getSequenceTableModel();
 				int loadedSequenceIndex = editorDialog.sequenceListTableModel.getLoadedIndex();
 				songTitleLabel.setText(
 					"<html>"+(

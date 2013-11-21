@@ -103,7 +103,7 @@ class AppletFrame extends JFrame implements
 		setFilenameToTitle();
 	}
 	private void setFilenameToTitle() {
-		MidiSequenceTableModel seqModel = applet.deviceModelList.sequencerModel.getSequenceTableModel();
+		SequenceTrackListTableModel seqModel = applet.deviceModelList.sequencerModel.getSequenceTableModel();
 		String filename = ( seqModel == null ? null : seqModel.getFilename() );
 		String title = ChordHelperApplet.VersionInfo.NAME;
 		if( filename != null && ! filename.isEmpty() ) {
