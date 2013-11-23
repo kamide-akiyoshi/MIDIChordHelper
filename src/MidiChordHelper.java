@@ -95,7 +95,7 @@ class AppletFrame extends JFrame implements
 	 */
 	@Override
 	public void tableChanged(TableModelEvent e) {
-		if( e.getColumn() == SequenceListTableModel.Column.FILENAME.ordinal() )
+		if( e.getColumn() == SequenceListTableColumnModel.Column.FILENAME.ordinal() )
 			setFilenameToTitle();
 	}
 	@Override

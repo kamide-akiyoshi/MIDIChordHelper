@@ -201,7 +201,7 @@ class MidiSequencerModel extends MidiConnecterListModel implements BoundedRangeM
 					// そうでない場合、次の曲へ進んで再生する。
 					// 次の曲がなければ、そこで終了。
 					boolean isRepeatMode = (Boolean)toggleRepeatAction.getValue(Action.SELECTED_KEY);
-					if( isRepeatMode || MidiSequencerModel.this.deviceModelList.editorDialog.loadNext(1) ) {
+					if( isRepeatMode || MidiSequencerModel.this.deviceModelList.editorDialog.sequenceListTableModel.loadNext(1) ) {
 						start();
 					}
 					else {

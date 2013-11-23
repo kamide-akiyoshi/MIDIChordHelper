@@ -123,7 +123,7 @@ public class ChordHelperApplet extends JApplet {
 	 * シーケンサへロードして再生します。
 	 */
 	public void play() {
-		play(editorDialog.seqSelectionModel.getMinSelectionIndex());
+		play(editorDialog.sequenceListSelectionModel.getMinSelectionIndex());
 	}
 	/**
 	 * 指定されたインデックス値が示すプレイリスト上のMIDIシーケンスを、
@@ -131,7 +131,7 @@ public class ChordHelperApplet extends JApplet {
 	 * @param index インデックス値（０から始まる）
 	 */
 	public void play(int index) {
-		editorDialog.load(index);
+		editorDialog.sequenceListTableModel.loadToSequencer(index);
 		deviceModelList.sequencerModel.start();
 	}
 	/**
@@ -251,7 +251,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public static class VersionInfo {
 		public static final String	NAME = "MIDI Chord Helper";
-		public static final String	VERSION = "Ver.20131122.1";
+		public static final String	VERSION = "Ver.20131124.1";
 		public static final String	COPYRIGHT = "Copyright (C) 2004-2013";
 		public static final String	AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String	URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";
@@ -442,7 +442,7 @@ public class ChordHelperApplet extends JApplet {
 		editorDialog.setIconImage(iconImage);
 		new DropTarget(this, DnDConstants.ACTION_COPY_OR_MOVE, editorDialog, true);
 		deviceModelList.setMidiEditor(editorDialog);
-		keyboardPanel.eventDialog = editorDialog.eventDialog;
+		keyboardPanel.eventDialog = editorDialog.eventCellEditor.eventDialog;
 		midiConnectionDialog = new MidiDeviceDialog(deviceModelList);
 		midiConnectionDialog.setIconImage(iconImage);
 		lyricDisplay = new ChordTextField() {{
