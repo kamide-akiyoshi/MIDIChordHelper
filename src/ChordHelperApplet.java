@@ -251,7 +251,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public static class VersionInfo {
 		public static final String	NAME = "MIDI Chord Helper";
-		public static final String	VERSION = "Ver.20131124.1";
+		public static final String	VERSION = "Ver.20131126.1";
 		public static final String	COPYRIGHT = "Copyright (C) 2004-2013";
 		public static final String	AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String	URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";
@@ -440,8 +440,8 @@ public class ChordHelperApplet extends JApplet {
 		);
 		editorDialog = new MidiEditor(deviceModelList.sequencerModel);
 		editorDialog.setIconImage(iconImage);
-		new DropTarget(this, DnDConstants.ACTION_COPY_OR_MOVE, editorDialog, true);
 		deviceModelList.setMidiEditor(editorDialog);
+		new DropTarget(this, DnDConstants.ACTION_COPY_OR_MOVE, editorDialog, true);
 		keyboardPanel.eventDialog = editorDialog.eventCellEditor.eventDialog;
 		midiConnectionDialog = new MidiDeviceDialog(deviceModelList);
 		midiConnectionDialog.setIconImage(iconImage);
@@ -618,10 +618,7 @@ public class ChordHelperApplet extends JApplet {
 					add( Box.createHorizontalStrut(12) );
 					add( songTitleLabel );
 					add( Box.createHorizontalStrut(12) );
-					add( new JButton("Edit/Playlist/Speed", new ButtonIcon(ButtonIcon.EDIT_ICON)) {{
-						setMargin(ZERO_INSETS);
-						addActionListener(editorDialog);
-					}});
+					add( new JButton(editorDialog.openAction) {{ setMargin(ZERO_INSETS); }});
 				}});
 				add(new JPanel() {{
 					setLayout(new BoxLayout(this, BoxLayout.X_AXIS));

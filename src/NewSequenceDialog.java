@@ -18,6 +18,8 @@ import java.util.Vector;
 
 import javax.sound.midi.MidiChannel;
 import javax.sound.midi.Sequence;
+import javax.swing.AbstractAction;
+import javax.swing.Action;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -45,16 +47,62 @@ class NewSequenceDialog extends JDialog {
 	};
 	private static final String INITIAL_CHORD_STRING =
 		"Key: C\nC G/B | Am Em/G | F C/E | Dm7 G7 C % | F G7 | Csus4 C\n";
-	private JTextArea chordText;
-	private JTextField seqNameText;
-	private JComboBox<Integer> ppqComboBox;
-	private TimeSignatureSelecter timesigSelecter;
-	private TempoSelecter tempoSelecter;
-	private MeasureSelecter measureSelecter;
-	private TrackSpecPanel trackSpecPanel;
+	private JTextArea chordText = new JTextArea(INITIAL_CHORD_STRING, 18, 30);
+	private JTextField seqNameText = new JTextField();
+	private JComboBox<Integer> ppqComboBox = new JComboBox<Integer>(PPQList);
+	private TimeSignatureSelecter timesigSelecter = new TimeSignatureSelecter();
+	private TempoSelecter tempoSelecter = new TempoSelecter();
+	private MeasureSelecter measureSelecter = new MeasureSelecter();
+	private TrackSpecPanel trackSpecPanel = new TrackSpecPanel() {{
+		Music.DrumTrackSpec dts = new Music.DrumTrackSpec(9, "Percussion track");
+		dts.velocity = 127;
+		addTrackSpec(dts);
+		//
+		Music.MelodyTrackSpec mts;
+		mts = new Music.MelodyTrackSpec(0, "Bass track", new Music.Range(36,48));
+		mts.is_bass = true;
+		mts.velocity = 96;
+		addTrackSpec(mts);
+		mts =  new Music.MelodyTrackSpec(1, "Chord track", new Music.Range(60,72));
+		addTrackSpec(mts);
+		mts = new Music.MelodyTrackSpec(2, "Melody track", new Music.Range(60,84));
+		mts.random_melody = true;
+		mts.beat_pattern = 0xFFFF;
+		mts.continuous_beat_pattern = 0x820A;
+		addTrackSpec(mts);
+	}};
+	/**
+	 * ダイアログを開くアクション
+	 */
+	public Action openAction = new AbstractAction("New") {
+		{
+			String tooltip = "Generate new song - 新しい曲を生成";
+			putValue(Action.SHORT_DESCRIPTION, tooltip);
+		}
+		@Override
+		public void actionPerformed(ActionEvent e) { setVisible(true); }
+	};
 	private MidiEditor midiEditor;
+	/**
+	 * MIDIシーケンス生成アクション
+	 */
+	public Action generateAction = new AbstractAction(
+		"Generate & Add to PlayList",
+		new ButtonIcon(ButtonIcon.EJECT_ICON)
+	) {
+		@Override
+		public void actionPerformed(ActionEvent e) {
+			midiEditor.addSequenceAndPlay(getMidiSequence());
+			NewSequenceDialog.this.setVisible(false);
+		}
+	};
+	/**
+	 * 新しいMIDIシーケンスを生成するダイアログを構築します。
+	 * @param midiEditor シーケンス追加先エディタ
+	 */
 	public NewSequenceDialog(MidiEditor midiEditor) {
 		this.midiEditor = midiEditor;
+		trackSpecPanel.setChannels(midiEditor.virtualMidiDevice.getChannels());
 		setTitle("Generate new sequence - " + ChordHelperApplet.VersionInfo.NAME);
 		add(new JTabbedPane() {{
 			add("Sequence", new JPanel() {{
@@ -62,13 +110,13 @@ class NewSequenceDialog extends JDialog {
 				add(new JPanel() {{
 					setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
 					add(new JLabel("Sequence name:"));
-					add(seqNameText = new JTextField());
+					add(seqNameText);
 				}});
 				add(new JPanel() {{
 					setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
 					add(new JLabel("Resolution in PPQ ="));
-					add(ppqComboBox = new JComboBox<Integer>(PPQList));
-					add(measureSelecter = new MeasureSelecter());
+					add(ppqComboBox);
+					add(measureSelecter);
 				}});
 				add(new JButton("Randomize (Tempo, Time signature, Chord progression)") {{
 					setMargin(ZERO_INSETS);
@@ -83,10 +131,10 @@ class NewSequenceDialog extends JDialog {
 				}});
 				add(new JPanel() {{
 					setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
-					add(tempoSelecter = new TempoSelecter());
+					add(tempoSelecter);
 					add(new JPanel() {{
 						add(new JLabel("Time signature ="));
-						add(timesigSelecter = new TimeSignatureSelecter());
+						add(timesigSelecter);
 					}});
 				}});
 				add(new JPanel() {{
@@ -138,62 +186,22 @@ class NewSequenceDialog extends JDialog {
 						});
 					}});
 				}});
-				add(new JScrollPane(
-					chordText = new JTextArea(INITIAL_CHORD_STRING, 18, 30)
-				));
+				add(new JScrollPane(chordText));
 				add(new JPanel() {{
 					setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
-					add(new JButton(
-						"Generate & Add to PlayList",
-						new ButtonIcon(ButtonIcon.EJECT_ICON)
-					) {{
-						setMargin(ZERO_INSETS);
-						addActionListener(new ActionListener() {
-							@Override
-							public void actionPerformed(ActionEvent e) {
-								NewSequenceDialog.this.midiEditor.addSequenceAndPlay(getMidiSequence());
-								NewSequenceDialog.this.setVisible(false);
-							}
-						});
-					}});
+					add(new JButton(generateAction){{setMargin(ZERO_INSETS);}});
 				}});
 			}});
-			add("Track", trackSpecPanel = new TrackSpecPanel());
+			add("Track", trackSpecPanel);
 		}});
 		setBounds( 250, 200, 600, 540 );
-		//
-		// Create track specs
-		//
-		Music.MelodyTrackSpec mts;
-		Music.DrumTrackSpec dts;
-		//
-		dts = new Music.DrumTrackSpec( 9, "Percussion track" );
-		dts.velocity = 127;
-		trackSpecPanel.addTrackSpec(dts);
-		//
-		mts = new Music.MelodyTrackSpec(0, "Bass track", new Music.Range(36,48));
-		mts.is_bass = true;
-		mts.velocity = 96;
-		trackSpecPanel.addTrackSpec(mts);
-		//
-		mts =  new Music.MelodyTrackSpec(1, "Chord track", new Music.Range(60,72));
-		trackSpecPanel.addTrackSpec(mts);
-		//
-		mts = new Music.MelodyTrackSpec(2, "Melody track", new Music.Range(60,84));
-		mts.random_melody = true;
-		mts.beat_pattern = 0xFFFF;
-		mts.continuous_beat_pattern = 0x820A;
-		trackSpecPanel.addTrackSpec(mts);
-	}
-	private Music.ChordProgression getChordProgression() {
-		return new Music.ChordProgression(chordText.getText());
 	}
 	/**
-	 * 送信用のMIDIチャンネルを設定します。
-	 * @param midiChannels MIDIチャンネル
+	 * 新しいコード進行を生成して返します。
+	 * @return 新しいコード進行
 	 */
-	public void setChannels(MidiChannel[] midiChannels) {
-		trackSpecPanel.setChannels(midiChannels);
+	private Music.ChordProgression getChordProgression() {
+		return new Music.ChordProgression(chordText.getText());
 	}
 	/**
 	 * MIDIシーケンスを生成して返します。

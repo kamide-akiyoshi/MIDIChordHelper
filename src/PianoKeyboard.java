@@ -25,6 +25,7 @@ import java.util.Vector;
 import javax.sound.midi.MidiChannel;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
+import javax.swing.BoundedRangeModel;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.DefaultBoundedRangeModel;
@@ -90,7 +91,7 @@ public class PianoKeyboard extends JComponent {
 
 	DefaultBoundedRangeModel octaveRangeModel;
 	DefaultBoundedRangeModel octaveSizeModel;
-	VelocityModel velocityModel = new VelocityModel();
+	BoundedRangeModel velocityModel = new DefaultBoundedRangeModel(64, 0, 0, 127);
 	DefaultMidiChannelComboBoxModel
 		midiChComboboxModel = new DefaultMidiChannelComboBoxModel();
 

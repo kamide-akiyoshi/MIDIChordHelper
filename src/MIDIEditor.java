@@ -77,7 +77,6 @@ import javax.swing.event.TableModelEvent;
 import javax.swing.event.TableModelListener;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.AbstractTableModel;
-import javax.swing.table.DefaultTableColumnModel;
 import javax.swing.table.TableCellEditor;
 import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumn;
@@ -91,7 +90,7 @@ import javax.swing.table.TableModel;
  *	Copyright (C) 2006-2013 Akiyoshi Kamide
  *	http://www.yk.rim.or.jp/~kamide/music/chordhelper/
  */
-class MidiEditor extends JDialog implements DropTargetListener, ActionListener {
+class MidiEditor extends JDialog implements DropTargetListener {
 	public static final Insets ZERO_INSETS = new Insets(0,0,0,0);
 	private static final Icon deleteIcon = new ButtonIcon(ButtonIcon.X_ICON);
 	/**
@@ -103,36 +102,28 @@ class MidiEditor extends JDialog implements DropTargetListener, ActionListener {
 				super("MIDI Editor","Unknown vendor","MIDI sequence editor","");
 			}
 		}
-		{
-			info = new MyInfo();
-			// 送信のみなので MIDI IN はサポートしない
-			setMaxReceivers(0);
-		}
+		// 送信のみなので MIDI IN はサポートしない
+		{ info = new MyInfo(); setMaxReceivers(0); }
 	};
 	/**
-	 * {@inheritDoc}
-	 * <p>すでに表示されていた場合に手前に表示する点を除き、
-	 * スーパークラスと同じです。
-	 * </p>
+	 * このダイアログを開きます。すでに開かれていた場合は前面に移動します。
 	 */
-	@Override
-	public void setVisible(boolean isToVisible) {
-		if( isToVisible && isVisible() ) {
-			toFront();
-			return;
-		}
-		super.setVisible(isToVisible);
+	public void open() {
+		if( isVisible() ) toFront(); else setVisible(true);
 	}
 	/**
-	 * {@inheritDoc}
-	 * <p>このダイアログを表示するアクションを実行します。
-	 * </p>
+	 * このダイアログを表示するアクション
 	 */
-	@Override
-	public void actionPerformed(ActionEvent e) {
-		setVisible(true);
-	}
-
+	public Action openAction = new AbstractAction(
+		"Edit/Playlist/Speed", new ButtonIcon(ButtonIcon.EDIT_ICON)
+	) {
+		{
+			String tooltip = "MIDIシーケンスの編集／プレイリスト／再生速度調整";
+			putValue(Action.SHORT_DESCRIPTION, tooltip);
+		}
+		@Override
+		public void actionPerformed(ActionEvent e) { open(); }
+	};
 	/**
 	 * プレイリストのデータモデル
 	 */
@@ -140,30 +131,14 @@ class MidiEditor extends JDialog implements DropTargetListener, ActionListener {
 	/**
 	 * 新しいMIDIシーケンスを生成するダイアログ
 	 */
-	NewSequenceDialog newSequenceDialog = new NewSequenceDialog(this) {
-		{ setChannels(virtualMidiDevice.getChannels()); }
-	};
-	/**
-	 * 新しいMIDIシーケンスを生成するアクション
-	 */
-	public Action generateNewSongAction = new AbstractAction("New") {
-		{
-			putValue(
-				Action.SHORT_DESCRIPTION,
-				"Generate new song - 新しい曲を生成"
-			);
-		}
-		@Override
-		public void actionPerformed(ActionEvent e) {
-			newSequenceDialog.setVisible(true);
-		}
-	};
+	NewSequenceDialog newSequenceDialog = new NewSequenceDialog(this);
 	/**
 	 * 選択されたシーケンスへジャンプするアクション
 	 */
-	public Action jumpSequenceAction = new AbstractAction("Jump") {
+	public Action loadToSequencerAction = new AbstractAction("Load to sequencer") {
 		{
-			putValue(Action.SHORT_DESCRIPTION, "Move to selected song - 選択した曲へ進む");
+			String tooltip = "Load selected MIDI sequence to sequencer - 選択した曲をシーケンサへロード";
+			putValue(Action.SHORT_DESCRIPTION, tooltip);
 		}
 		@Override
 		public void actionPerformed(ActionEvent e) {
@@ -174,18 +149,25 @@ class MidiEditor extends JDialog implements DropTargetListener, ActionListener {
 	 * シーケンスを削除するアクション
 	 */
 	public Action deleteSequenceAction = new AbstractAction("Delete",deleteIcon) {
+		{
+			String tooltip = "Delete selected MIDI sequence - 選択した曲をプレイリストから削除";
+			putValue(Action.SHORT_DESCRIPTION, tooltip);
+		}
 		@Override
 		public void actionPerformed(ActionEvent e) {
 			if( midiFileChooser != null ) {
 				// ファイルに保存できる場合（Javaアプレットではなく、Javaアプリとして動作している場合）
-				SequenceTrackListTableModel seqModel = sequenceListTableModel.getSequenceModel(sequenceListSelectionModel);
+				//
+				SequenceTrackListTableModel seqModel =
+					sequenceListTableModel.getSequenceModel(sequenceListSelectionModel);
 				if( seqModel.isModified() ) {
 					// ファイル未保存の変更がある場合
-					String confirmMessage =
+					//
+					String message =
 						"Selected MIDI sequence not saved - delete it ?\n" +
 						"選択したMIDIシーケンスはまだ保存されていません。削除しますか？";
-					if( ! confirm(confirmMessage) ) {
-						// ユーザに確認してNoって言われた場合
+					if( ! confirm(message) ) {
+						// 実は削除してほしくなかった場合
 						return;
 					}
 				}
@@ -219,6 +201,10 @@ class MidiEditor extends JDialog implements DropTargetListener, ActionListener {
 			});
 			if( base64Dialog.isBase64Available() ) {
 				base64EncodeAction = new AbstractAction("Base64 Encode") {
+					{
+						String tooltip = "Encode selected sequence to Base64 textdata - 選択した曲をBase64テキストにエンコード";
+						putValue(Action.SHORT_DESCRIPTION, tooltip);
+					}
 					@Override
 					public void actionPerformed(ActionEvent e) {
 						SequenceTrackListTableModel mstm = sequenceListTableModel.getSequenceModel(sequenceListSelectionModel);
@@ -235,7 +221,7 @@ class MidiEditor extends JDialog implements DropTargetListener, ActionListener {
 			if(base64EncodeAction != null)
 				base64EncodeAction.setEnabled(isSelected);
 			deleteSequenceAction.setEnabled(isSelected);
-			jumpSequenceAction.setEnabled(isSelected);
+			loadToSequencerAction.setEnabled(isSelected);
 		}
 	};
 	/**
@@ -254,6 +240,10 @@ class MidiEditor extends JDialog implements DropTargetListener, ActionListener {
 		 * ファイル保存アクション
 		 */
 		public Action saveMidiFileAction = new AbstractAction("Save") {
+			{
+				String tooltip = "Save selected MIDI sequence to file - 選択したMIDIシーケンスをファイルに保存";
+				putValue(Action.SHORT_DESCRIPTION, tooltip);
+			}
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				SequenceTrackListTableModel sequenceTableModel =
@@ -261,21 +251,25 @@ class MidiEditor extends JDialog implements DropTargetListener, ActionListener {
 				String filename = sequenceTableModel.getFilename();
 				File midiFile;
 				if( filename != null && ! filename.isEmpty() ) {
-					midiFile = new File(filename);
-					setSelectedFile(midiFile);
+					// プレイリスト上でファイル名が入っていたら、それを初期選択
+					setSelectedFile(midiFile = new File(filename));
 				}
-				int resp = showSaveDialog(MidiEditor.this);
-				if( resp != JFileChooser.APPROVE_OPTION ) {
+				int response = showSaveDialog(MidiEditor.this);
+				if( response != JFileChooser.APPROVE_OPTION ) {
+					// 保存ダイアログでキャンセルされた場合
 					return;
 				}
-				midiFile = getSelectedFile();
-				if( midiFile.exists() && ! confirm(
-					"Overwrite " + midiFile.getName() + " ?\n"
-					+ midiFile.getName()
-					+ " を上書きしてよろしいですか？"
-				) ) {
-					return;
+				if( (midiFile = getSelectedFile()).exists() ) {
+					// 指定されたファイルがすでにあった場合
+					String fn = midiFile.getName();
+					String message = "Overwrite " + fn + " ?\n";
+					message += fn + " を上書きしてよろしいですか？";
+					if( ! confirm(message) ) {
+						// 上書きしてほしくなかった場合
+						return;
+					}
 				}
+				// 保存を実行
 				try ( FileOutputStream out = new FileOutputStream(midiFile) ) {
 					out.write(sequenceTableModel.getMIDIdata());
 					sequenceTableModel.setModified(false);
@@ -286,12 +280,18 @@ class MidiEditor extends JDialog implements DropTargetListener, ActionListener {
 				}
 			}
 		};
+		/**
+		 * シーケンスの選択有無に応じて、保存ボタンのイネーブル状態を更新します。
+		 */
 		private void updateEnabled() {
 			boolean en = (sequenceListSelectionModel.getMinSelectionIndex() >= 0);
 			saveMidiFileAction.setEnabled(en);
 		}
 		{
+			// ファイルフィルタの設定
 			setFileFilter(new FileNameExtensionFilter("MIDI sequence (*.mid)", "mid"));
+			//
+			// 選択状態のリスニングを開始
 			sequenceListSelectionModel.addListSelectionListener(this);
 			updateEnabled();
 		}
@@ -304,11 +304,14 @@ class MidiEditor extends JDialog implements DropTargetListener, ActionListener {
 		/**
 		 * ファイルを開くアクション
 		 */
-		public Action addMidiFileAction = new AbstractAction("Open") {
+		public Action openMidiFileAction = new AbstractAction("Open") {
+			{
+				String tooltip = "Open MIDI file - MIDIファイルを開く";
+				putValue(Action.SHORT_DESCRIPTION, tooltip);
+			}
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				int resp = showOpenDialog(MidiEditor.this);
-				if( resp == JFileChooser.APPROVE_OPTION )
+				if(showOpenDialog(MidiEditor.this) == JFileChooser.APPROVE_OPTION)
 					addSequence(getSelectedFile());
 			}
 		};
@@ -350,6 +353,10 @@ class MidiEditor extends JDialog implements DropTargetListener, ActionListener {
 	 * トラック追加アクション
 	 */
 	public Action addTrackAction = new AbstractAction("New") {
+		{
+			String tooltip = "Append new track - 新しいトラックの追加";
+			putValue(Action.SHORT_DESCRIPTION, tooltip);
+		}
 		@Override
 		public void actionPerformed(ActionEvent e) {
 			int index = sequenceListTableModel.getSequenceModel(sequenceListSelectionModel).createTrack();
@@ -358,9 +365,13 @@ class MidiEditor extends JDialog implements DropTargetListener, ActionListener {
 		}
 	};
 	/**
-	 * MIDIトラック除去アクション
+	 * トラック削除アクション
 	 */
-	public Action removeTrackAction = new AbstractAction("Delete", deleteIcon) {
+	public Action deleteTrackAction = new AbstractAction("Delete", deleteIcon) {
+		{
+			String tooltip = "Delete selected track - 選択したトラックを削除";
+			putValue(Action.SHORT_DESCRIPTION, tooltip);
+		}
 		@Override
 		public void actionPerformed(ActionEvent e) {
 			if( ! confirm("Do you want to delete selected track ?\n選択したトラックを削除しますか？"))
@@ -375,25 +386,50 @@ class MidiEditor extends JDialog implements DropTargetListener, ActionListener {
 	private JTable trackListTableView = new JTable(
 		new SequenceTrackListTableModel(sequenceListTableModel),
 		null, trackSelectionModel
-	);
-	private TracksLabel trackListTitleLabel = new TracksLabel();
-	private class TracksLabel extends JLabel implements ListSelectionListener {
+	) {{
+		// 録音対象のMIDIチャンネルをコンボボックスで選択できるよう、
+		// セルエディタを差し替える。
+		getColumnModel().getColumn(
+			SequenceTrackListTableModel.Column.RECORD_CHANNEL.ordinal()
+		).setCellEditor(
+			new DefaultCellEditor(new JComboBox<String>() {{
+				addItem("OFF");
+				for(int i=1; i <= MIDISpec.MAX_CHANNELS; i++)
+					addItem(String.format("%d", i));
+				addItem("ALL");
+			}} )
+		);
+		// デフォルトでは、データモデルが差し替えられると列が再作成される。
+		// しかしこれでは、シーケンスモデルを差し替えたとたん、
+		// せっかく差し替えたセルエディタがデフォルトに戻ってしまう。
+		//
+		// そこで、一度列データモデルが自動作成されたら、
+		// 以後は自動作成しないようにする。
+		setAutoCreateColumnsFromModel(false);
+	}};
+	/**
+	 * MIDIトラックリストのタイトルラベル
+	 */
+	private JLabel trackListTitleLabel = new JLabel() {
 		private static final String TITLE = "Tracks";
-		public TracksLabel() {
-			super(TITLE);
-			sequenceListSelectionModel.addListSelectionListener(this);
+		{
+			sequenceListSelectionModel.addListSelectionListener(
+				new ListSelectionListener() {
+					@Override
+					public void valueChanged(ListSelectionEvent e) {
+						if( e.getValueIsAdjusting() )
+							return;
+						int index = sequenceListSelectionModel.getMinSelectionIndex();
+						String text = TITLE;
+						if( index >= 0 )
+							text = String.format(text+" - MIDI file No.%d", index);
+						setText(text);
+					}
+				}
+			);
+			setText(TITLE);
 		}
-		@Override
-		public void valueChanged(ListSelectionEvent e) {
-			if( e.getValueIsAdjusting() )
-				return;
-			int index = sequenceListSelectionModel.getMinSelectionIndex();
-			String text = TITLE;
-			if( index >= 0 )
-				text = String.format(text+" - MIDI file No.%d", index);
-			setText(text);
-		}
-	}
+	};
 
 	/**
 	 * MIDIイベント選択状態
@@ -443,7 +479,9 @@ class MidiEditor extends JDialog implements DropTargetListener, ActionListener {
 	 * MIDIイベントリストテーブルビュー
 	 */
 	private JTable trackEventListTableView = new JTable(
-		new TrackEventListTableModel(), null, eventSelectionModel
+		new TrackEventListTableModel(),
+		null,
+		eventSelectionModel
 	);
 	private MidiEventsLabel midiEventsLabel = new MidiEventsLabel();
 	private class MidiEventsLabel extends JLabel implements ListSelectionListener {
@@ -793,55 +831,72 @@ class MidiEditor extends JDialog implements DropTargetListener, ActionListener {
 			midiFileChooser = null;
 		}
 		sequenceListTableView = new JTable(
-			sequenceListTableModel,
-			new SequenceListTableColumnModel() {
-				JToggleButton playButton = new JToggleButton(
-					sequenceListTableModel.sequencerModel.startStopAction
-				){{ setMargin(ZERO_INSETS); }};
-				class ButtonCellEditor extends AbstractCellEditor implements TableCellEditor {
-					@Override
-					public Object getCellEditorValue() { return ""; }
-					@Override
-					public Component getTableCellEditorComponent(
-						JTable table, Object value, boolean isSelected,
-						int row, int column
-					) {
-						if(row == sequenceListTableModel.getLoadedIndex())
-							return playButton;
-						return null;
-					}
-				}
-				{
-					sequenceListTableModel.addTableModelListener(this);
-					TableColumn tc = getColumn(Column.SEQ_PLAY.ordinal());
-					tc.setCellRenderer(new TableCellRenderer() {
-						@Override
-						public Component getTableCellRendererComponent(
-							JTable table, Object value, boolean isSelected,
-							boolean hasFocus, int row, int column
-						) {
-							if(row == sequenceListTableModel.getLoadedIndex())
-								return playButton;
-							return null;
-						}
-					});
-					tc.setCellEditor(new ButtonCellEditor());
-				}
-			},
-			sequenceListSelectionModel
-		) {{
-			sequenceListTableModel.addTableModelListener(
-				new TableModelListener() {
-					// シーケンス削除時など、合計シーケンス長が変わっても
-					// 列モデルからではヘッダタイトルが再描画されないことがある。
-					// そこで、ヘッダビューから repaint() で突っついて再描画させる。
+			sequenceListTableModel, null, sequenceListSelectionModel
+		) {
+			private JToggleButton playButton = new JToggleButton(
+				sequenceListTableModel.sequencerModel.startStopAction
+			){{
+				setMargin(ZERO_INSETS);
+			}};
+			{
+				sequenceListTableModel.addTableModelListener(new TableModelListener() {
+					/**
+					 * 全シーケンスの合計時間長をヘッダータイトルに反映します。
+					 * @param e テーブルモデルイベント
+					 */
 					@Override
 					public void tableChanged(TableModelEvent e) {
+						int sec = sequenceListTableModel.getTotalSeconds();
+						SequenceListTableModel.Column c = SequenceListTableModel.Column.SEQ_LENGTH;
+						TableColumn tc = getColumnModel().getColumn(c.ordinal());
+						tc.setHeaderValue(String.format(c.title+" [%02d:%02d]", sec/60, sec%60));
+						//
+						// シーケンス削除時など、合計シーケンス長が変わっても
+						// 列モデルからではヘッダタイトルが再描画されないことがある。
+						// そこで、ヘッダビューから repaint() で突っついて再描画させる。
 						getTableHeader().repaint();
 					}
+				});
+				TableColumn tc = getColumnModel().getColumn(
+					SequenceListTableModel.Column.SEQ_PLAY.ordinal()
+				);
+				tc.setCellRenderer(new TableCellRenderer() {
+					@Override
+					public Component getTableCellRendererComponent(
+						JTable table, Object value, boolean isSelected,
+						boolean hasFocus, int row, int column
+					) {
+						if(sequenceListTableModel.sequenceList.get(row).isOnSequencer()) {
+							// すでにロードされていたらボタンをレンダリング
+							return playButton;
+						}
+						// ロードされていなかった場合、
+						// デフォルトレンダラーでレンダリングする。こうすれば
+						// レンダラーを設定しなかった場合と全く同じ動作になる。
+						Class<?> columnClass =
+							sequenceListTableModel.getColumnClass(column);
+						TableCellRenderer defaultRenderer =
+							table.getDefaultRenderer(columnClass);
+						return defaultRenderer.getTableCellRendererComponent(
+							table, value, isSelected, hasFocus, row, column
+						);
+					}
+				});
+				tc.setCellEditor(new PlayButtonCellEditor());
+				setAutoCreateColumnsFromModel(false);
+			}
+			class PlayButtonCellEditor extends AbstractCellEditor implements TableCellEditor {
+				@Override
+				public Object getCellEditorValue() { return ""; }
+				@Override
+				public Component getTableCellEditorComponent(
+					JTable table, Object value, boolean isSelected,
+					int row, int column
+				) {
+					return sequenceListTableModel.sequenceList.get(row).isOnSequencer() ? playButton : null;
 				}
-			);
-		}};
+			}
+		};
 		JPanel playlistPanel = new JPanel() {{
 			setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
 			add(new JScrollPane(sequenceListTableView));
@@ -849,10 +904,12 @@ class MidiEditor extends JDialog implements DropTargetListener, ActionListener {
 			add(new JPanel() {{
 				setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
 				add(Box.createRigidArea(new Dimension(10, 0)));
-				add(new JButton(generateNewSongAction) {{setMargin(ZERO_INSETS);}});
+				add(new JButton(newSequenceDialog.openAction) {{
+					setMargin(ZERO_INSETS);
+				}});
 				if( midiFileChooser != null ) {
 					add( Box.createRigidArea(new Dimension(5, 0)) );
-					add(new JButton(midiFileChooser.addMidiFileAction) {{
+					add(new JButton(midiFileChooser.openMidiFileAction) {{
 						setMargin(ZERO_INSETS);
 					}});
 				}
@@ -861,7 +918,7 @@ class MidiEditor extends JDialog implements DropTargetListener, ActionListener {
 					setMargin(ZERO_INSETS);
 				}});
 				add(Box.createRigidArea(new Dimension(5, 0)));
-				add(new JButton(jumpSequenceAction){{ setMargin(ZERO_INSETS); }});
+				add(new JButton(loadToSequencerAction){{ setMargin(ZERO_INSETS); }});
 				add(Box.createRigidArea(new Dimension(5, 0)));
 				add(new JButton(sequenceListTableModel.moveToBottomAction) {{
 					setMargin(ZERO_INSETS);
@@ -897,7 +954,7 @@ class MidiEditor extends JDialog implements DropTargetListener, ActionListener {
 			add(Box.createRigidArea(new Dimension(0, 5)));
 			add(new JPanel() {{
 				add(new JButton(addTrackAction) {{ setMargin(ZERO_INSETS); }});
-				add(new JButton(removeTrackAction) {{ setMargin(ZERO_INSETS); }});
+				add(new JButton(deleteTrackAction) {{ setMargin(ZERO_INSETS); }});
 			}});
 		}};
 		JPanel eventListPanel = new JPanel() {{
@@ -991,28 +1048,14 @@ class MidiEditor extends JDialog implements DropTargetListener, ActionListener {
 	 * ボタン状態の更新
 	 */
 	public void updateButtonStatus() {
-		SequenceTrackListTableModel sequenceModel = sequenceListTableModel.getSequenceModel(sequenceListSelectionModel);
+		SequenceTrackListTableModel sequenceModel =
+			sequenceListTableModel.getSequenceModel(sequenceListSelectionModel);
 		boolean isSequenceSelected = (sequenceModel != null);
 		if(isSequenceSelected) {
 			trackListTableView.setModel(sequenceModel);
-			trackListTableView.getColumnModel().getColumn(
-				SequenceTrackListTableModel.Column.RECORD_CHANNEL.ordinal()
-			).setCellEditor(
-				new DefaultCellEditor(
-					new JComboBox<String>() {
-						{
-							addItem("OFF");
-							for(int i=1; i <= MIDISpec.MAX_CHANNELS; i++)
-								addItem(String.format("%d", i));
-							addItem("ALL");
-						}
-					}
-				)
-			);
 		}
 		else {
-			SequenceTrackListTableModel m = new SequenceTrackListTableModel(sequenceListTableModel);
-			trackListTableView.setModel(m);
+			trackListTableView.setModel(new SequenceTrackListTableModel(sequenceListTableModel));
 		}
 		addTrackAction.setEnabled(isSequenceSelected);
 		boolean isTrackSelected = (
@@ -1020,7 +1063,7 @@ class MidiEditor extends JDialog implements DropTargetListener, ActionListener {
 			&&
 			isSequenceSelected && sequenceModel.getRowCount() > 0
 		);
-		removeTrackAction.setEnabled(isTrackSelected);
+		deleteTrackAction.setEnabled(isTrackSelected);
 		//
 		TableModel tm = trackEventListTableView.getModel();
 		if( ! (tm instanceof TrackEventListTableModel) )
@@ -1142,7 +1185,7 @@ class MidiEditor extends JDialog implements DropTargetListener, ActionListener {
 				firstIndex = lastIndex;
 		}
 		if(sequenceListTableModel.sequencerModel.getSequencer().isRunning()) {
-			setVisible(true);
+			open();
 		}
 		else if( firstIndex >= 0 ) {
 			sequenceListTableModel.loadToSequencer(firstIndex);
@@ -1209,12 +1252,11 @@ class SequencerSpeedSlider extends JPanel {
 	}
 }
 
+
 /**
- * プレイリスト（MIDIシーケンスリスト）のテーブル列モデル
+ * プレイリスト（MIDIシーケンスリスト）のテーブルデータモデル
  */
-class SequenceListTableColumnModel extends DefaultTableColumnModel
-	implements TableModelListener
-{
+class SequenceListTableModel extends AbstractTableModel implements ChangeListener {
 	/**
 	 * 列の列挙型
 	 */
@@ -1224,7 +1266,7 @@ class SequenceListTableColumnModel extends DefaultTableColumnModel
 		/** 変更済みフラグ */
 		MODIFIED("Modified", Boolean.class),
 		/** 再生ボタン */
-		SEQ_PLAY("", String.class) {
+		SEQ_PLAY("Sequencer", String.class) {
 			@Override
 			public boolean isCellEditable() { return true; }
 		},
@@ -1261,31 +1303,6 @@ class SequenceListTableColumnModel extends DefaultTableColumnModel
 		}
 		public boolean isCellEditable() { return false; }
 	}
-	public SequenceListTableColumnModel() {
-		for( Column c : Column.values() ) {
-			TableColumn tc = new TableColumn(c.ordinal());
-			tc.setHeaderValue(c.title);
-			addColumn(tc);
-		}
-	}
-	/**
-	 * 全シーケンスの合計時間長をヘッダータイトルに反映します。
-	 * @param e テーブルモデルイベント
-	 */
-	@Override
-	public void tableChanged(TableModelEvent e) {
-		SequenceListTableModel model = (SequenceListTableModel)e.getSource();
-		int sec = model.getTotalSeconds();
-		Column c = Column.SEQ_LENGTH;
-		TableColumn tc = getColumn(c.ordinal());
-		tc.setHeaderValue(String.format(c.title+" [%02d:%02d]", sec/60, sec%60));
-	}
-}
-
-/**
- * プレイリスト（MIDIシーケンスリスト）のテーブルモデル
- */
-class SequenceListTableModel extends AbstractTableModel implements ChangeListener {
 	/**
 	 * MIDIシーケンサモデル
 	 */
@@ -1339,33 +1356,30 @@ class SequenceListTableModel extends AbstractTableModel implements ChangeListene
 			return;
 		// 秒が変わったときだけ更新（小数点以下は無視）
 		secondPosition = sec;
-		fireTableCellUpdated(
-			getLoadedIndex(),
-			SequenceListTableColumnModel.Column.SEQ_POSITION.ordinal()
-		);
+		fireTableCellUpdated(getLoadedIndex(), Column.SEQ_POSITION.ordinal());
 	}
-	private List<SequenceTrackListTableModel> sequenceList = new Vector<>();
+	List<SequenceTrackListTableModel> sequenceList = new Vector<>();
 	@Override
 	public int getRowCount() { return sequenceList.size(); }
 	@Override
 	public int getColumnCount() {
-		return SequenceListTableColumnModel.Column.values().length;
+		return Column.values().length;
 	}
 	@Override
 	public String getColumnName(int column) {
-		return SequenceListTableColumnModel.Column.values()[column].title;
+		return Column.values()[column].title;
 	}
 	@Override
 	public Class<?> getColumnClass(int column) {
-		return SequenceListTableColumnModel.Column.values()[column].columnClass;
+		return Column.values()[column].columnClass;
 	}
 	@Override
 	public boolean isCellEditable(int row, int column) {
-		return SequenceListTableColumnModel.Column.values()[column].isCellEditable();
+		return Column.values()[column].isCellEditable();
 	}
 	@Override
 	public Object getValueAt(int row, int column) {
-		switch(SequenceListTableColumnModel.Column.values()[column]) {
+		switch(Column.values()[column]) {
 		case SEQ_NUMBER: return row;
 		case MODIFIED:
 			return sequenceList.get(row).isModified();
@@ -1406,7 +1420,7 @@ class SequenceListTableModel extends AbstractTableModel implements ChangeListene
 	}
 	@Override
 	public void setValueAt(Object val, int row, int column) {
-		switch(SequenceListTableColumnModel.Column.values()[column]) {
+		switch(Column.values()[column]) {
 		case FILENAME:
 			// ファイル名の変更
 			String filename = (String)val;
@@ -1416,7 +1430,7 @@ class SequenceListTableModel extends AbstractTableModel implements ChangeListene
 		case SEQ_NAME:
 			// シーケンス名の設定または変更
 			if( sequenceList.get(row).setName((String)val) )
-				fireTableCellUpdated(row, SequenceListTableColumnModel.Column.MODIFIED.ordinal());
+				fireTableCellUpdated(row, Column.MODIFIED.ordinal());
 			break;
 		default:
 			break;
@@ -1456,7 +1470,7 @@ class SequenceListTableModel extends AbstractTableModel implements ChangeListene
 		for( int i = minIndex; i <= maxIndex; i++ ) {
 			if( selModel.isSelectedIndex(i) ) {
 				sequenceList.get(i).setModified(isModified);
-				fireTableCellUpdated(i, SequenceListTableColumnModel.Column.MODIFIED.ordinal());
+				fireTableCellUpdated(i, Column.MODIFIED.ordinal());
 			}
 		}
 	}
@@ -1526,11 +1540,11 @@ class SequenceListTableModel extends AbstractTableModel implements ChangeListene
 		if( listSelectionModel.isSelectionEmpty() )
 			return;
 		int selectedIndex = listSelectionModel.getMinSelectionIndex();
-		if( selectedIndex == getLoadedIndex() ) {
-			// シーケンサーにロード済みのシーケンスだった場合はアンロードする
-			sequencerModel.setSequenceTableModel(null);
+		if( sequenceList.remove(selectedIndex).isOnSequencer() ) {
+			// 削除したシーケンスが
+			// シーケンサーにロード済みだった場合、アンロードする。
+			sequencerModel.setSequenceTrackListTableModel(null);
 		}
-		sequenceList.remove(selectedIndex);
 		fireTableRowsDeleted(selectedIndex, selectedIndex);
 	}
 	/**
@@ -1541,17 +1555,10 @@ class SequenceListTableModel extends AbstractTableModel implements ChangeListene
 		int oldIndex = getLoadedIndex();
 		if(index == oldIndex)
 			return;
-		SequenceTrackListTableModel sequenceTableModel = sequenceList.get(index);
-		sequencerModel.setSequenceTableModel(sequenceTableModel);
-		//
-		// トラック内容の再表示
-		sequenceTableModel.fireTableDataChanged();
-		//
-		// セルの再表示（シーケンサーのボタンと現在位置）
-		fireTableRowsUpdated(oldIndex, index);
+		sequencerModel.setSequenceTrackListTableModel(sequenceList.get(index));
 		int columnIndices[] = {
-			SequenceListTableColumnModel.Column.SEQ_PLAY.ordinal(),
-			SequenceListTableColumnModel.Column.SEQ_POSITION.ordinal(),
+			Column.SEQ_PLAY.ordinal(),
+			Column.SEQ_POSITION.ordinal(),
 		};
 		for( int columnIndex : columnIndices ) {
 			fireTableCellUpdated(oldIndex, columnIndex);
@@ -1578,13 +1585,13 @@ class SequenceListTableModel extends AbstractTableModel implements ChangeListene
 		int index = (loadedIndex < 0 ? 0 : loadedIndex + offset);
 		if( index < 0 || index >= sequenceList.size() )
 			return false;
-		loadToSequencer( index );
+		loadToSequencer(index);
 		return true;
 	}
 }
 
 /**
- * MIDIシーケンス（トラックリスト）を表すテーブルモデル
+ * MIDIシーケンス（トラックリスト）のテーブルデータモデル
  */
 class SequenceTrackListTableModel extends AbstractTableModel {
 	/**
@@ -1592,47 +1599,43 @@ class SequenceTrackListTableModel extends AbstractTableModel {
 	 */
 	public enum Column {
 		/** トラック番号 */
-		TRACK_NUMBER("No.", 30, Integer.class),
+		TRACK_NUMBER("No.", Integer.class),
 		/** イベント数 */
-		EVENTS("Events", 60, Integer.class),
+		EVENTS("Events", Integer.class),
 		/** Mute */
-		MUTE("Mute", 40, Boolean.class),
+		MUTE("Mute", Boolean.class),
 		/** Solo */
-		SOLO("Solo", 40, Boolean.class),
+		SOLO("Solo", Boolean.class),
 		/** 録音するMIDIチャンネル */
-		RECORD_CHANNEL("RecCh", 60, String.class),
+		RECORD_CHANNEL("RecCh", String.class),
 		/** MIDIチャンネル */
-		CHANNEL("Ch", 60, String.class),
+		CHANNEL("Ch", String.class),
 		/** トラック名 */
-		TRACK_NAME("Track name", 200, String.class);
-		private String title;
-		private int widthRatio;
-		private Class<?> columnClass;
+		TRACK_NAME("Track name", String.class);
+		String title;
+		Class<?> columnClass;
 		/**
 		 * 列の識別子を構築します。
 		 * @param title 列のタイトル
 		 * @param widthRatio 幅の割合
 		 * @param columnClass 列のクラス
 		 */
-		private Column(String title, int widthRatio, Class<?> columnClass) {
+		private Column(String title, Class<?> columnClass) {
 			this.title = title;
-			this.widthRatio = widthRatio;
 			this.columnClass = columnClass;
 		}
-		/**
-		 * 幅の割合の合計を返します。
-		 * @return 幅の割合の合計
-		 */
-		public static int totalWidthRatio() {
-			int total = 0;
-			for( Column c : values() ) total += c.widthRatio;
-			return total;
-		}
 	}
+	/**
+	 * 親のプレイリスト
+	 */
+	SequenceListTableModel sequenceListTableModel;
 	/**
 	 * ラップされたMIDIシーケンス
 	 */
 	private Sequence sequence;
+	/**
+	 * ラップされたMIDIシーケンスのtickインデックス
+	 */
 	private SequenceTickIndex sequenceTickIndex;
 	/**
 	 * MIDIファイル名
@@ -1642,10 +1645,6 @@ class SequenceTrackListTableModel extends AbstractTableModel {
 	 * トラックリスト
 	 */
 	private List<TrackEventListTableModel> trackModelList = new ArrayList<>();
-	/**
-	 * 親のプレイリスト
-	 */
-	SequenceListTableModel sequenceListTableModel;
 	/**
 	 * 空の {@link SequenceTrackListTableModel} を構築します。
 	 * @param sequenceListTableModel 親のプレイリスト
@@ -1673,7 +1672,9 @@ class SequenceTrackListTableModel extends AbstractTableModel {
 		return sequence == null ? 0 : sequence.getTracks().length;
 	}
 	@Override
-	public int getColumnCount() { return Column.values().length; }
+	public int getColumnCount() {
+		return Column.values().length;
+	}
 	/**
 	 * 列名を返します。
 	 * @return 列名
@@ -1762,7 +1763,7 @@ class SequenceTrackListTableModel extends AbstractTableModel {
 			if( ch == trackTableModel.getChannel() ) break;
 			trackTableModel.setChannel(ch);
 			setModified(true);
-			fireTableCellUpdated(row,Column.EVENTS.ordinal());
+			fireTableCellUpdated(row, Column.EVENTS.ordinal());
 			break;
 		}
 		case TRACK_NAME:
@@ -1772,18 +1773,6 @@ class SequenceTrackListTableModel extends AbstractTableModel {
 			break;
 		}
 		fireTableCellUpdated(row,column);
-	}
-	/**
-	 * 列に合わせて幅を調整します。
-	 * @param columnModel テーブル列モデル
-	 */
-	public void sizeColumnWidthToFit(TableColumnModel columnModel) {
-		int totalWidth = columnModel.getTotalColumnWidth();
-		int totalWidthRatio = Column.totalWidthRatio();
-		for( Column c : Column.values() ) {
-			int w = totalWidth * c.widthRatio / totalWidthRatio;
-			columnModel.getColumn(c.ordinal()).setPreferredWidth(w);
-		}
 	}
 	/**
 	 * MIDIシーケンスを返します。

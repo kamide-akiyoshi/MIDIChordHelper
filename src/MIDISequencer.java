@@ -201,7 +201,7 @@ class MidiSequencerModel extends MidiConnecterListModel implements BoundedRangeM
 					// そうでない場合、次の曲へ進んで再生する。
 					// 次の曲がなければ、そこで終了。
 					boolean isRepeatMode = (Boolean)toggleRepeatAction.getValue(Action.SELECTED_KEY);
-					if( isRepeatMode || MidiSequencerModel.this.deviceModelList.editorDialog.sequenceListTableModel.loadNext(1) ) {
+					if( isRepeatMode || loadNext() ) {
 						start();
 					}
 					else {
@@ -215,6 +215,9 @@ class MidiSequencerModel extends MidiConnecterListModel implements BoundedRangeM
 	 * MIDIデバイスモデルリスト
 	 */
 	private MidiDeviceModelList deviceModelList;
+	private boolean loadNext() {
+		return deviceModelList.editorDialog.sequenceListTableModel.loadNext(1);
+	}
 	/**
 	 * このシーケンサーの再生スピード調整モデル
 	 */
@@ -429,7 +432,7 @@ class MidiSequencerModel extends MidiConnecterListModel implements BoundedRangeM
 	 * @param sequenceTableModel MIDIトラックリストテーブルモデル
 	 * @return 成功したらtrue
 	 */
-	public boolean setSequenceTableModel(SequenceTrackListTableModel sequenceTableModel) {
+	public boolean setSequenceTrackListTableModel(SequenceTrackListTableModel sequenceTableModel) {
 		//
 		// javax.sound.midi:Sequencer.setSequence() のドキュメントにある
 		// 「このメソッドは、Sequencer が閉じている場合でも呼び出すことができます。 」
@@ -438,16 +441,21 @@ class MidiSequencerModel extends MidiConnecterListModel implements BoundedRangeM
 		// この現象を回避するため、あらかじめチェックしてから setSequence() を呼び出している。
 		//
 		if( sequenceTableModel != null || getSequencer().isOpen() ) {
-			Sequence seq = null;
-			if( sequenceTableModel != null ) {
-				seq = sequenceTableModel.getSequence();
-			}
+			Sequence sequence = null;
+			if( sequenceTableModel != null )
+				sequence = sequenceTableModel.getSequence();
 			try {
-				getSequencer().setSequence(seq);
+				getSequencer().setSequence(sequence);
 			} catch ( InvalidMidiDataException e ) {
 				e.printStackTrace();
 				return false;
 			}
+		}
+		if( this.sequenceTableModel != null ) {
+			this.sequenceTableModel.fireTableDataChanged();
+		}
+		if( sequenceTableModel != null ) {
+			sequenceTableModel.fireTableDataChanged();
 		}
 		this.sequenceTableModel = sequenceTableModel;
 		fireStateChanged();

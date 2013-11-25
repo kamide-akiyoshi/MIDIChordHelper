@@ -20,10 +20,10 @@ import javax.sound.midi.MidiChannel;
 import javax.sound.midi.MidiMessage;
 import javax.sound.midi.ShortMessage;
 import javax.sound.midi.SysexMessage;
+import javax.swing.BoundedRangeModel;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.ComboBoxModel;
-import javax.swing.DefaultBoundedRangeModel;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -1430,19 +1430,13 @@ class KeySignatureLabel extends JLabel {
 }
 
 /**
- * ベロシティ値範囲モデル
- */
-class VelocityModel extends DefaultBoundedRangeModel {
-	public VelocityModel() { super( 64, 0, 0, 127 ); }
-}
-/**
  * ベロシティ選択ビュー
  */
 class VelocitySelecter extends JPanel implements ChangeListener {
 	private static final String	LABEL_PREFIX = "Velocity=";
 	public JSlider slider;
 	public JLabel label;
-	public VelocitySelecter(VelocityModel model) {
+	public VelocitySelecter(BoundedRangeModel model) {
 		setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
 		add(label = new JLabel(LABEL_PREFIX + model.getValue(), Label.RIGHT) {{
 			setToolTipText("Velocity");
