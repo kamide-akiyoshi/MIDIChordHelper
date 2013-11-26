@@ -42,7 +42,7 @@ public class Base64Dialog extends JDialog {
 				base64TextArea.requestFocusInWindow();
 				lastIndex = midiEditor.sequenceListTableModel.getRowCount() - 1;
 			}
-			midiEditor.sequenceListSelectionModel.setSelectionInterval(lastIndex, lastIndex);
+			midiEditor.sequenceListTableModel.selectionModel.setSelectionInterval(lastIndex, lastIndex);
 			setVisible(false);
 		}
 	};

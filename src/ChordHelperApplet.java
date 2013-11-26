@@ -123,7 +123,7 @@ public class ChordHelperApplet extends JApplet {
 	 * シーケンサへロードして再生します。
 	 */
 	public void play() {
-		play(editorDialog.sequenceListSelectionModel.getMinSelectionIndex());
+		play(editorDialog.sequenceListTableModel.selectionModel.getMinSelectionIndex());
 	}
 	/**
 	 * 指定されたインデックス値が示すプレイリスト上のMIDIシーケンスを、
@@ -251,7 +251,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public static class VersionInfo {
 		public static final String	NAME = "MIDI Chord Helper";
-		public static final String	VERSION = "Ver.20131126.1";
+		public static final String	VERSION = "Ver.20131127.1";
 		public static final String	COPYRIGHT = "Copyright (C) 2004-2013";
 		public static final String	AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String	URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";
@@ -494,7 +494,7 @@ public class ChordHelperApplet extends JApplet {
 			@Override
 			public void stateChanged(ChangeEvent e) {
 				SequenceTrackListTableModel sequenceTableModel = deviceModelList.sequencerModel.getSequenceTableModel();
-				int loadedSequenceIndex = editorDialog.sequenceListTableModel.getLoadedIndex();
+				int loadedSequenceIndex = editorDialog.sequenceListTableModel.indexOfSequenceOnSequencer();
 				songTitleLabel.setText(
 					"<html>"+(
 						loadedSequenceIndex < 0 ? "[No MIDI file loaded]" :
