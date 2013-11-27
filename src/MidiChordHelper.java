@@ -16,10 +16,12 @@ import java.io.InputStream;
 import java.net.URL;
 import java.util.Enumeration;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Vector;
 
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.SwingUtilities;
 import javax.swing.WindowConstants;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
@@ -30,29 +32,39 @@ import javax.swing.event.TableModelListener;
  * MIDI Chord Helper を Java アプリとして起動します。
  */
 public class MidiChordHelper {
-	static int count = 0;
-	static AppletFrame frame = null;
 	/**
 	 * MIDI Chord Helper を Java アプリとして起動します。
 	 * @param args コマンドライン引数
 	 * @throws Exception 何らかの異常が発生した場合にスローされる
 	 */
 	public static void main(String[] args) throws Exception {
-		ChordHelperApplet applet;
-		if( count++ > 0 && frame != null) {
-			applet = frame.applet;
-			int windowState = frame.getExtendedState();
-			if( ( windowState & Frame.ICONIFIED ) == 0 ) {
-				frame.toFront();
-			} else {
-				frame.setExtendedState(windowState &= ~(Frame.ICONIFIED));
-			}
-		} else {
-			frame = new AppletFrame(applet = new ChordHelperApplet());
-		}
+		List<File> fileList = new Vector<File>();
 		if( args.length > 0 ) {
-			Vector<File> fileList = new Vector<File>();
 			for( String arg : args ) fileList.add(new File(arg));
+		}
+		SwingUtilities.invokeLater(new AppletRunnable(fileList));
+	}
+	static int count = 0;
+	static AppletFrame frame = null;
+	private static class AppletRunnable implements Runnable {
+		private List<File> fileList;
+		public AppletRunnable(List<File> fileList) {
+			this.fileList = fileList;
+		}
+		@Override
+		public void run() {
+			ChordHelperApplet applet;
+			if( count++ > 0 && frame != null) {
+				applet = frame.applet;
+				int windowState = frame.getExtendedState();
+				if( ( windowState & Frame.ICONIFIED ) == 0 ) {
+					frame.toFront();
+				} else {
+					frame.setExtendedState(windowState &= ~(Frame.ICONIFIED));
+				}
+			} else {
+				frame = new AppletFrame(applet = new ChordHelperApplet());
+			}
 			applet.editorDialog.loadAndPlay(fileList);
 		}
 	}

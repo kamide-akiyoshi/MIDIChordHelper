@@ -19,6 +19,7 @@ import javax.swing.DefaultBoundedRangeModel;
 import javax.swing.Icon;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 import javax.swing.event.EventListenerList;
@@ -171,7 +172,9 @@ class MeasureIndicator extends JPanel implements ChangeListener {
 /**
  * MIDIシーケンサモデル
  */
-class MidiSequencerModel extends MidiConnecterListModel implements BoundedRangeModel {
+class MidiSequencerModel extends MidiConnecterListModel
+	implements BoundedRangeModel, MetaEventListener
+{
 	/**
 	 * MIDIシーケンサモデルを構築します。
 	 * @param deviceModelList 親のMIDIデバイスモデルリスト
@@ -185,38 +188,51 @@ class MidiSequencerModel extends MidiConnecterListModel implements BoundedRangeM
 	) {
 		super(sequencer, modelList);
 		this.deviceModelList = deviceModelList;
-		sequencer.addMetaEventListener(new MetaEventListener() {
-			/**
-			 * {@inheritDoc}
-			 *
-			 * この実装では EOT (End Of Track、type==0x2F) を受信したときに、
-			 * 曲の先頭に戻し、次の曲があればその曲を再生し、
-			 * なければ秒位置更新タイマーを停止します。
-			 */
-			@Override
-			public void meta(MetaMessage msg) {
-				if( msg.getType() == 0x2F ) {
-					getSequencer().setMicrosecondPosition(0);
-					// リピートモードの場合、同じ曲をもう一度再生する。
-					// そうでない場合、次の曲へ進んで再生する。
-					// 次の曲がなければ、そこで終了。
-					boolean isRepeatMode = (Boolean)toggleRepeatAction.getValue(Action.SELECTED_KEY);
-					if( isRepeatMode || loadNext() ) {
-						start();
-					}
-					else {
-						stop();
-					}
-				}
-			}
-		});
+		sequencer.addMetaEventListener(this);
 	}
 	/**
 	 * MIDIデバイスモデルリスト
 	 */
 	private MidiDeviceModelList deviceModelList;
-	private boolean loadNext() {
-		return deviceModelList.editorDialog.sequenceListTableModel.loadNext(1);
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>EOT (End Of Track、type==0x2F) を受信したときの処理です。
+	 * 通常はシーケンサの EDT から起動されるため、
+	 * Swing の EDT へ振りなおします。
+	 * </p>
+	 */
+	@Override
+	public void meta(MetaMessage msg) {
+		if( msg.getType() == 0x2F ) {
+			if( ! SwingUtilities.isEventDispatchThread() ) {
+				SwingUtilities.invokeLater(new Runnable() {
+					@Override
+					public void run() { goNext(); }
+				});
+				return;
+			}
+			goNext();
+		}
+	}
+	/**
+	 * 次の曲へ進みます。
+	 *
+	 * <p>リピートモードの場合は同じ曲をもう一度再生、
+	 * そうでない場合は次の曲へ進んで再生します。
+	 * 次の曲がなければ、そこで停止します。
+	 * いずれの場合も局の先頭へ戻ります。
+	 * </p>
+	 */
+	private void goNext() {
+		getSequencer().setMicrosecondPosition(0);
+		boolean isRepeatMode = (Boolean)toggleRepeatAction.getValue(Action.SELECTED_KEY);
+		if( isRepeatMode || deviceModelList.editorDialog.sequenceListTableModel.loadNext(1) ) {
+			start();
+		}
+		else {
+			stop();
+		}
 	}
 	/**
 	 * このシーケンサーの再生スピード調整モデル

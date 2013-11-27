@@ -113,21 +113,18 @@ public class PianoKeyboard extends JComponent {
 	VirtualMidiDevice midiDevice = new AbstractVirtualMidiDevice() {
 		{
 			info = new MyInfo();
-			setReceiver( new AbstractMidiStatus() {
-				{
-					for( int i=0; i<MIDISpec.MAX_CHANNELS; i++ )
-						add(new MidiChannelStatus(i));
+			setReceiver(
+				new AbstractMidiStatus() {
+					{
+						for( int i=0; i<MIDISpec.MAX_CHANNELS; i++ )
+							add(new MidiChannelStatus(i));
+					}
 				}
-			});
+			);
 		}
 		class MyInfo extends Info {
 			protected MyInfo() {
-				super(
-					"MIDI Keyboard",
-					"Unknown vendor",
-					"Software MIDI keyboard",
-					""
-				);
+				super("MIDI Keyboard","Unknown vendor","Software MIDI keyboard","");
 			}
 		}
 	};
@@ -226,8 +223,8 @@ public class PianoKeyboard extends JComponent {
 		}
 		private void repaintNotes() {
 			if( midiChComboboxModel.getSelectedChannel() != channel
-					|| channelNotes[channel] == null
-					)
+				|| channelNotes[channel] == null
+			)
 				return;
 			if( channelNotes[channel].size() > 0 || selectedKeyNoteList.size() > 0 )
 				repaint();
@@ -236,16 +233,16 @@ public class PianoKeyboard extends JComponent {
 	public MidiChannel getSelectedChannel() {
 		return midiDevice.getChannels()[midiChComboboxModel.getSelectedChannel()];
 	}
-	public void note(boolean is_on, int note_no) {
+	public void note(boolean isOn, int noteNumber) {
 		MidiChannel ch = getSelectedChannel();
 		int velocity = velocityModel.getValue();
-		if( is_on )
-			ch.noteOn(note_no,velocity);
+		if( isOn )
+			ch.noteOn(noteNumber,velocity);
 		else
-			ch.noteOff(note_no,velocity);
+			ch.noteOff(noteNumber,velocity);
 	}
-	public void noteOn(int note_no) { note(true,note_no); }
-	public void noteOff(int note_no) { note(false,note_no); }
+	public void noteOn(int noteNumber) { note(true,noteNumber); }
+	public void noteOff(int noteNumber) { note(false,noteNumber); }
 
 	class PianoKey extends Rectangle {
 		public boolean isBlack = false;
@@ -389,23 +386,25 @@ public class PianoKeyboard extends JComponent {
 		int octaves = getPerferredOctaves();
 		octaveSizeModel = new DefaultBoundedRangeModel(
 			octaves, 0, MIN_OCTAVES, MAX_OCTAVES
-		);
-		octaveSizeModel.addChangeListener( new ChangeListener() {
-			public void stateChanged(ChangeEvent e) {
-				fireOctaveResized(e);
-				octaveSizeChanged();
-			}
-		});
+		) {{
+			addChangeListener(new ChangeListener() {
+				public void stateChanged(ChangeEvent e) {
+					fireOctaveResized(e);
+					octaveSizeChanged();
+				}
+			});
+		}};
 		octaveRangeModel = new DefaultBoundedRangeModel(
 			(MAX_OCTAVES - octaves) / 2, octaves, 0, MAX_OCTAVES
-		);
-		octaveRangeModel.addChangeListener( new ChangeListener() {
-			public void stateChanged(ChangeEvent e) {
-				fireOctaveMoved(e);
-				checkOutOfBounds();
-				repaint();
-			}
-		});
+		) {{
+			addChangeListener(new ChangeListener() {
+				public void stateChanged(ChangeEvent e) {
+					fireOctaveMoved(e);
+					checkOutOfBounds();
+					repaint();
+				}
+			});
+		}};
 		addComponentListener( new ComponentAdapter() {
 			public void componentResized(ComponentEvent e) {
 				octaveSizeModel.setValue( getPerferredOctaves() );
@@ -668,8 +667,8 @@ public class PianoKeyboard extends JComponent {
 		if( ch != midiChComboboxModel.getSelectedChannel() )
 			return;
 		selectedKeyNoteList.add(note_no);
-		int max_sel = (chord == null ? maxSelectable : chord.numberOfNotes());
-		while( selectedKeyNoteList.size() > max_sel )
+		int maxSel = (chord == null ? maxSelectable : chord.numberOfNotes());
+		while( selectedKeyNoteList.size() > maxSel )
 			selectedKeyNoteList.poll();
 		if( !autoScroll(note_no) ) {
 			// When autoScroll() returned false, stateChanged() not invoked - need repaint()
@@ -679,7 +678,6 @@ public class PianoKeyboard extends JComponent {
 	Integer[] getSelectedNotes() {
 		return selectedKeyNoteList.toArray(new Integer[0]);
 	}
-	//
 	Music.Chord getChord() { return chord; }
 	void setChord(Music.Chord c) {
 		chordDisplay.setChord(chord = c);
@@ -688,19 +686,15 @@ public class PianoKeyboard extends JComponent {
 		keySignature = ks;
 		repaint();
 	}
-	//
 	private int	maxSelectable = 1;
 	void setMaxSelectable( int max_selectable ) {
 		this.maxSelectable = max_selectable;
 	}
 	int getMaxSelectable() { return maxSelectable; }
-	//
 	int getChromaticOffset() {
-		return octaveRangeModel.getValue() * 12 ;
+		return octaveRangeModel.getValue() * Music.SEMITONES_PER_OCTAVE ;
 	}
-	int getOctaves() {
-		return octaveSizeModel.getValue();
-	}
+	int getOctaves() { return octaveSizeModel.getValue(); }
 	private int getPerferredOctaves() {
 		int octaves = Math.round( (float)getWidth() / widthPerOctave );
 		if( octaves > MAX_OCTAVES ) {
@@ -777,43 +771,42 @@ public class PianoKeyboard extends JComponent {
 	}
 }
 
-class PianoKeyboardPanel extends JPanel
-{
-	PianoKeyboard keyboard = new PianoKeyboard();
-	private JSlider	octaveSizeSlider = new JSlider() {
-		{
-			setToolTipText("Octave size");
-		}
-	};
-	private JScrollBar octaveSelecter = new JScrollBar(JScrollBar.HORIZONTAL) {
-		{
-			setToolTipText("Octave position");
-		}
-	};
-	private JPanel octaveBar = new JPanel() {
-		{
-			setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
-		}
-	};
+class PianoKeyboardPanel extends JPanel {
+	PianoKeyboard keyboard;
+	private JScrollBar octaveSelecter;
+	private JSlider	octaveSizeSlider;
+	private JPanel octaveBar;
 	public PianoKeyboardPanel() {
-		keyboard.addPianoKeyboardListener(
-			new PianoKeyboardAdapter() {
-				public void octaveResized(ChangeEvent e) {
-					octaveSelecter.setBlockIncrement(keyboard.getOctaves());
-				}
-			}
-		);
-		octaveSelecter.setModel( keyboard.octaveRangeModel );
-		octaveSelecter.setBlockIncrement( keyboard.getOctaves() );
-		octaveSizeSlider.setModel( keyboard.octaveSizeModel );
-		octaveSizeSlider.setMinimumSize( new Dimension( 100, 18 ) );
-		octaveSizeSlider.setMaximumSize( new Dimension( 100, 18 ) );
-		octaveSizeSlider.setPreferredSize( new Dimension( 100, 18 ) );
-		octaveBar.add(octaveSelecter);
-		octaveBar.add(Box.createHorizontalStrut(5));
-		octaveBar.add(octaveSizeSlider);
 		setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
-		add(octaveBar);
+		keyboard = new PianoKeyboard() {{
+			addPianoKeyboardListener(
+				new PianoKeyboardAdapter() {
+					public void octaveResized(ChangeEvent e) {
+						octaveSelecter.setBlockIncrement(getOctaves());
+					}
+				}
+			);
+		}};
+		add(octaveBar = new JPanel() {{
+			setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
+			add(octaveSelecter = new JScrollBar(JScrollBar.HORIZONTAL) {
+				{
+					setToolTipText("Octave position");
+					setModel(keyboard.octaveRangeModel);
+					setBlockIncrement(keyboard.getOctaves());
+				}
+			});
+			add(Box.createHorizontalStrut(5));
+			add(octaveSizeSlider = new JSlider() {
+				{
+					setToolTipText("Octave size");
+					setModel(keyboard.octaveSizeModel);
+					setMinimumSize(new Dimension(100, 18));
+					setMaximumSize(new Dimension(100, 18));
+					setPreferredSize(new Dimension(100, 18));
+				}
+			});
+		}});
 		add(keyboard);
 		setAlignmentX((float)0.5);
 	}
@@ -901,8 +894,6 @@ class MidiKeyboardPanel extends JPanel {
 		add( keyboardSouthPanel );
 	}
 
-	// Methods
-	//
 	public void setDarkMode(boolean isDark) {
 		Color col = isDark ? Color.black : null;
 		setBackground(col);

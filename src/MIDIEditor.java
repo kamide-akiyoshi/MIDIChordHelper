@@ -310,39 +310,11 @@ class MidiEditor extends JDialog implements DropTargetListener {
 		}
 	}
 
+	SequenceTrackListTableModel sequenceTrackListTableModel;
 	/**
 	 * MIDIトラック選択状態
 	 */
-	private ListSelectionModel trackSelectionModel = new DefaultListSelectionModel() {{
-		setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
-		addListSelectionListener(new ListSelectionListener() {
-			@Override
-			public void valueChanged(ListSelectionEvent e) {
-				if( e.getValueIsAdjusting() )
-					return;
-				SequenceTrackListTableModel sequenceModel =
-					sequenceListTableModel.getSelectedSequenceModel();
-				if( sequenceModel == null || isSelectionEmpty() ) {
-					trackEventListTableView.setModel(new TrackEventListTableModel());
-				}
-				else {
-					int selIndex = getMinSelectionIndex();
-					TrackEventListTableModel trackModel = sequenceModel.getTrackModel(selIndex);
-					if( trackModel == null ) {
-						trackEventListTableView.setModel(new TrackEventListTableModel());
-					}
-					else {
-						trackEventListTableView.setModel(trackModel);
-						TableColumnModel tcm = trackEventListTableView.getColumnModel();
-						trackModel.sizeColumnWidthToFit(tcm);
-						TableColumn midiMessageColumn = tcm.getColumn(TrackEventListTableModel.Column.MESSAGE.ordinal());
-						midiMessageColumn.setCellEditor(eventCellEditor);
-					}
-				}
-				updateButtonStatus();
-			}
-		});
-	}};
+	ListSelectionModel trackSelectionModel;
 	/**
 	 * トラック追加アクション
 	 */
@@ -369,7 +341,9 @@ class MidiEditor extends JDialog implements DropTargetListener {
 		public void actionPerformed(ActionEvent e) {
 			if( ! confirm("Do you want to delete selected track ?\n選択したトラックを削除しますか？"))
 				return;
-			sequenceListTableModel.getSelectedSequenceModel().deleteTracks(trackSelectionModel);
+			sequenceListTableModel.getSelectedSequenceModel().deleteTracks(
+				trackSelectionModel
+			);
 		}
 	};
 	/**
@@ -424,12 +398,7 @@ class MidiEditor extends JDialog implements DropTargetListener {
 	/**
 	 * MIDIイベントリストテーブルビュー
 	 */
-	private JTable trackEventListTableView = new JTable(
-		new TrackEventListTableModel(),
-		null,
-		eventSelectionModel
-	);
-	private MidiEventsLabel midiEventsLabel = new MidiEventsLabel();
+	private JTable trackEventListTableView;
 	private class MidiEventsLabel extends JLabel implements ListSelectionListener {
 		private static final String TITLE = "MIDI Events";
 		public MidiEventsLabel() {
@@ -448,7 +417,7 @@ class MidiEditor extends JDialog implements DropTargetListener {
 	/**
 	 * スクロール可能なMIDIイベントテーブルビュー
 	 */
-	private JScrollPane scrollableEventTableView = new JScrollPane(trackEventListTableView);
+	private JScrollPane scrollableEventTableView;
 	/**
 	 * 指定の MIDI tick のイベントへスクロールします。
 	 * @param tick MIDI tick
@@ -768,6 +737,7 @@ class MidiEditor extends JDialog implements DropTargetListener {
 	 */
 	public MidiEditor(MidiSequencerModel sequencerModel) {
 		sequenceListTableModel = new SequenceListTableModel(sequencerModel) ;
+		sequenceTrackListTableModel = new SequenceTrackListTableModel(sequenceListTableModel);
 		setTitle("MIDI Editor/Playlist - MIDI Chord Helper");
 		setBounds( 150, 200, 850, 500 );
 		setLayout(new FlowLayout());
@@ -973,8 +943,36 @@ class MidiEditor extends JDialog implements DropTargetListener {
 			});
 			add(Box.createRigidArea(new Dimension(0, 5)));
 			add(new JScrollPane(trackListTableView = new JTable(
-				new SequenceTrackListTableModel(sequenceListTableModel),
-				null, trackSelectionModel
+				sequenceTrackListTableModel, null,
+				trackSelectionModel = new DefaultListSelectionModel() {{
+					setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+					addListSelectionListener(new ListSelectionListener() {
+						@Override
+						public void valueChanged(ListSelectionEvent e) {
+							if( e.getValueIsAdjusting() )
+								return;
+							SequenceTrackListTableModel sequenceModel =
+								sequenceListTableModel.getSelectedSequenceModel();
+							if( sequenceModel == null || isSelectionEmpty() ) {
+								trackEventListTableView.setModel(new TrackEventListTableModel());
+							}
+							else {
+								TrackEventListTableModel trackModel = sequenceModel.getTrackModel(getMinSelectionIndex());
+								if( trackModel == null ) {
+									trackEventListTableView.setModel(new TrackEventListTableModel());
+								}
+								else {
+									trackEventListTableView.setModel(trackModel);
+									TableColumnModel tcm = trackEventListTableView.getColumnModel();
+									trackModel.sizeColumnWidthToFit(tcm);
+									TableColumn midiMessageColumn = tcm.getColumn(TrackEventListTableModel.Column.MESSAGE.ordinal());
+									midiMessageColumn.setCellEditor(eventCellEditor);
+								}
+							}
+							updateButtonStatus();
+						}
+					});
+				}}
 			) {{
 				// 録音対象のMIDIチャンネルをコンボボックスで選択できるよう、
 				// セルエディタを差し替える。
@@ -1003,8 +1001,16 @@ class MidiEditor extends JDialog implements DropTargetListener {
 			}});
 		}};
 		JPanel eventListPanel = new JPanel() {{
-			add(midiEventsLabel);
-			add(scrollableEventTableView);
+			add(new MidiEventsLabel());
+			add(scrollableEventTableView = new JScrollPane(
+				trackEventListTableView = new JTable(
+					new TrackEventListTableModel(),
+					null,
+					eventSelectionModel
+				) {{
+					setAutoCreateColumnsFromModel(false);
+				}}
+			));
 			add(new JPanel() {{
 				add(pairNoteCheckbox);
 				add(new JButton(eventCellEditor.queryJumpEventAction) {{
@@ -1041,20 +1047,17 @@ class MidiEditor extends JDialog implements DropTargetListener {
 	 * ボタン状態の更新
 	 */
 	public void updateButtonStatus() {
-		SequenceTrackListTableModel sequenceModel =
-			sequenceListTableModel.getSelectedSequenceModel();
-		boolean isSequenceSelected = (sequenceModel != null);
-		if(isSequenceSelected) {
-			trackListTableView.setModel(sequenceModel);
-		}
-		else {
+		SequenceTrackListTableModel
+			sequenceModel = sequenceListTableModel.getSelectedSequenceModel();
+		if(sequenceModel == null)
 			trackListTableView.setModel(new SequenceTrackListTableModel(sequenceListTableModel));
-		}
-		addTrackAction.setEnabled(isSequenceSelected);
+		else
+			trackListTableView.setModel(sequenceModel);
+		addTrackAction.setEnabled(sequenceModel != null);
 		boolean isTrackSelected = (
 			! trackSelectionModel.isSelectionEmpty()
 			&&
-			isSequenceSelected && sequenceModel.getRowCount() > 0
+			sequenceModel != null && sequenceModel.getRowCount() > 0
 		);
 		deleteTrackAction.setEnabled(isTrackSelected);
 		//

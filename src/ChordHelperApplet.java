@@ -44,6 +44,7 @@ import javax.swing.JSlider;
 import javax.swing.JSplitPane;
 import javax.swing.JTextField;
 import javax.swing.JToggleButton;
+import javax.swing.SwingUtilities;
 import javax.swing.border.Border;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
@@ -251,7 +252,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public static class VersionInfo {
 		public static final String	NAME = "MIDI Chord Helper";
-		public static final String	VERSION = "Ver.20131127.1";
+		public static final String	VERSION = "Ver.20131128.1";
 		public static final String	COPYRIGHT = "Copyright (C) 2004-2013";
 		public static final String	AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String	URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";
@@ -351,21 +352,9 @@ public class ChordHelperApplet extends JApplet {
 	MidiDeviceDialog midiConnectionDialog;
 	MidiEditor editorDialog;
 	ChordDiagram chordDiagram;
-	TempoSelecter tempoSelecter = new TempoSelecter() {
-		{ setEditable(false); }
-	};
-	TimeSignatureSelecter timesigSelecter = new TimeSignatureSelecter() {
-		{ setEditable(false); }
-	};
-	KeySignatureLabel keysigLabel = new KeySignatureLabel() {
-		{
-			addMouseListener(new MouseAdapter() {
-				public void mousePressed(MouseEvent e) {
-					chordMatrix.setKeySignature(keysigLabel.getKey());
-				}
-			});
-		}
-	};
+	TempoSelecter tempoSelecter;
+	TimeSignatureSelecter timesigSelecter;
+	KeySignatureLabel keysigLabel;
 	JLabel songTitleLabel = new JLabel();
 	//
 	// あの楽器
@@ -445,15 +434,20 @@ public class ChordHelperApplet extends JApplet {
 		keyboardPanel.eventDialog = editorDialog.eventCellEditor.eventDialog;
 		midiConnectionDialog = new MidiDeviceDialog(deviceModelList);
 		midiConnectionDialog.setIconImage(iconImage);
-		lyricDisplay = new ChordTextField() {{
-			addActionListener(new ActionListener() {
-				public void actionPerformed(ActionEvent event) {
-					chordMatrix.setSelectedChord(
-						event.getActionCommand().trim().split("[ \t\r\n]")[0]
-					);
-				}
-			});
-		}};
+		lyricDisplay = new ChordTextField() {
+			{
+				deviceModelList.sequencerModel.getSequencer().addMetaEventListener(this);
+				addActionListener(
+					new ActionListener() {
+						public void actionPerformed(ActionEvent event) {
+							chordMatrix.setSelectedChord(
+								event.getActionCommand().trim().split("[ \t\r\n]")[0]
+							);
+						}
+					}
+				);
+			}
+		};
 		lyricDisplayDefaultBorder = lyricDisplay.getBorder();
 		lyricDisplayDefaultBgcolor = lyricDisplay.getBackground();
 		//
@@ -461,35 +455,54 @@ public class ChordHelperApplet extends JApplet {
 		//
 		chordDiagram = new ChordDiagram(this);
 		//
-		// MIDI parts
+		// MetaEvent listeners
 		//
+		tempoSelecter = new TempoSelecter() {{
+			setEditable(false);
+			deviceModelList.sequencerModel.getSequencer().addMetaEventListener(this);
+		}};
+		timesigSelecter = new TimeSignatureSelecter() {{
+			setEditable(false);
+			deviceModelList.sequencerModel.getSequencer().addMetaEventListener(this);
+		}};
+		keysigLabel = new KeySignatureLabel() {{
+			addMouseListener(new MouseAdapter() {
+				public void mousePressed(MouseEvent e) {
+					chordMatrix.setKeySignature(getKey());
+				}
+			});
+		}};
 		deviceModelList.sequencerModel.getSequencer().addMetaEventListener(
 			new MetaEventListener() {
+				class SetKeySignatureRunnable implements Runnable {
+					Music.Key key;
+					public SetKeySignatureRunnable(Music.Key key) {
+						this.key = key;
+					}
+					@Override
+					public void run() { setKeySignature(key); }
+				}
 				@Override
 				public void meta(MetaMessage msg) {
 					switch(msg.getType()) {
-					case 0x01: // Text（任意のテキスト：コメントなど）
-					case 0x02: // Copyright（著作権表示）
-					case 0x05: // Lyrics（歌詞）
-					case 0x06: // Marker
-					case 0x03: // Sequence Name / Track Name（曲名またはトラック名）
-						lyricDisplay.addLyric(msg.getData());
-						break;
-					case 0x51: // Tempo (3 bytes) - テンポ
-						tempoSelecter.setTempo(msg.getData());
-						break;
-					case 0x58: // Time signature (4 bytes) - 拍子
-						timesigSelecter.setValue(msg.getData());
-						break;
 					case 0x59: // Key signature (2 bytes) : 調号
 						Music.Key key = new Music.Key(msg.getData());
-						keysigLabel.setKeySignature(key);
-						chordMatrix.setKeySignature(key);
+						if( ! SwingUtilities.isEventDispatchThread() ) {
+							SwingUtilities.invokeLater(
+								new SetKeySignatureRunnable(key)
+							);
+						}
+						setKeySignature(key);
 						break;
 					}
 				}
+				private void setKeySignature(Music.Key key) {
+					keysigLabel.setKeySignature(key);
+					chordMatrix.setKeySignature(key);
+				}
 			}
 		);
+		//シーケンサーの時間スライダーの値が変わったときのリスナーを登録
 		deviceModelList.sequencerModel.addChangeListener(new ChangeListener() {
 			@Override
 			public void stateChanged(ChangeEvent e) {
@@ -1023,7 +1036,7 @@ class InversionAndOmissionLabel extends JLabel
 	}
 }
 
-class ChordTextField extends JTextField {
+class ChordTextField extends JTextField implements MetaEventListener {
 	Music.Chord currentChord = null;
 	private long lyricArrivedTime = System.nanoTime();
 	public ChordTextField() {
@@ -1040,15 +1053,40 @@ class ChordTextField extends JTextField {
 			java.awt.Toolkit.getDefaultToolkit().getScreenSize()
 		);
 	}
-	public void appendChord(Music.Chord chord) {
-		if( currentChord == null && chord == null )
-			return;
-		if( currentChord != null && chord != null && chord.equals(currentChord) )
-			return;
-		String delimiter = ""; // was "\n"
-		setText( getText() + (chord == null ? delimiter : chord + " ") );
-		currentChord = ( chord == null ? null : chord.clone() );
+	@Override
+	public void meta(MetaMessage msg) {
+		switch(msg.getType()) {
+		case 0x01: // Text（任意のテキスト：コメントなど）
+		case 0x02: // Copyright（著作権表示）
+		case 0x05: // Lyrics（歌詞）
+		case 0x06: // Marker
+		case 0x03: // Sequence Name / Track Name（曲名またはトラック名）
+			byte[] data = msg.getData();
+			if( ! SwingUtilities.isEventDispatchThread() ) {
+				// MIDIシーケンサの EDT から呼ばれた場合、
+				// 表示処理を Swing の EDT に振り直す。
+				SwingUtilities.invokeLater(new AddLyricJob(data));
+				break;
+			}
+			addLyric(data);
+			break;
+		default:
+			break;
+		}
 	}
+	/**
+	 * 歌詞を追加するジョブ
+	 */
+	private class AddLyricJob implements Runnable {
+		private byte[] data;
+		public AddLyricJob(byte[] data) { this.data = data; }
+		@Override
+		public void run() { addLyric(data); }
+	}
+	/**
+	 * 歌詞を追加し、カーソルを末尾に移動します。
+	 * @param data 歌詞データ
+	 */
 	public void addLyric(byte[] data) {
 		long startTime = System.nanoTime();
 		// 歌詞を表示
@@ -1067,14 +1105,28 @@ class ChordTextField extends JTextField {
 		) {
 			// 長い歌詞や空白が来たり、追加先に歌詞がなかった場合は上書きする。
 			// ただし、前回から充分に時間が経っていない場合は上書きしない。
-			setText(additionalLyric);
+			lyric = additionalLyric;
 		}
 		else {
 			// 短い歌詞だった場合は、既存の歌詞に追加する
-			setText( lyric + " " + additionalLyric );
+			lyric += " " + additionalLyric;
 		}
+		setText(lyric);
 		setCaretPosition(getText().length());
 		lyricArrivedTime = startTime;
+	}
+	/**
+	 * コードを追加します。
+	 * @param chord コード
+	 */
+	public void appendChord(Music.Chord chord) {
+		if( currentChord == null && chord == null )
+			return;
+		if( currentChord != null && chord != null && chord.equals(currentChord) )
+			return;
+		String delimiter = ""; // was "\n"
+		setText( getText() + (chord == null ? delimiter : chord + " ") );
+		currentChord = ( chord == null ? null : chord.clone() );
 	}
 }
 

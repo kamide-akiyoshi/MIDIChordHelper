@@ -15,6 +15,7 @@ import java.awt.event.MouseListener;
 import java.util.ArrayList;
 
 import javax.sound.midi.InvalidMidiDataException;
+import javax.sound.midi.MetaEventListener;
 import javax.sound.midi.MetaMessage;
 import javax.sound.midi.MidiChannel;
 import javax.sound.midi.MidiMessage;
@@ -39,6 +40,7 @@ import javax.swing.JSpinner;
 import javax.swing.JTextArea;
 import javax.swing.ListCellRenderer;
 import javax.swing.SpinnerNumberModel;
+import javax.swing.SwingUtilities;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 import javax.swing.event.ListDataEvent;
@@ -1144,7 +1146,7 @@ class DurationForm extends JPanel implements ActionListener, ChangeListener {
 /**
  * テンポ選択（QPM: Quarter Per Minute）
  */
-class TempoSelecter extends JPanel implements MouseListener {
+class TempoSelecter extends JPanel implements MouseListener, MetaEventListener {
 	static final int DEFAULT_QPM = 120;
 	protected SpinnerNumberModel tempoSpinnerModel =
 		new SpinnerNumberModel(DEFAULT_QPM, 1, 999, 1);
@@ -1168,6 +1170,24 @@ class TempoSelecter extends JPanel implements MouseListener {
 		tempoLabel.addMouseListener(this);
 	}
 	private long prevBeatMicrosecondPosition = 0;
+	private class SetTempoRunnable implements Runnable {
+		byte[] qpm;
+		public SetTempoRunnable(byte[] qpm) { this.qpm = qpm; }
+		@Override
+		public void run() { setTempo(qpm);}
+	}
+	@Override
+	public void meta(MetaMessage msg) {
+		switch(msg.getType()) {
+		case 0x51: // Tempo (3 bytes) - テンポ
+			if( ! SwingUtilities.isEventDispatchThread() ) {
+				SwingUtilities.invokeLater(new SetTempoRunnable(msg.getData()));
+				break;
+			}
+			setTempo(msg.getData());
+			break;
+		}
+	}
 	@Override
 	public void mousePressed(MouseEvent e) {
 		Component obj = e.getComponent();
@@ -1250,7 +1270,7 @@ class TempoSelecter extends JPanel implements MouseListener {
 /**
  * 拍子選択ビュー
  */
-class TimeSignatureSelecter extends JPanel {
+class TimeSignatureSelecter extends JPanel implements MetaEventListener {
 	SpinnerNumberModel upperTimesigSpinnerModel = new SpinnerNumberModel(4, 1, 32, 1);
 	private JSpinner upperTimesigSpinner = new JSpinner(
 		upperTimesigSpinnerModel
@@ -1266,6 +1286,24 @@ class TimeSignatureSelecter extends JPanel {
 			setSelectedIndex(2);
 		}
 	};
+	private class SetValueRunnable implements Runnable {
+		byte[] qpm;
+		public SetValueRunnable(byte[] qpm) { this.qpm = qpm; }
+		@Override
+		public void run() { setValue(qpm);}
+	}
+	@Override
+	public void meta(MetaMessage msg) {
+		switch(msg.getType()) {
+		case 0x58: // Time signature (4 bytes) - 拍子
+			if( ! SwingUtilities.isEventDispatchThread() ) {
+				SwingUtilities.invokeLater(new SetValueRunnable(msg.getData()));
+				break;
+			}
+			setValue(msg.getData());
+			break;
+		}
+	}
 	private class TimeSignatureLabel extends JLabel {
 		private byte upper = -1;
 		private byte lower_index = -1;
