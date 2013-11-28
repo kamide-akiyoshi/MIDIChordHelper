@@ -1260,7 +1260,7 @@ class MidiDeviceModelList extends Vector<MidiConnecterListModel> {
 	/**
 	 * MIDIデータ編集ダイアログ
 	 */
-	MidiEditor editorDialog;
+	private MidiEditor editorDialog;
 	private MidiConnecterListModel firstMidiOutModel;
 	/**
 	 * MIDIデバイスモデルリストを生成します。

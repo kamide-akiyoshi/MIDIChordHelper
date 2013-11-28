@@ -7,8 +7,6 @@ import java.util.List;
 import java.util.Map;
 
 import javax.sound.midi.InvalidMidiDataException;
-import javax.sound.midi.MetaEventListener;
-import javax.sound.midi.MetaMessage;
 import javax.sound.midi.Sequence;
 import javax.sound.midi.Sequencer;
 import javax.swing.AbstractAction;
@@ -19,7 +17,6 @@ import javax.swing.DefaultBoundedRangeModel;
 import javax.swing.Icon;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.SwingUtilities;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 import javax.swing.event.EventListenerList;
@@ -173,7 +170,7 @@ class MeasureIndicator extends JPanel implements ChangeListener {
  * MIDIシーケンサモデル
  */
 class MidiSequencerModel extends MidiConnecterListModel
-	implements BoundedRangeModel, MetaEventListener
+	implements BoundedRangeModel
 {
 	/**
 	 * MIDIシーケンサモデルを構築します。
@@ -188,52 +185,11 @@ class MidiSequencerModel extends MidiConnecterListModel
 	) {
 		super(sequencer, modelList);
 		this.deviceModelList = deviceModelList;
-		sequencer.addMetaEventListener(this);
 	}
 	/**
 	 * MIDIデバイスモデルリスト
 	 */
 	private MidiDeviceModelList deviceModelList;
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>EOT (End Of Track、type==0x2F) を受信したときの処理です。
-	 * 通常はシーケンサの EDT から起動されるため、
-	 * Swing の EDT へ振りなおします。
-	 * </p>
-	 */
-	@Override
-	public void meta(MetaMessage msg) {
-		if( msg.getType() == 0x2F ) {
-			if( ! SwingUtilities.isEventDispatchThread() ) {
-				SwingUtilities.invokeLater(new Runnable() {
-					@Override
-					public void run() { goNext(); }
-				});
-				return;
-			}
-			goNext();
-		}
-	}
-	/**
-	 * 次の曲へ進みます。
-	 *
-	 * <p>リピートモードの場合は同じ曲をもう一度再生、
-	 * そうでない場合は次の曲へ進んで再生します。
-	 * 次の曲がなければ、そこで停止します。
-	 * いずれの場合も局の先頭へ戻ります。
-	 * </p>
-	 */
-	private void goNext() {
-		getSequencer().setMicrosecondPosition(0);
-		boolean isRepeatMode = (Boolean)toggleRepeatAction.getValue(Action.SELECTED_KEY);
-		if( isRepeatMode || deviceModelList.editorDialog.sequenceListTableModel.loadNext(1) ) {
-			start();
-		}
-		else {
-			stop();
-		}
-	}
 	/**
 	 * このシーケンサーの再生スピード調整モデル
 	 */
@@ -417,20 +373,6 @@ class MidiSequencerModel extends MidiConnecterListModel
 			}
 		}
 	}
-	/**
-	 * 繰り返し再生ON/OFF切り替えアクション
-	 */
-	public Action toggleRepeatAction = new AbstractAction() {
-		{
-			putValue(SHORT_DESCRIPTION, "Repeat - 繰り返し再生");
-			putValue(LARGE_ICON_KEY, new ButtonIcon(ButtonIcon.REPEAT_ICON));
-			putValue(SELECTED_KEY, false);
-		}
-		@Override
-		public void actionPerformed(ActionEvent event) {
-			// 特にやることなし
-		}
-	};
 	/**
 	 * MIDIトラックリストテーブルモデル
 	 */
