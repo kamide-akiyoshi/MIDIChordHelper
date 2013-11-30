@@ -176,7 +176,7 @@ class MidiSequencerModel extends MidiConnecterListModel
 	 * MIDIシーケンサモデルを構築します。
 	 * @param deviceModelList 親のMIDIデバイスモデルリスト
 	 * @param sequencer シーケンサーMIDIデバイス
-	 * @param modelList MIDIコネクタリストモデルのリスト
+	 * @param modelList MIDIコネクタリストモデルのリスト（タイムスタンプリセット対象）
 	 */
 	public MidiSequencerModel(
 		MidiDeviceModelList deviceModelList,
@@ -186,10 +186,6 @@ class MidiSequencerModel extends MidiConnecterListModel
 		super(sequencer, modelList);
 		this.deviceModelList = deviceModelList;
 	}
-	/**
-	 * MIDIデバイスモデルリスト
-	 */
-	private MidiDeviceModelList deviceModelList;
 	/**
 	 * このシーケンサーの再生スピード調整モデル
 	 */
@@ -264,7 +260,16 @@ class MidiSequencerModel extends MidiConnecterListModel
 		}
 	);
 	/**
+	 * MIDIデバイスモデルリスト（タイムスタンプリセット対象）
+	 */
+	private MidiDeviceModelList deviceModelList;
+	/**
 	 * このモデルのMIDIシーケンサを開始します。
+	 *
+	 * <p>録音するMIDIチャンネルがMIDIエディタで指定されている場合、
+	 * 録音スタート時のタイムスタンプが正しく０になるよう、
+	 * 各MIDIデバイスのタイムスタンプをすべてリセットします。
+	 * </p>
 	 */
 	public void start() {
 		Sequencer sequencer = getSequencer();
@@ -275,7 +280,17 @@ class MidiSequencerModel extends MidiConnecterListModel
 		}
 		startStopAction.setRunning(true);
 		timeRangeUpdater.start();
-		deviceModelList.startSequencerWithResetTimestamps();
+		SequenceTrackListTableModel sequenceTableModel = getSequenceTableModel();
+		if( sequenceTableModel != null && sequenceTableModel.hasRecordChannel() ) {
+			for(MidiConnecterListModel m : deviceModelList)
+				m.resetMicrosecondPosition();
+			System.gc();
+			sequencer.startRecording();
+		}
+		else {
+			System.gc();
+			sequencer.start();
+		}
 		fireStateChanged();
 	}
 	/**
@@ -390,8 +405,9 @@ class MidiSequencerModel extends MidiConnecterListModel
 	 * @param sequenceTableModel MIDIトラックリストテーブルモデル
 	 * @return 成功したらtrue
 	 */
-	public boolean setSequenceTrackListTableModel(SequenceTrackListTableModel sequenceTableModel) {
-		//
+	public boolean setSequenceTrackListTableModel(
+		SequenceTrackListTableModel sequenceTableModel
+	) {
 		// javax.sound.midi:Sequencer.setSequence() のドキュメントにある
 		// 「このメソッドは、Sequencer が閉じている場合でも呼び出すことができます。 」
 		// という記述は、null をセットする場合には当てはまらない。

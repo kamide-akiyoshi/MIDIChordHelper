@@ -1,8 +1,10 @@
 import java.awt.Dimension;
 import java.awt.Insets;
 import java.awt.event.ActionEvent;
+import java.io.IOException;
 import java.util.regex.Pattern;
 
+import javax.sound.midi.InvalidMidiDataException;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.Box;
@@ -36,9 +38,12 @@ public class Base64Dialog extends JDialog {
 			);
 		}
 		@Override
-		public void actionPerformed(ActionEvent e) {
-			int lastIndex = midiEditor.addSequence(getMIDIData(), null);
-			if( lastIndex < 0 ) {
+		public void actionPerformed(ActionEvent event) {
+			int lastIndex;
+			try {
+				lastIndex = midiEditor.sequenceListTableModel.addSequence(getMIDIData(), null);
+			} catch(IOException | InvalidMidiDataException e) {
+				midiEditor.showWarning(e.getMessage());
 				base64TextArea.requestFocusInWindow();
 				lastIndex = midiEditor.sequenceListTableModel.getRowCount() - 1;
 			}

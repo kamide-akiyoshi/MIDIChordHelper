@@ -92,7 +92,7 @@ class NewSequenceDialog extends JDialog {
 	) {
 		@Override
 		public void actionPerformed(ActionEvent e) {
-			midiEditor.addSequenceAndPlay(getMidiSequence());
+			midiEditor.sequenceListTableModel.addSequenceAndPlay(getMidiSequence());
 			NewSequenceDialog.this.setVisible(false);
 		}
 	};

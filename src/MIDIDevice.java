@@ -1258,9 +1258,8 @@ class MidiDeviceModelList extends Vector<MidiConnecterListModel> {
 	 */
 	MidiSequencerModel sequencerModel;
 	/**
-	 * MIDIデータ編集ダイアログ
+	 * 最初のMIDI出力
 	 */
-	private MidiEditor editorDialog;
 	private MidiConnecterListModel firstMidiOutModel;
 	/**
 	 * MIDIデバイスモデルリストを生成します。
@@ -1366,7 +1365,6 @@ class MidiDeviceModelList extends Vector<MidiConnecterListModel> {
 	 * @param editorDialog MIDIエディタ
 	 */
 	public void setMidiEditor(MidiEditor editorDialog) {
-		this.editorDialog = editorDialog;
 		MidiConnecterListModel mclm = addMidiDevice(editorDialog.virtualMidiDevice);
 		try {
 			mclm.openDevice();
@@ -1375,47 +1373,23 @@ class MidiDeviceModelList extends Vector<MidiConnecterListModel> {
 		}
 		mclm.connectToReceiverOf(firstMidiOutModel);
 	}
-	/**
-	 * シーケンサを開始します。
-	 * <p>録音するMIDIチャンネルがMIDIエディタで指定されている場合、
-	 * 録音スタート時のタイムスタンプが正しく０になるよう、
-	 * 各MIDIデバイスのタイムスタンプをすべてリセットします。
-	 * </p>
-	 */
-	public void startSequencerWithResetTimestamps() {
-		Sequencer sequencer = sequencerModel.getSequencer();
-		if( editorDialog != null && editorDialog.isRecordable() ) {
-			for( MidiConnecterListModel m : this )
-				m.resetMicrosecondPosition();
-			System.gc();
-			sequencer.startRecording();
-		}
-		else {
-			System.gc();
-			sequencer.start();
-		}
-	}
 }
 
 /**
  * MIDIデバイスダイアログ (View)
  */
 class MidiDeviceDialog extends JDialog implements ActionListener {
-	MidiDeviceTree deviceTree;
-	JEditorPane deviceInfoPane = new JEditorPane("text/html","<html></html>") {
-		{
-			setEditable(false);
-		}
-	};
+	JEditorPane deviceInfoPane = new JEditorPane("text/html","<html></html>") {{
+		setEditable(false);
+	}};
 	MidiDesktopPane desktopPane;
+	MidiDeviceTree deviceTree;
 	public MidiDeviceDialog(List<MidiConnecterListModel> deviceModelList) {
 		setTitle("MIDI device connection");
 		setBounds( 300, 300, 800, 500 );
-		desktopPane = new MidiDesktopPane(
-			deviceTree = new MidiDeviceTree(
-				new MidiDeviceTreeModel(deviceModelList)
-			)
-		);
+		desktopPane = new MidiDesktopPane(deviceTree = new MidiDeviceTree(
+			new MidiDeviceTreeModel(deviceModelList)
+		));
 		deviceTree.addTreeSelectionListener(
 			new TreeSelectionListener() {
 				public void valueChanged(TreeSelectionEvent e) {
@@ -1456,17 +1430,13 @@ class MidiDeviceDialog extends JDialog implements ActionListener {
 		JSplitPane sideSplitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT,
 			new JScrollPane(deviceTree),
 			new JScrollPane(deviceInfoPane)
-		) {
-			{
-				setDividerLocation(300);
-			}
-		};
-		add(new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, sideSplitPane, desktopPane) {
-			{
-				setOneTouchExpandable(true);
-				setDividerLocation(250);
-			}
-		});
+		){{
+			setDividerLocation(300);
+		}};
+		add(new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, sideSplitPane, desktopPane) {{
+			setOneTouchExpandable(true);
+			setDividerLocation(250);
+		}});
 	}
 	@Override
 	public void actionPerformed(ActionEvent event) {
@@ -1480,7 +1450,7 @@ class MidiDeviceDialog extends JDialog implements ActionListener {
 class MidiDesktopPane extends JDesktopPane implements DropTargetListener {
 	MidiCablePane cablePane = new MidiCablePane(this);
 	public MidiDesktopPane(MidiDeviceTree deviceTree) {
-		add( cablePane, JLayeredPane.PALETTE_LAYER );
+		add(cablePane, JLayeredPane.PALETTE_LAYER);
 		int i=0;
 		MidiDeviceTreeModel treeModel = (MidiDeviceTreeModel)deviceTree.getModel();
 		List<MidiConnecterListModel> deviceModelList = treeModel.deviceModelList;

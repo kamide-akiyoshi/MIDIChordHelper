@@ -20,11 +20,14 @@ import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.security.AccessControlException;
 import java.util.Arrays;
 import java.util.Vector;
 
+import javax.sound.midi.InvalidMidiDataException;
 import javax.sound.midi.MetaEventListener;
 import javax.sound.midi.MetaMessage;
+import javax.sound.midi.Sequence;
 import javax.sound.midi.Sequencer;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -81,9 +84,8 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public int addRandomSongToPlaylist(int measureLength) {
 		editorDialog.newSequenceDialog.setRandomChordProgression(measureLength);
-		return editorDialog.addSequenceAndPlay(
-			editorDialog.newSequenceDialog.getMidiSequence()
-		);
+		Sequence sequence = editorDialog.newSequenceDialog.getMidiSequence();
+		return editorDialog.sequenceListTableModel.addSequenceAndPlay(sequence);
 	}
 	/**
 	 * URLで指定されたMIDIファイルをプレイリストへ追加します。
@@ -95,7 +97,15 @@ public class ChordHelperApplet extends JApplet {
 	 * @return 追加先のインデックス値（０から始まる）。追加できなかったときは -1
 	 */
 	public int addToPlaylist(String midiFileUrl) {
-		return editorDialog.addSequenceFromURL(midiFileUrl);
+		try {
+			return editorDialog.sequenceListTableModel.addSequenceFromURL(midiFileUrl);
+		} catch( URISyntaxException|IOException|InvalidMidiDataException e ) {
+			editorDialog.showWarning(e.getMessage());
+		} catch( AccessControlException e ) {
+			e.printStackTrace();
+			editorDialog.showError(e.getMessage());
+		}
+		return -1;
 	}
 	/**
 	 * Base64 エンコードされた MIDI ファイルをプレイリストへ追加します。
@@ -117,7 +127,13 @@ public class ChordHelperApplet extends JApplet {
 	public int addToPlaylistBase64(String base64EncodedText, String filename) {
 		Base64Dialog d = editorDialog.base64Dialog;
 		d.setBase64Data(base64EncodedText);
-		return editorDialog.addSequence(d.getMIDIData(), filename);
+		try {
+			return editorDialog.sequenceListTableModel.addSequence(d.getMIDIData(), filename);
+		} catch (IOException | InvalidMidiDataException e) {
+			e.printStackTrace();
+			editorDialog.showWarning(e.getMessage());
+			return -1;
+		}
 	}
 	/**
 	 * プレイリスト上で現在選択されているMIDIシーケンスを、
@@ -252,7 +268,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public static class VersionInfo {
 		public static final String	NAME = "MIDI Chord Helper";
-		public static final String	VERSION = "Ver.20131129.1";
+		public static final String	VERSION = "Ver.20131201.2";
 		public static final String	COPYRIGHT = "Copyright (C) 2004-2013";
 		public static final String	AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String	URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";
@@ -431,7 +447,7 @@ public class ChordHelperApplet extends JApplet {
 		editorDialog.setIconImage(iconImage);
 		deviceModelList.setMidiEditor(editorDialog);
 		new DropTarget(this, DnDConstants.ACTION_COPY_OR_MOVE, editorDialog, true);
-		keyboardPanel.eventDialog = editorDialog.eventCellEditor.eventDialog;
+		keyboardPanel.eventDialog = editorDialog.eventListTableView.eventDialog;
 		midiConnectionDialog = new MidiDeviceDialog(deviceModelList);
 		midiConnectionDialog.setIconImage(iconImage);
 		lyricDisplay = new ChordTextField() {
