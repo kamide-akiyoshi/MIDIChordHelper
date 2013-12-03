@@ -365,10 +365,20 @@ class MidiSequencerModel extends MidiConnecterListModel
 	 * イベントリスナーのリスト
 	 */
 	protected EventListenerList listenerList = new EventListenerList();
+	/**
+	 * {@inheritDoc}
+	 * <p>このシーケンサーの再生時間位置変更通知を受けるリスナーを追加します。
+	 * </p>
+	 */
 	@Override
 	public void addChangeListener(ChangeListener listener) {
 		listenerList.add(ChangeListener.class, listener);
 	}
+	/**
+	 * {@inheritDoc}
+	 * <p>このシーケンサーの再生時間位置変更通知を受けるリスナーを除去します。
+	 * </p>
+	 */
 	@Override
 	public void removeChangeListener(ChangeListener listener) {
 		listenerList.remove(ChangeListener.class, listener);

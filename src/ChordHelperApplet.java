@@ -75,7 +75,7 @@ public class ChordHelperApplet extends JApplet {
 	 * @return 未保存の修正済み MIDI ファイルがあれば true
 	 */
 	public boolean isModified() {
-		return editorDialog.sequenceListTableModel.isModified();
+		return editorDialog.sequenceListTable.getModel().isModified();
 	}
 	/**
 	 * 指定された小節数の曲を、乱数で自動作曲してプレイリストへ追加します。
@@ -85,7 +85,7 @@ public class ChordHelperApplet extends JApplet {
 	public int addRandomSongToPlaylist(int measureLength) {
 		editorDialog.newSequenceDialog.setRandomChordProgression(measureLength);
 		Sequence sequence = editorDialog.newSequenceDialog.getMidiSequence();
-		return editorDialog.sequenceListTableModel.addSequenceAndPlay(sequence);
+		return editorDialog.sequenceListTable.getModel().addSequenceAndPlay(sequence);
 	}
 	/**
 	 * URLで指定されたMIDIファイルをプレイリストへ追加します。
@@ -98,7 +98,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public int addToPlaylist(String midiFileUrl) {
 		try {
-			return editorDialog.sequenceListTableModel.addSequenceFromURL(midiFileUrl);
+			return editorDialog.sequenceListTable.getModel().addSequenceFromURL(midiFileUrl);
 		} catch( URISyntaxException|IOException|InvalidMidiDataException e ) {
 			editorDialog.showWarning(e.getMessage());
 		} catch( AccessControlException e ) {
@@ -128,7 +128,7 @@ public class ChordHelperApplet extends JApplet {
 		Base64Dialog d = editorDialog.base64Dialog;
 		d.setBase64Data(base64EncodedText);
 		try {
-			return editorDialog.sequenceListTableModel.addSequence(d.getMIDIData(), filename);
+			return editorDialog.sequenceListTable.getModel().addSequence(d.getMIDIData(), filename);
 		} catch (IOException | InvalidMidiDataException e) {
 			e.printStackTrace();
 			editorDialog.showWarning(e.getMessage());
@@ -140,7 +140,7 @@ public class ChordHelperApplet extends JApplet {
 	 * シーケンサへロードして再生します。
 	 */
 	public void play() {
-		play(editorDialog.sequenceListTableModel.selectionModel.getMinSelectionIndex());
+		play(editorDialog.sequenceListTable.getModel().sequenceListSelectionModel.getMinSelectionIndex());
 	}
 	/**
 	 * 指定されたインデックス値が示すプレイリスト上のMIDIシーケンスを、
@@ -148,7 +148,7 @@ public class ChordHelperApplet extends JApplet {
 	 * @param index インデックス値（０から始まる）
 	 */
 	public void play(int index) {
-		editorDialog.sequenceListTableModel.loadToSequencer(index);
+		editorDialog.sequenceListTable.getModel().loadToSequencer(index);
 		deviceModelList.sequencerModel.start();
 	}
 	/**
@@ -172,7 +172,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public String getMidiDataBase64() {
 		SequenceTrackListTableModel sequenceModel =
-			editorDialog.sequenceListTableModel.sequencerModel.getSequenceTableModel();
+			editorDialog.sequenceListTable.getModel().sequencerModel.getSequenceTableModel();
 		editorDialog.base64Dialog.setMIDIData(sequenceModel.getMIDIdata());
 		return editorDialog.base64Dialog.getBase64Data();
 	}
@@ -268,7 +268,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public static class VersionInfo {
 		public static final String	NAME = "MIDI Chord Helper";
-		public static final String	VERSION = "Ver.20131201.2";
+		public static final String	VERSION = "Ver.20131204.2";
 		public static final String	COPYRIGHT = "Copyright (C) 2004-2013";
 		public static final String	AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String	URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";
@@ -447,7 +447,7 @@ public class ChordHelperApplet extends JApplet {
 		editorDialog.setIconImage(iconImage);
 		deviceModelList.setMidiEditor(editorDialog);
 		new DropTarget(this, DnDConstants.ACTION_COPY_OR_MOVE, editorDialog, true);
-		keyboardPanel.eventDialog = editorDialog.eventListTableView.eventDialog;
+		keyboardPanel.eventDialog = editorDialog.eventDialog;
 		midiConnectionDialog = new MidiDeviceDialog(deviceModelList);
 		midiConnectionDialog.setIconImage(iconImage);
 		lyricDisplay = new ChordTextField() {
@@ -523,7 +523,7 @@ public class ChordHelperApplet extends JApplet {
 			@Override
 			public void stateChanged(ChangeEvent e) {
 				SequenceTrackListTableModel sequenceTableModel = deviceModelList.sequencerModel.getSequenceTableModel();
-				int loadedSequenceIndex = editorDialog.sequenceListTableModel.indexOfSequenceOnSequencer();
+				int loadedSequenceIndex = editorDialog.sequenceListTable.getModel().indexOfSequenceOnSequencer();
 				songTitleLabel.setText(
 					"<html>"+(
 						loadedSequenceIndex < 0 ? "[No MIDI file loaded]" :
@@ -655,7 +655,7 @@ public class ChordHelperApplet extends JApplet {
 					add( new JSlider(deviceModelList.sequencerModel) );
 					add( new TimeIndicator(deviceModelList.sequencerModel) );
 					add( Box.createHorizontalStrut(5) );
-					add( new JButton(editorDialog.sequenceListTableModel.moveToTopAction) {{
+					add( new JButton(editorDialog.sequenceListTable.getModel().moveToTopAction) {{
 						setMargin(ZERO_INSETS);
 					}});
 					add(new JButton(deviceModelList.sequencerModel.moveBackwardAction) {{
@@ -665,10 +665,10 @@ public class ChordHelperApplet extends JApplet {
 					add(new JButton(deviceModelList.sequencerModel.moveForwardAction) {{
 						setMargin(ZERO_INSETS);
 					}});
-					add(new JButton(editorDialog.sequenceListTableModel.moveToBottomAction) {{
+					add(new JButton(editorDialog.sequenceListTable.getModel().moveToBottomAction) {{
 						setMargin(ZERO_INSETS);
 					}});
-					add(new JToggleButton(editorDialog.sequenceListTableModel.toggleRepeatAction) {{
+					add(new JToggleButton(editorDialog.sequenceListTable.getModel().toggleRepeatAction) {{
 						setMargin(ZERO_INSETS);
 					}});
 					add( Box.createHorizontalStrut(10) );

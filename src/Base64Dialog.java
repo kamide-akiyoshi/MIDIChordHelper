@@ -39,15 +39,13 @@ public class Base64Dialog extends JDialog {
 		}
 		@Override
 		public void actionPerformed(ActionEvent event) {
-			int lastIndex;
+			SequenceListTableModel sltm = midiEditor.sequenceListTable.getModel();
 			try {
-				lastIndex = midiEditor.sequenceListTableModel.addSequence(getMIDIData(), null);
+				sltm.addSequence(getMIDIData(), null);
 			} catch(IOException | InvalidMidiDataException e) {
 				midiEditor.showWarning(e.getMessage());
 				base64TextArea.requestFocusInWindow();
-				lastIndex = midiEditor.sequenceListTableModel.getRowCount() - 1;
 			}
-			midiEditor.sequenceListTableModel.selectionModel.setSelectionInterval(lastIndex, lastIndex);
 			setVisible(false);
 		}
 	};

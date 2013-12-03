@@ -70,11 +70,9 @@ public class MidiChordHelper {
 	}
 }
 
-class AppletFrame extends JFrame implements
-	AppletStub, AppletContext, ChangeListener, TableModelListener
-{
+class AppletFrame extends JFrame implements AppletStub, AppletContext {
 	JLabel status_;
-	ChordHelperApplet applet = null;
+	ChordHelperApplet applet;
 	public AppletFrame(ChordHelperApplet applet) {
 		setTitle(ChordHelperApplet.VersionInfo.NAME);
 		(status_ = new JLabel()).setFont(
@@ -87,41 +85,65 @@ class AppletFrame extends JFrame implements
 		Image iconImage = applet.imageIcon == null ? null : applet.imageIcon.getImage();
 		setIconImage(iconImage);
 		setDefaultCloseOperation( WindowConstants.DO_NOTHING_ON_CLOSE );
-		addWindowListener( new WindowAdapter() {
-			@Override
-			public void windowClosing(WindowEvent evt) {
-				if( AppletFrame.this.applet.isConfirmedToExit() )
-					System.exit(0);
+		addWindowListener(
+			new WindowAdapter() {
+				@Override
+				public void windowClosing(WindowEvent evt) {
+					if( AppletFrame.this.applet.isConfirmedToExit() )
+						System.exit(0);
+				}
 			}
-		});
-		// シーケンスファイル名の変更監視
-		applet.editorDialog.sequenceListTableModel.addTableModelListener(this);
-		applet.deviceModelList.sequencerModel.addChangeListener(this);
+		);
+		new TitleUpdater(applet);
 		pack();
 		setLocationRelativeTo(null);
 		setVisible(true);
 		applet.start();
 	}
 	/**
-	 * プレイリストで変更されたファイル名をタイトルバーに反映します。
+	 * タイトルバー更新器
 	 */
-	@Override
-	public void tableChanged(TableModelEvent e) {
-		if( e.getColumn() == SequenceListTableModel.Column.FILENAME.ordinal() )
-			setFilenameToTitle();
-	}
-	@Override
-	public void stateChanged(ChangeEvent e) {
-		setFilenameToTitle();
-	}
-	private void setFilenameToTitle() {
-		SequenceTrackListTableModel seqModel = applet.deviceModelList.sequencerModel.getSequenceTableModel();
-		String filename = ( seqModel == null ? null : seqModel.getFilename() );
-		String title = ChordHelperApplet.VersionInfo.NAME;
-		if( filename != null && ! filename.isEmpty() ) {
-			title = filename + " - " + title;
+	private class TitleUpdater implements ChangeListener, TableModelListener {
+		MidiSequencerModel sequencerModel;
+		/**
+		 * タイトルバー更新器の構築
+		 * @param applet 対象アプレット
+		 */
+		public TitleUpdater(ChordHelperApplet applet) {
+			applet.editorDialog.sequenceListTable.getModel().addTableModelListener(this);
+			sequencerModel = applet.deviceModelList.sequencerModel;
+			sequencerModel.addChangeListener(this);
 		}
-		setTitle(title);
+		/**
+		 * プレイリスト上で変更されたファイル名をタイトルバーに反映します。
+		 */
+		@Override
+		public void tableChanged(TableModelEvent e) {
+			int col = e.getColumn();
+			if( col == SequenceListTableModel.Column.FILENAME.ordinal() ) {
+				setFilenameToTitle();
+			}
+			if( col == TableModelEvent.ALL_COLUMNS ) {
+				setFilenameToTitle();
+			}
+		}
+		/**
+		 * 再生中にファイルが切り替わったら、そのファイル名をタイトルバーに反映します。
+		 */
+		@Override
+		public void stateChanged(ChangeEvent e) { setFilenameToTitle(); }
+		/**
+		 * シーケンサーにロードされている曲のファイル名をタイトルバーに反映します。
+		 */
+		private void setFilenameToTitle() {
+			SequenceTrackListTableModel seq = sequencerModel.getSequenceTableModel();
+			String filename = ( seq == null ? null : seq.getFilename() );
+			String title = ChordHelperApplet.VersionInfo.NAME;
+			if( filename != null && ! filename.isEmpty() ) {
+				title = filename + " - " + title;
+			}
+			setTitle(title);
+		}
 	}
 	@Override
 	public boolean isActive() { return true; }
