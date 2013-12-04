@@ -55,8 +55,7 @@ import javax.swing.event.ListSelectionListener;
  *	Copyright (C) 2006-2013 ＠きよし - Akiyoshi Kamide
  *	http://www.yk.rim.or.jp/~kamide/music/chordhelper/
  */
-class MidiEventDialog extends JDialog implements ActionListener {
-	MidiMessageForm midiMessageForm = new MidiMessageForm();
+class MidiEventDialog extends JDialog {
 	/**
 	 * tick位置入力フォーム
 	 */
@@ -85,37 +84,57 @@ class MidiEventDialog extends JDialog implements ActionListener {
 			extraTickSpinner.setModel(model.extraTickModel);
 		}
 	}
-	TickPositionInputForm tickPositionInputForm = new TickPositionInputForm();
-	JButton okButton = new JButton("OK");
-	JButton cancelButton = new JButton("Cancel");
+	/**
+	 * tick位置入力フォーム
+	 */
+	TickPositionInputForm tickPositionInputForm;
+	/**
+	 * MIDIメッセージ入力フォーム
+	 */
+	MidiMessageForm midiMessageForm;
+	/**
+	 * キャンセルボタン
+	 */
+	JButton cancelButton;
+	/**
+	 * OKボタン（アクションによってラベルがOK以外に変わることがある）
+	 */
+	JButton okButton;
+	/**
+	 * MIDIイベントダイアログの構築
+	 */
 	public MidiEventDialog() {
 		setLayout(new FlowLayout());
-		add(tickPositionInputForm);
-		add(midiMessageForm);
-		add(new JPanel(){{add(okButton); add(cancelButton);}});
-		cancelButton.addActionListener(this);
-	}
-	public void actionPerformed(ActionEvent e) {
-		setVisible(false);
+		add(tickPositionInputForm = new TickPositionInputForm());
+		add(midiMessageForm = new MidiMessageForm());
+		add(new JPanel(){{
+			add(okButton = new JButton("OK"));
+			add(cancelButton = new JButton("Cancel"));
+		}});
+		cancelButton.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				setVisible(false);
+			}
+		});
 	}
 	public void openTickForm() {
 		tickPositionInputForm.setVisible(true);
 		midiMessageForm.setVisible(false);
-		setBounds( 200, 300, 500, 120 );
+		setBounds( 200, 300, 520, 150 );
 		setVisible(true);
 	}
 	public void openEventForm() {
 		tickPositionInputForm.setVisible(true);
 		midiMessageForm.setVisible(true);
 		midiMessageForm.setDurationVisible(true);
-		setBounds( 200, 300, 630, 320 );
+		setBounds( 200, 300, 630, 370 );
 		setVisible(true);
 	}
 	public void openMessageForm() {
 		tickPositionInputForm.setVisible(false);
 		midiMessageForm.setVisible(true);
 		midiMessageForm.setDurationVisible(false);
-		setBounds( 200, 300, 630, 270 );
+		setBounds( 200, 300, 630, 300 );
 		setVisible(true);
 	}
 }
@@ -399,19 +418,37 @@ class MidiMessageForm extends JPanel implements ActionListener {
 		}
 		updateVisible();
 	}
-	//
-	// Methods
-	//
-	public void setOutputMidiChannels( MidiChannel midi_channels[] ) {
-		this.midiChannels = midi_channels;
+	/**
+	 * このMIDIメッセージフォームにMIDIチャンネルを設定します。
+	 *
+	 * <p>設定したMIDIチャンネルには、
+	 * ダイアログ内のピアノキーボードで音階を入力したときに
+	 * ノートON/OFFが出力されます。これにより実際に音として聞けるようになります。
+	 * </p>
+	 *
+	 * @param midiChannels MIDIチャンネル
+	 */
+	public void setOutputMidiChannels( MidiChannel midiChannels[] ) {
+		this.midiChannels = midiChannels;
 	}
-	public void setDurationVisible(boolean is_visible) {
-		isDurationVisible = is_visible;
+	/**
+	 * 時間間隔入力の表示状態を変更します。
+	 * @param isVisible trueで表示、falseで非表示
+	 */
+	public void setDurationVisible(boolean isVisible) {
+		isDurationVisible = isVisible;
 		updateVisible();
 	}
+	/**
+	 * 時間間隔入力の表示状態を返します。
+	 * @return true：表示中 false：非表示中
+	 */
 	public boolean isDurationVisible() {
 		return isDurationVisible;
 	}
+	/**
+	 * 各入力欄の表示状態を更新します。
+	 */
 	public void updateVisible() {
 		int msgStatus = statusText.getValue();
 		boolean is_ch_msg = MIDISpec.isChannelMessage(msgStatus);
@@ -503,6 +540,10 @@ class MidiMessageForm extends JPanel implements ActionListener {
 			break;
 		}
 	}
+	/**
+	 * 入力している内容からMIDIメッセージを生成して返します。
+	 * @return 入力している内容から生成したMIDIメッセージ
+	 */
 	public MidiMessage getMessage() {
 		int msg_status = statusText.getValue();
 		if( msg_status < 0 ) {
@@ -569,6 +610,10 @@ class MidiMessageForm extends JPanel implements ActionListener {
 		}
 		return (MidiMessage)msg;
 	}
+	/**
+	 * MIDIメッセージを入力欄に反映します。
+	 * @param msg MIDIメッセージ
+	 */
 	public void setMessage( MidiMessage msg ) {
 		if( msg instanceof ShortMessage ) {
 			ShortMessage smsg = (ShortMessage)msg;
@@ -628,13 +673,13 @@ class MidiMessageForm extends JPanel implements ActionListener {
 	public boolean isNote( boolean note_on, int status ) {
 		int cmd = status & 0xF0;
 		return (
-				note_on && cmd == ShortMessage.NOTE_ON && data2Text.getValue() > 0
-				||
-				!note_on && (
-					cmd == ShortMessage.NOTE_ON && data2Text.getValue() <= 0 ||
-					cmd == ShortMessage.NOTE_OFF
-					)
-				);
+			note_on && cmd == ShortMessage.NOTE_ON && data2Text.getValue() > 0
+			||
+			!note_on && (
+				cmd == ShortMessage.NOTE_ON && data2Text.getValue() <= 0 ||
+				cmd == ShortMessage.NOTE_OFF
+			)
+		);
 	}
 	public ShortMessage getPartnerMessage() {
 		ShortMessage sm = (ShortMessage)getMessage();

@@ -475,8 +475,7 @@ class MidiEditor extends JDialog implements DropTargetListener {
 		public TrackListTable(SequenceTrackListTableModel model) {
 			super(model, null, model.trackListSelectionModel);
 			//
-			// 録音対象のMIDIチャンネルをコンボボックスで選択できるよう、
-			// 列モデルにセルエディタを設定
+			// 録音対象のMIDIチャンネルをコンボボックスで選択できるようにする
 			int colIndex = SequenceTrackListTableModel.Column.RECORD_CHANNEL.ordinal();
 			TableColumn tc = getColumnModel().getColumn(colIndex);
 			tc.setCellEditor(new DefaultCellEditor(new JComboBox<String>(){{
@@ -823,7 +822,7 @@ class MidiEditor extends JDialog implements DropTargetListener {
 				setSelectedEvent();
 				midiEventsToBeOverwritten = null; // 追加なので、上書きされるイベントなし
 				eventDialog.setTitle("Add a new MIDI event");
-				eventDialog.okButton.setAction(eventCellEditor.addEventAction);
+				eventDialog.okButton.setAction(eventCellEditor.applyEventAction);
 				int ch = getModel().getChannel();
 				if( ch >= 0 ) {
 					eventDialog.midiMessageForm.channelText.setSelectedChannel(ch);
@@ -895,45 +894,6 @@ class MidiEditor extends JDialog implements DropTargetListener {
 			}
 		};
 		/**
-		 * イベント編集アクション
-		 */
-		private Action editEventAction = new AbstractAction() {
-			public void actionPerformed(ActionEvent e) {
-				setSelectedEvent();
-				if( selectedMidiEvent == null )
-					return;
-				MidiEvent partnerEvent = null;
-				eventDialog.midiMessageForm.setMessage(selectedMidiEvent.getMessage());
-				if( eventDialog.midiMessageForm.isNote() ) {
-					int partnerIndex = getModel().getIndexOfPartnerFor(selectedIndex);
-					if( partnerIndex < 0 ) {
-						eventDialog.midiMessageForm.durationForm.setDuration(0);
-					}
-					else {
-						partnerEvent = getModel().getMidiEvent(partnerIndex);
-						long partnerTick = partnerEvent.getTick();
-						long duration = currentTick > partnerTick ?
-							currentTick - partnerTick : partnerTick - currentTick ;
-						eventDialog.midiMessageForm.durationForm.setDuration((int)duration);
-					}
-				}
-				MidiEvent events[];
-				if( partnerEvent == null ) {
-					events = new MidiEvent[1];
-					events[0] = selectedMidiEvent;
-				}
-				else {
-					events = new MidiEvent[2];
-					events[0] = selectedMidiEvent;
-					events[1] = partnerEvent;
-				}
-				midiEventsToBeOverwritten = events;
-				eventDialog.setTitle("Change MIDI event");
-				eventDialog.okButton.setAction(eventCellEditor.addEventAction);
-				eventDialog.openEventForm();
-			}
-		};
-		/**
 		 * MIDIイベント表のセルエディタ
 		 */
 		private MidiEventCellEditor eventCellEditor;
@@ -942,36 +902,65 @@ class MidiEditor extends JDialog implements DropTargetListener {
 		 */
 		class MidiEventCellEditor extends AbstractCellEditor implements TableCellEditor {
 			/**
-			 * イベント入力をキャンセルするアクション
+			 * MIDIイベントセルエディタを構築します。
 			 */
-			Action cancelAction = new AbstractAction() {
-				{
-					putValue(NAME,"Cancel");
-					eventDialog.cancelButton.setAction(this);
-				}
-				public void actionPerformed(ActionEvent e) {
-					fireEditingCanceled();
-					eventDialog.setVisible(false);
-				}
-			};
 			public MidiEventCellEditor() {
 				eventDialog.midiMessageForm.setOutputMidiChannels(virtualMidiDevice.getChannels());
 				eventDialog.tickPositionInputForm.setModel(tickPositionModel);
 				int index = TrackEventListTableModel.Column.MESSAGE.ordinal();
 				getColumnModel().getColumn(index).setCellEditor(this);
 			}
+			/**
+			 * セルをダブルクリックしないと編集できないようにします。
+			 * @param e イベント（マウスイベント）
+			 * @return 編集可能になったらtrue
+			 */
 			@Override
 			public boolean isCellEditable(EventObject e) {
-				// ダブルクリックで編集
-				return e instanceof MouseEvent && ((MouseEvent)e).getClickCount() == 2;
+				if( ! (e instanceof MouseEvent) ) return false;
+				return ((MouseEvent)e).getClickCount() == 2;
 			}
 			@Override
 			public Object getCellEditorValue() { return ""; }
-			private JButton editEventButton = new JButton(editEventAction){
-				{
-					setHorizontalAlignment(JButton.LEFT);
+			/**
+			 * 既存イベントを編集するアクション
+			 */
+			private Action editEventAction = new AbstractAction() {
+				public void actionPerformed(ActionEvent e) {
+					setSelectedEvent();
+					if( selectedMidiEvent == null )
+						return;
+					MidiEvent partnerEvent = null;
+					eventDialog.midiMessageForm.setMessage(selectedMidiEvent.getMessage());
+					if( eventDialog.midiMessageForm.isNote() ) {
+						int partnerIndex = getModel().getIndexOfPartnerFor(selectedIndex);
+						if( partnerIndex < 0 ) {
+							eventDialog.midiMessageForm.durationForm.setDuration(0);
+						}
+						else {
+							partnerEvent = getModel().getMidiEvent(partnerIndex);
+							long partnerTick = partnerEvent.getTick();
+							long duration = currentTick > partnerTick ?
+								currentTick - partnerTick : partnerTick - currentTick ;
+							eventDialog.midiMessageForm.durationForm.setDuration((int)duration);
+						}
+					}
+					if(partnerEvent == null)
+						midiEventsToBeOverwritten = new MidiEvent[] {selectedMidiEvent};
+					else
+						midiEventsToBeOverwritten = new MidiEvent[] {selectedMidiEvent, partnerEvent};
+					eventDialog.setTitle("Change MIDI event");
+					eventDialog.okButton.setAction(applyEventAction);
+					eventDialog.cancelButton.addActionListener(cancelActionListener);
+					eventDialog.openEventForm();
 				}
 			};
+			/**
+			 * イベント編集ボタン
+			 */
+			private JButton editEventButton = new JButton(editEventAction){{
+				setHorizontalAlignment(JButton.LEFT);
+			}};
 			@Override
 			public Component getTableCellEditorComponent(
 				JTable table, Object value, boolean isSelected, int row, int column
@@ -980,10 +969,27 @@ class MidiEditor extends JDialog implements DropTargetListener {
 				return editEventButton;
 			}
 			/**
-			 * イベントの追加（または変更）を行うアクション
+			 * イベント入力をキャンセルするアクションリスナーです。
+			 *
+			 * <p>セル編集によって表示されたMIDIメッセージダイアログを
+			 * キャンセルする場合、セル編集を中止する処理の追加が必要です。
+			 * その追加処理をこのリスナーでカバーします。
+			 * </p>
 			 */
-			private Action addEventAction = new AbstractAction() {
-				{ putValue(NAME,"OK"); }
+			private ActionListener cancelActionListener = new ActionListener() {
+				public void actionPerformed(ActionEvent e) {
+					fireEditingCanceled();
+					// 用が済んだら当リスナーを除去
+					eventDialog.cancelButton.removeActionListener(this);
+				}
+			};
+			/**
+			 * 入力したイベントを反映するアクション
+			 */
+			private Action applyEventAction = new AbstractAction() {
+				{
+					putValue(NAME,"OK");
+				}
 				public void actionPerformed(ActionEvent e) {
 					long tick = tickPositionModel.getTickPosition();
 					MidiMessage msg = eventDialog.midiMessageForm.getMessage();
