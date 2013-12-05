@@ -82,6 +82,7 @@ import javax.swing.table.JTableHeader;
 import javax.swing.table.TableCellEditor;
 import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumn;
+import javax.swing.table.TableColumnModel;
 import javax.swing.table.TableModel;
 
 /**
@@ -263,6 +264,9 @@ class MidiEditor extends JDialog implements DropTargetListener {
 					}
 				};
 			}
+			TableColumnModel colModel = getColumnModel();
+			for( SequenceListTableModel.Column c : SequenceListTableModel.Column.values() )
+				colModel.getColumn(c.ordinal()).setPreferredWidth(c.preferredWidth);
 		}
 		@Override
 		public void tableChanged(TableModelEvent event) {
@@ -276,7 +280,9 @@ class MidiEditor extends JDialog implements DropTargetListener {
 			// 列モデルからではヘッダタイトルが再描画されないことがある。
 			// そこで、ヘッダビューから repaint() で突っついて再描画させる。
 			JTableHeader th = getTableHeader();
-			if( th != null ) th.repaint();
+			if( th != null ) {
+				th.repaint();
+			}
 		}
 		/**
 		 * プレイボタンを埋め込んだセルエディタ
@@ -489,6 +495,9 @@ class MidiEditor extends JDialog implements DropTargetListener {
 			trackSelectionListener = new TrackSelectionListener();
 			titleLabel = new TitleLabel();
 			model.sequenceListTableModel.sequenceListSelectionModel.addListSelectionListener(titleLabel);
+			TableColumnModel colModel = getColumnModel();
+			for( SequenceTrackListTableModel.Column c : SequenceTrackListTableModel.Column.values() )
+				colModel.getColumn(c.ordinal()).setPreferredWidth(c.preferredWidth);
 		}
 		/**
 		 * このテーブルビューが表示するデータを提供する
@@ -609,6 +618,10 @@ class MidiEditor extends JDialog implements DropTargetListener {
 			//
 			eventSelectionListener = new EventSelectionListener();
 			titleLabel = new TitleLabel();
+			//
+			TableColumnModel colModel = getColumnModel();
+			for( TrackEventListTableModel.Column c : TrackEventListTableModel.Column.values() )
+				colModel.getColumn(c.ordinal()).setPreferredWidth(c.preferredWidth);
 		}
 		/**
 		 * このテーブルビューが表示するデータを提供する
@@ -1470,21 +1483,21 @@ class SequenceListTableModel extends AbstractTableModel {
 	 */
 	public enum Column {
 		/** MIDIシーケンスの番号 */
-		SEQ_NUMBER("No.", Integer.class),
+		SEQ_NUMBER("No.", Integer.class, 20),
 		/** 変更済みフラグ */
-		MODIFIED("Modified", Boolean.class) {
+		MODIFIED("Modified", Boolean.class, 50) {
 			@Override
 			public Object getValueOf(SequenceTrackListTableModel sequenceModel) {
 				return sequenceModel.isModified();
 			}
 		},
 		/** 再生ボタン */
-		SEQ_PLAY("Sequencer", String.class) {
+		SEQ_PLAY("Play/Stop", String.class, 60) {
 			@Override
 			public boolean isCellEditable() { return true; }
 		},
 		/** 再生中の時間位置（分：秒） */
-		SEQ_POSITION("Position", String.class) {
+		SEQ_POSITION("Position", String.class, 60) {
 			@Override
 			public Object getValueOf(SequenceTrackListTableModel sequenceModel) {
 				return sequenceModel.isOnSequencer()
@@ -1492,7 +1505,7 @@ class SequenceListTableModel extends AbstractTableModel {
 			}
 		},
 		/** シーケンスの時間長（分：秒） */
-		SEQ_LENGTH("Length", String.class) {
+		SEQ_LENGTH("Length", String.class, 80) {
 			@Override
 			public Object getValueOf(SequenceTrackListTableModel sequenceModel) {
 				long usec = sequenceModel.getSequence().getMicrosecondLength();
@@ -1501,7 +1514,7 @@ class SequenceListTableModel extends AbstractTableModel {
 			}
 		},
 		/** ファイル名 */
-		FILENAME("Filename", String.class) {
+		FILENAME("Filename", String.class, 100) {
 			@Override
 			public boolean isCellEditable() { return true; }
 			public Object getValueOf(SequenceTrackListTableModel sequenceModel) {
@@ -1510,7 +1523,7 @@ class SequenceListTableModel extends AbstractTableModel {
 			}
 		},
 		/** シーケンス名（最初のトラックの名前） */
-		SEQ_NAME("Sequence name", String.class) {
+		SEQ_NAME("Sequence name", String.class, 250) {
 			@Override
 			public boolean isCellEditable() { return true; }
 			public Object getValueOf(SequenceTrackListTableModel sequenceModel) {
@@ -1519,21 +1532,21 @@ class SequenceListTableModel extends AbstractTableModel {
 			}
 		},
 		/** タイミング解像度 */
-		RESOLUTION("Resolution", Integer.class) {
+		RESOLUTION("Resolution", Integer.class, 60) {
 			@Override
 			public Object getValueOf(SequenceTrackListTableModel sequenceModel) {
 				return sequenceModel.getSequence().getResolution();
 			}
 		},
 		/** トラック数 */
-		TRACKS("Tracks", Integer.class) {
+		TRACKS("Tracks", Integer.class, 40) {
 			@Override
 			public Object getValueOf(SequenceTrackListTableModel sequenceModel) {
 				return sequenceModel.getSequence().getTracks().length;
 			}
 		},
 		/** タイミング分割形式 */
-		DIVISION_TYPE("DivType", String.class) {
+		DIVISION_TYPE("DivType", String.class, 50) {
 			@Override
 			public Object getValueOf(SequenceTrackListTableModel sequenceModel) {
 				float divType = sequenceModel.getSequence().getDivisionType();
@@ -1547,14 +1560,16 @@ class SequenceListTableModel extends AbstractTableModel {
 		};
 		String title;
 		Class<?> columnClass;
+		int preferredWidth;
 		/**
 		 * 列の識別子を構築します。
 		 * @param title 列のタイトル
 		 * @param columnClass 列のクラス
 		 */
-		private Column(String title, Class<?> columnClass) {
+		private Column(String title, Class<?> columnClass, int preferredWidth) {
 			this.title = title;
 			this.columnClass = columnClass;
+			this.preferredWidth = preferredWidth;
 		}
 		public boolean isCellEditable() { return false; }
 		public Object getValueOf(SequenceTrackListTableModel sequenceModel) {
@@ -1872,30 +1887,32 @@ class SequenceTrackListTableModel extends AbstractTableModel {
 	 */
 	public enum Column {
 		/** トラック番号 */
-		TRACK_NUMBER("No.", Integer.class),
+		TRACK_NUMBER("No.", Integer.class, 20),
 		/** イベント数 */
-		EVENTS("Events", Integer.class),
+		EVENTS("Events", Integer.class, 40),
 		/** Mute */
-		MUTE("Mute", Boolean.class),
+		MUTE("Mute", Boolean.class, 30),
 		/** Solo */
-		SOLO("Solo", Boolean.class),
+		SOLO("Solo", Boolean.class, 30),
 		/** 録音するMIDIチャンネル */
-		RECORD_CHANNEL("RecCh", String.class),
+		RECORD_CHANNEL("RecCh", String.class, 40),
 		/** MIDIチャンネル */
-		CHANNEL("Ch", String.class),
+		CHANNEL("Ch", String.class, 30),
 		/** トラック名 */
-		TRACK_NAME("Track name", String.class);
+		TRACK_NAME("Track name", String.class, 100);
 		String title;
 		Class<?> columnClass;
+		int preferredWidth;
 		/**
 		 * 列の識別子を構築します。
 		 * @param title 列のタイトル
 		 * @param widthRatio 幅の割合
 		 * @param columnClass 列のクラス
 		 */
-		private Column(String title, Class<?> columnClass) {
+		private Column(String title, Class<?> columnClass, int preferredWidth) {
 			this.title = title;
 			this.columnClass = columnClass;
+			this.preferredWidth = preferredWidth;
 		}
 	}
 	/**
@@ -2247,28 +2264,30 @@ class TrackEventListTableModel extends AbstractTableModel {
 	 */
 	public enum Column {
 		/** MIDIイベント番号 */
-		EVENT_NUMBER("No.", Integer.class),
+		EVENT_NUMBER("No.", Integer.class, 20),
 		/** tick位置 */
-		TICK_POSITION("TickPos.", Long.class),
+		TICK_POSITION("TickPos.", Long.class, 40),
 		/** tick位置に対応する小節 */
-		MEASURE_POSITION("Measure", Integer.class),
+		MEASURE_POSITION("Measure", Integer.class, 40),
 		/** tick位置に対応する拍 */
-		BEAT_POSITION("Beat", Integer.class),
+		BEAT_POSITION("Beat", Integer.class, 20),
 		/** tick位置に対応する余剰tick（拍に収まらずに余ったtick数） */
-		EXTRA_TICK_POSITION("ExTick", Integer.class),
+		EXTRA_TICK_POSITION("ExTick", Integer.class, 20),
 		/** MIDIメッセージ */
-		MESSAGE("MIDI Message", String.class);
+		MESSAGE("MIDI Message", String.class, 200);
 		private String title;
 		private Class<?> columnClass;
+		int preferredWidth;
 		/**
 		 * 列の識別子を構築します。
 		 * @param title 列のタイトル
 		 * @param widthRatio 幅の割合
 		 * @param columnClass 列のクラス
 		 */
-		private Column(String title, Class<?> columnClass) {
+		private Column(String title, Class<?> columnClass, int preferredWidth) {
 			this.title = title;
 			this.columnClass = columnClass;
+			this.preferredWidth = preferredWidth;
 		}
 	}
 	/**
