@@ -172,7 +172,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public String getMidiDataBase64() {
 		SequenceTrackListTableModel sequenceModel =
-			editorDialog.sequenceListTable.getModel().sequencerModel.getSequenceTableModel();
+			editorDialog.sequenceListTable.getModel().sequencerModel.getSequenceTrackListTableModel();
 		editorDialog.base64Dialog.setMIDIData(sequenceModel.getMIDIdata());
 		return editorDialog.base64Dialog.getBase64Data();
 	}
@@ -181,7 +181,7 @@ public class ChordHelperApplet extends JApplet {
 	 * @return MIDIファイル名（設定されていないときは空文字列）
 	 */
 	public String getMidiFilename() {
-		SequenceTrackListTableModel seq_model = deviceModelList.sequencerModel.getSequenceTableModel();
+		SequenceTrackListTableModel seq_model = deviceModelList.sequencerModel.getSequenceTrackListTableModel();
 		if( seq_model == null ) return null;
 		String fn = seq_model.getFilename();
 		return fn == null ? "" : fn ;
@@ -268,7 +268,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public static class VersionInfo {
 		public static final String	NAME = "MIDI Chord Helper";
-		public static final String	VERSION = "Ver.20131206.1";
+		public static final String	VERSION = "Ver.20131208.1";
 		public static final String	COPYRIGHT = "Copyright (C) 2004-2013";
 		public static final String	AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String	URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";
@@ -522,7 +522,7 @@ public class ChordHelperApplet extends JApplet {
 		deviceModelList.sequencerModel.addChangeListener(new ChangeListener() {
 			@Override
 			public void stateChanged(ChangeEvent e) {
-				SequenceTrackListTableModel sequenceTableModel = deviceModelList.sequencerModel.getSequenceTableModel();
+				SequenceTrackListTableModel sequenceTableModel = deviceModelList.sequencerModel.getSequenceTrackListTableModel();
 				int loadedSequenceIndex = editorDialog.sequenceListTable.getModel().indexOfSequenceOnSequencer();
 				songTitleLabel.setText(
 					"<html>"+(

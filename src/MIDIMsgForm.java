@@ -21,6 +21,7 @@ import javax.sound.midi.MidiChannel;
 import javax.sound.midi.MidiMessage;
 import javax.sound.midi.ShortMessage;
 import javax.sound.midi.SysexMessage;
+import javax.swing.Action;
 import javax.swing.BoundedRangeModel;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -117,25 +118,32 @@ class MidiEventDialog extends JDialog {
 			}
 		});
 	}
-	public void openTickForm() {
-		tickPositionInputForm.setVisible(true);
-		midiMessageForm.setVisible(false);
-		setBounds( 200, 300, 520, 150 );
+	public void openForm(String title, Action okAction, int midiChannel,
+		boolean useTick, boolean useMessage ) {
+		setTitle(title);
+		okButton.setAction(okAction);
+		if( useMessage && midiChannel >= 0 ) {
+			midiMessageForm.channelText.setSelectedChannel(midiChannel);
+		}
+		tickPositionInputForm.setVisible(useTick);
+		midiMessageForm.setVisible(useMessage);
+		midiMessageForm.setDurationVisible(useMessage && useTick);
+		int width = useMessage ? 630 : 520;
+		int height = useMessage ? (useTick ? 370 : 300) : 150;
+		setBounds( 200, 300, width, height );
 		setVisible(true);
 	}
-	public void openEventForm() {
-		tickPositionInputForm.setVisible(true);
-		midiMessageForm.setVisible(true);
-		midiMessageForm.setDurationVisible(true);
-		setBounds( 200, 300, 630, 370 );
-		setVisible(true);
+	public void openTickForm(String title, Action okAction) {
+		openForm(title, okAction, -1, true, false);
 	}
-	public void openMessageForm() {
-		tickPositionInputForm.setVisible(false);
-		midiMessageForm.setVisible(true);
-		midiMessageForm.setDurationVisible(false);
-		setBounds( 200, 300, 630, 300 );
-		setVisible(true);
+	public void openMessageForm(String title, Action okAction, int midiChannel) {
+		openForm(title, okAction, midiChannel, false, true);
+	}
+	public void openEventForm(String title, Action okAction, int midiChannel) {
+		openForm(title, okAction, midiChannel, true, true);
+	}
+	public void openEventForm(String title, Action okAction) {
+		openEventForm(title, okAction, -1);
 	}
 }
 
@@ -397,8 +405,7 @@ class MidiMessageForm extends JPanel implements ActionListener {
 		add( dataText );
 		updateVisible();
 	}
-	// ActionListener
-	//
+	@Override
 	public void actionPerformed(ActionEvent e) {
 		Object src = e.getSource();
 		if( src == data1ComboBox ) {
@@ -654,41 +661,66 @@ class MidiMessageForm extends JPanel implements ActionListener {
 			updateVisible();
 		}
 	}
-	public boolean setNote( int ch, int note_no, int velocity ) {
-		channelText.setSelectedChannel(ch);
-		data1Text.setValue(note_no);
+	/**
+	 * ノートメッセージを設定します。
+	 * @param channel MIDIチャンネル
+	 * @param noteNumber ノート番号
+	 * @param velocity ベロシティ
+	 * @return 常にtrue
+	 */
+	public boolean setNote(int channel, int noteNumber, int velocity) {
+		channelText.setSelectedChannel(channel);
+		data1Text.setValue(noteNumber);
 		data2Text.setValue(velocity);
 		return true;
 	}
+	/**
+	 * 入力内容がノートメッセージかどうか調べます。
+	 * @return ノートメッセージのときtrue
+	 */
 	public boolean isNote() {
-		return isNote( statusText.getValue() );
+		return isNote(statusText.getValue());
 	}
-	public boolean isNote( int status ) {
+	/**
+	 * 入力内容がノートメッセージかどうか調べます。
+	 * @param status MIDIメッセージのステータス
+	 * @return ノートメッセージのときtrue
+	 */
+	public boolean isNote(int status) {
 		int cmd = status & 0xF0;
-		return ( cmd == ShortMessage.NOTE_ON || cmd == ShortMessage.NOTE_OFF );
+		return (cmd == ShortMessage.NOTE_ON || cmd == ShortMessage.NOTE_OFF);
 	}
-	public boolean isNote( boolean note_on ) {
-		return isNote( note_on, statusText.getValue() );
-	}
-	public boolean isNote( boolean note_on, int status ) {
+	/**
+	 * 入力内容が NoteOn または NoteOff かどうか調べます。
+	 * @param isNoteOn NoteOnを調べるときtrue、NoteOffを調べるときfalse
+	 * @return 該当するときtrue
+	 */
+	public boolean isNote(boolean isNoteOn) {
+		int status = statusText.getValue();
 		int cmd = status & 0xF0;
 		return (
-			note_on && cmd == ShortMessage.NOTE_ON && data2Text.getValue() > 0
+			isNoteOn && cmd == ShortMessage.NOTE_ON && data2Text.getValue() > 0
 			||
-			!note_on && (
+			!isNoteOn && (
 				cmd == ShortMessage.NOTE_ON && data2Text.getValue() <= 0 ||
 				cmd == ShortMessage.NOTE_OFF
 			)
 		);
 	}
-	public ShortMessage getPartnerMessage() {
+	/**
+	 * 入力されたMIDIメッセージがNoteOn/NoteOffのときに、
+	 * そのパートナーとなるNoteOff/NoteOnメッセージを生成します。
+	 *
+	 * @return パートナーメッセージ（ない場合null）
+	 */
+	public ShortMessage createPartnerMessage() {
 		ShortMessage sm = (ShortMessage)getMessage();
 		if( sm == null ) return null;
-		ShortMessage partner_sm;
+		ShortMessage partnerSm;
 		if( isNote(true) ) { // NoteOn
-			partner_sm = new ShortMessage();
+			partnerSm = new ShortMessage();
 			try{
-				partner_sm.setMessage(
+				partnerSm.setMessage(
 					ShortMessage.NOTE_OFF,
 					sm.getChannel(), sm.getData1(), sm.getData2()
 				);
@@ -696,12 +728,12 @@ class MidiMessageForm extends JPanel implements ActionListener {
 				e.printStackTrace();
 				return null;
 			}
-			return partner_sm;
+			return partnerSm;
 		}
 		else if( isNote(false) ) { // NoteOff
-			partner_sm = new ShortMessage();
+			partnerSm = new ShortMessage();
 			try{
-				partner_sm.setMessage(
+				partnerSm.setMessage(
 					ShortMessage.NOTE_ON,
 					sm.getChannel(),
 					sm.getData1() == 0 ? 100 : sm.getData1(),
@@ -711,7 +743,7 @@ class MidiMessageForm extends JPanel implements ActionListener {
 				e.printStackTrace();
 				return null;
 			}
-			return partner_sm;
+			return partnerSm;
 		}
 		return null;
 	}
@@ -1025,15 +1057,14 @@ class TickPositionModel implements ChangeListener {
 	public void stateChanged(ChangeEvent e) {
 		if( sequenceTickIndex == null )
 			return;
-		Object changedAt = e.getSource();
-		if( changedAt == tickModel ) {
+		if( e.getSource() == tickModel ) {
 			isChanging = true;
 			long newTick = tickModel.getNumber().longValue();
 			int newMeasure = 1 + sequenceTickIndex.tickToMeasure(newTick);
 			measureModel.setValue(newMeasure);
-			beatModel.setValue( sequenceTickIndex.lastBeat + 1 );
+			beatModel.setValue(sequenceTickIndex.lastBeat + 1);
 			isChanging = false;
-			extraTickModel.setValue( sequenceTickIndex.lastExtraTick );
+			extraTickModel.setValue(sequenceTickIndex.lastExtraTick);
 			return;
 		}
 		if( isChanging )
@@ -1178,7 +1209,7 @@ class DurationForm extends JPanel implements ActionListener, ChangeListener {
 		unit_label.setEnabled(enabled);
 	}
 	public void setPPQ( int ppq ) {
-		model.setPPQ( this.ppq = ppq );
+		model.setPPQ(this.ppq = ppq);
 	}
 	public int getDuration() {
 		return model.getDuration();

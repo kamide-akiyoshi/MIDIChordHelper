@@ -837,12 +837,10 @@ class MidiKeyboardPanel extends JPanel {
 				putValue(NAME,"Send MIDI event");
 			}
 			public void actionPerformed(ActionEvent e) {
-				eventDialog.setTitle("Send MIDI event");
-				eventDialog.okButton.setAction(sendSventAction);
-				eventDialog.midiMessageForm.channelText.setSelectedChannel(
+				eventDialog.openMessageForm(
+					"Send MIDI event", sendSventAction,
 					keyboardCenterPanel.keyboard.midiChComboboxModel.getSelectedChannel()
 				);
-				eventDialog.openMessageForm();
 			}
 		}
 	);

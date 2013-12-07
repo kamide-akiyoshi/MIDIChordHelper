@@ -136,7 +136,7 @@ class AppletFrame extends JFrame implements AppletStub, AppletContext {
 		 * シーケンサーにロードされている曲のファイル名をタイトルバーに反映します。
 		 */
 		private void setFilenameToTitle() {
-			SequenceTrackListTableModel seq = sequencerModel.getSequenceTableModel();
+			SequenceTrackListTableModel seq = sequencerModel.getSequenceTrackListTableModel();
 			String filename = ( seq == null ? null : seq.getFilename() );
 			String title = ChordHelperApplet.VersionInfo.NAME;
 			if( filename != null && ! filename.isEmpty() ) {

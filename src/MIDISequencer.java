@@ -139,7 +139,7 @@ class MeasureIndicator extends JPanel implements ChangeListener {
 	@Override
 	public void stateChanged(ChangeEvent e) {
 		Sequencer sequencer = model.getSequencer();
-		SequenceTrackListTableModel sequenceTableModel = model.getSequenceTableModel();
+		SequenceTrackListTableModel sequenceTableModel = model.getSequenceTrackListTableModel();
 		SequenceTickIndex tickIndex = (
 			sequenceTableModel == null ? null : sequenceTableModel.getSequenceTickIndex()
 		);
@@ -280,7 +280,7 @@ class MidiSequencerModel extends MidiConnecterListModel
 		}
 		startStopAction.setRunning(true);
 		timeRangeUpdater.start();
-		SequenceTrackListTableModel sequenceTableModel = getSequenceTableModel();
+		SequenceTrackListTableModel sequenceTableModel = getSequenceTrackListTableModel();
 		if( sequenceTableModel != null && sequenceTableModel.hasRecordChannel() ) {
 			for(MidiConnecterListModel m : deviceModelList)
 				m.resetMicrosecondPosition();
@@ -406,7 +406,7 @@ class MidiSequencerModel extends MidiConnecterListModel
 	 * このシーケンサーに現在ロードされているシーケンスのMIDIトラックリストテーブルモデルを返します。
 	 * @return MIDIトラックリストテーブルモデル
 	 */
-	public SequenceTrackListTableModel getSequenceTableModel() {
+	public SequenceTrackListTableModel getSequenceTrackListTableModel() {
 		return sequenceTableModel;
 	}
 	/**
