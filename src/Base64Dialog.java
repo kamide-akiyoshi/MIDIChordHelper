@@ -12,6 +12,7 @@ import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
@@ -39,12 +40,26 @@ public class Base64Dialog extends JDialog {
 		}
 		@Override
 		public void actionPerformed(ActionEvent event) {
+			byte[] data = getMIDIData();
+			if( data == null || data.length == 0 ) {
+				String message = "No data entered - データが入力されていません。";
+				JOptionPane.showMessageDialog(
+					Base64Dialog.this, message,
+					ChordHelperApplet.VersionInfo.NAME,
+					JOptionPane.WARNING_MESSAGE
+				);
+				base64TextArea.requestFocusInWindow();
+				return;
+			}
 			SequenceListTableModel sltm = midiEditor.sequenceListTable.getModel();
 			try {
-				sltm.addSequence(getMIDIData(), null);
+				sltm.addSequence(data, null);
 			} catch(IOException | InvalidMidiDataException e) {
-				midiEditor.showWarning(e.getMessage());
+				String message = "例外 "+e+" が発生しました。"+e.getMessage();
+				e.printStackTrace();
+				midiEditor.showWarning(message);
 				base64TextArea.requestFocusInWindow();
+				return;
 			}
 			setVisible(false);
 		}

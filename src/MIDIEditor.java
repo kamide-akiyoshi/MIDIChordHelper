@@ -76,6 +76,7 @@ import javax.swing.event.ChangeListener;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 import javax.swing.event.TableModelEvent;
+import javax.swing.filechooser.FileFilter;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.JTableHeader;
@@ -280,10 +281,11 @@ class MidiEditor extends JDialog implements DropTargetListener {
 			//
 			// Base64エンコードアクションの生成
 			if( base64Dialog.isBase64Available() ) {
-				base64EncodeAction = model.new SelectedSequenceAction(
-					"Base64",
-					"Encode selected sequence to Base64 textdata - 選択した曲をBase64テキストにエンコード"
-				) {
+				base64EncodeAction = new AbstractAction("Base64") {
+					{
+						String tooltip = "Base64 text conversion - Base64テキスト変換";
+						putValue(Action.SHORT_DESCRIPTION, tooltip);
+					}
 					@Override
 					public void actionPerformed(ActionEvent e) {
 						SequenceTrackListTableModel mstm = getModel().getSelectedSequenceModel();
@@ -495,33 +497,38 @@ class MidiEditor extends JDialog implements DropTargetListener {
 		/**
 		 * ファイル選択ダイアログ（アプレットでは使用不可）
 		 */
-		private class MidiFileChooser extends JFileChooser implements ListSelectionListener {
+		private class MidiFileChooser extends JFileChooser {
+			{
+				String description = "MIDI sequence (*.mid)";
+				String extension = "mid";
+				FileFilter filter = new FileNameExtensionFilter(description, extension);
+				setFileFilter(filter);
+			}
 			/**
 			 * ファイル保存アクション
 			 */
-			public Action saveMidiFileAction = new AbstractAction("Save") {
-				{
-					String tooltip = "Save selected MIDI sequence to file - 選択したMIDIシーケンスをファイルに保存";
-					putValue(Action.SHORT_DESCRIPTION, tooltip);
-				}
+			public Action saveMidiFileAction = getModel().new SelectedSequenceAction(
+				"Save",
+				"Save selected MIDI sequence to file - 選択したMIDIシーケンスをファイルに保存"
+			) {
 				@Override
 				public void actionPerformed(ActionEvent e) {
-					SequenceTrackListTableModel sequenceTableModel =
-						getModel().getSelectedSequenceModel();
-					String filename = sequenceTableModel.getFilename();
-					File midiFile;
+					SequenceListTableModel model = getModel();
+					SequenceTrackListTableModel sequenceModel = model.getSelectedSequenceModel();
+					String filename = sequenceModel.getFilename();
+					File selectedFile;
 					if( filename != null && ! filename.isEmpty() ) {
 						// プレイリスト上でファイル名が入っていたら、それを初期選択
-						setSelectedFile(midiFile = new File(filename));
+						setSelectedFile(selectedFile = new File(filename));
 					}
 					int saveOption = showSaveDialog(MidiEditor.this);
 					if( saveOption != JFileChooser.APPROVE_OPTION ) {
 						// 保存ダイアログでキャンセルされた場合
 						return;
 					}
-					if( (midiFile = getSelectedFile()).exists() ) {
+					if( (selectedFile = getSelectedFile()).exists() ) {
 						// 指定されたファイルがすでにあった場合
-						String fn = midiFile.getName();
+						String fn = selectedFile.getName();
 						String message = "Overwrite " + fn + " ?\n";
 						message += fn + " を上書きしてよろしいですか？";
 						if( ! confirm(message) ) {
@@ -530,9 +537,9 @@ class MidiEditor extends JDialog implements DropTargetListener {
 						}
 					}
 					// 保存を実行
-					try ( FileOutputStream out = new FileOutputStream(midiFile) ) {
-						out.write(sequenceTableModel.getMIDIdata());
-						sequenceTableModel.setModified(false);
+					try ( FileOutputStream out = new FileOutputStream(selectedFile) ) {
+						out.write(sequenceModel.getMIDIdata());
+						sequenceModel.setModified(false);
 					}
 					catch( IOException ex ) {
 						showError( ex.getMessage() );
@@ -540,27 +547,6 @@ class MidiEditor extends JDialog implements DropTargetListener {
 					}
 				}
 			};
-			{
-				// ファイルフィルタの設定
-				setFileFilter(new FileNameExtensionFilter("MIDI sequence (*.mid)", "mid"));
-				//
-				// 選択状態のリスニングを開始
-				getModel().sequenceListSelectionModel.addListSelectionListener(this);
-				updateEnabled();
-			}
-			/**
-			 * シーケンスの選択有無に応じて、保存ボタンのイネーブル状態を更新します。
-			 */
-			private void updateEnabled() {
-				boolean en = (getModel().sequenceListSelectionModel.getMinSelectionIndex() >= 0);
-				saveMidiFileAction.setEnabled(en);
-			}
-			@Override
-			public void valueChanged(ListSelectionEvent e) {
-				if( e.getValueIsAdjusting() )
-					return;
-				updateEnabled();
-			}
 			/**
 			 * ファイルを開くアクション
 			 */
@@ -571,7 +557,8 @@ class MidiEditor extends JDialog implements DropTargetListener {
 				}
 				@Override
 				public void actionPerformed(ActionEvent event) {
-					if(showOpenDialog(MidiEditor.this) == JFileChooser.APPROVE_OPTION) {
+					int openOption = showOpenDialog(MidiEditor.this);
+					if(openOption == JFileChooser.APPROVE_OPTION) {
 						try  {
 							getModel().addSequence(getSelectedFile());
 						} catch( IOException|InvalidMidiDataException e ) {
@@ -1258,17 +1245,17 @@ class MidiEditor extends JDialog implements DropTargetListener {
 				add(new JButton(sequenceListTableModel.moveToBottomAction) {{
 					setMargin(ZERO_INSETS);
 				}});
+				if(sequenceListTable.base64EncodeAction != null) {
+					add(Box.createRigidArea(new Dimension(5, 0)));
+					add(new JButton(sequenceListTable.base64EncodeAction) {{
+						setMargin(ZERO_INSETS);
+					}});
+				}
 				if( sequenceListTable.midiFileChooser != null ) {
 					add(Box.createRigidArea(new Dimension(5, 0)));
 					add(new JButton(
 						sequenceListTable.midiFileChooser.saveMidiFileAction
 					) {{
-						setMargin(ZERO_INSETS);
-					}});
-				}
-				if(sequenceListTable.base64EncodeAction != null) {
-					add(Box.createRigidArea(new Dimension(5, 0)));
-					add(new JButton(sequenceListTable.base64EncodeAction) {{
 						setMargin(ZERO_INSETS);
 					}});
 				}
