@@ -875,44 +875,127 @@ class MidiEditor extends JDialog implements DropTargetListener {
 					setSelected(true);
 				}
 			};
-		/**
-		 * tick位置入力モデル
-		 */
-		private TickPositionModel tickPositionModel = new TickPositionModel();
-		/**
-		 * 選択されたイベント
-		 */
-		private MidiEvent selectedMidiEvent = null;
-		/**
-		 * 選択されたイベントの場所
-		 */
-		private int selectedIndex = -1;
-		/**
-		 * 選択されたイベントのtick位置
-		 */
-		private long currentTick = 0;
-		/**
-		 * 上書きして削除対象にする変更前イベント（null可）
-		 */
-		private MidiEvent[] midiEventsToBeOverwritten;
-		/**
-		 * 選択したイベントを入力ダイアログなどに反映します。
-		 * @param model 対象データモデル
-		 */
-		private void setSelectedEvent(TrackEventListTableModel model) {
-			SequenceTrackListTableModel sequenceTableModel = model.sequenceTrackListTableModel;
-			eventDialog.midiMessageForm.durationForm.setPPQ(sequenceTableModel.getSequence().getResolution());
-			tickPositionModel.setSequenceIndex(sequenceTableModel.getSequenceTickIndex());
-			selectedIndex = -1;
-			currentTick = 0;
-			selectedMidiEvent = null;
-			if( getSelectionModel().isSelectionEmpty() )
-				return;
-			selectedIndex = model.eventSelectionModel.getMinSelectionIndex();
-			selectedMidiEvent = model.getMidiEvent(selectedIndex);
-			currentTick = selectedMidiEvent.getTick();
-			tickPositionModel.setTickPosition(currentTick);
+		private class EventEditContext {
+			/**
+			 * 編集対象トラック
+			 */
+			private TrackEventListTableModel trackModel;
+			/**
+			 * tick位置入力モデル
+			 */
+			private TickPositionModel tickPositionModel = new TickPositionModel();
+			/**
+			 * 選択されたイベント
+			 */
+			private MidiEvent selectedMidiEvent = null;
+			/**
+			 * 選択されたイベントの場所
+			 */
+			private int selectedIndex = -1;
+			/**
+			 * 選択されたイベントのtick位置
+			 */
+			private long currentTick = 0;
+			/**
+			 * 上書きして削除対象にする変更前イベント（null可）
+			 */
+			private MidiEvent[] midiEventsToBeOverwritten;
+			/**
+			 * 選択したイベントを入力ダイアログなどに反映します。
+			 * @param model 対象データモデル
+			 */
+			private void setSelectedEvent(TrackEventListTableModel trackModel) {
+				this.trackModel = trackModel;
+				SequenceTrackListTableModel sequenceTableModel = trackModel.sequenceTrackListTableModel;
+				int ppq = sequenceTableModel.getSequence().getResolution();
+				eventDialog.midiMessageForm.durationForm.setPPQ(ppq);
+				tickPositionModel.setSequenceIndex(sequenceTableModel.getSequenceTickIndex());
+
+				selectedIndex = trackModel.eventSelectionModel.getMinSelectionIndex();
+				selectedMidiEvent = selectedIndex < 0 ? null : trackModel.getMidiEvent(selectedIndex);
+				currentTick = selectedMidiEvent == null ? 0 : selectedMidiEvent.getTick();
+				tickPositionModel.setTickPosition(currentTick);
+			}
+			public void setupForEdit(TrackEventListTableModel trackModel) {
+				MidiEvent partnerEvent = null;
+				eventDialog.midiMessageForm.setMessage(selectedMidiEvent.getMessage());
+				if( eventDialog.midiMessageForm.isNote() ) {
+					int partnerIndex = trackModel.getIndexOfPartnerFor(selectedIndex);
+					if( partnerIndex < 0 ) {
+						eventDialog.midiMessageForm.durationForm.setDuration(0);
+					}
+					else {
+						partnerEvent = trackModel.getMidiEvent(partnerIndex);
+						long partnerTick = partnerEvent.getTick();
+						long duration = currentTick > partnerTick ?
+							currentTick - partnerTick : partnerTick - currentTick ;
+						eventDialog.midiMessageForm.durationForm.setDuration((int)duration);
+					}
+				}
+				if(partnerEvent == null)
+					midiEventsToBeOverwritten = new MidiEvent[] {selectedMidiEvent};
+				else
+					midiEventsToBeOverwritten = new MidiEvent[] {selectedMidiEvent, partnerEvent};
+			}
+			private Action jumpEventAction = new AbstractAction() {
+				{ putValue(NAME,"Jump"); }
+				public void actionPerformed(ActionEvent e) {
+					long tick = tickPositionModel.getTickPosition();
+					scrollToEventAt(tick);
+					eventDialog.setVisible(false);
+					trackModel = null;
+				}
+			};
+			private Action pasteEventAction = new AbstractAction() {
+				{ putValue(NAME,"Paste"); }
+				public void actionPerformed(ActionEvent e) {
+					long tick = tickPositionModel.getTickPosition();
+					clipBoard.paste(trackModel, tick);
+					scrollToEventAt(tick);
+					// ペーストで曲の長さが変わったことをプレイリストに通知
+					SequenceTrackListTableModel seqModel = trackModel.sequenceTrackListTableModel;
+					seqModel.sequenceListTableModel.fireSequenceModified(seqModel);
+					eventDialog.setVisible(false);
+					trackModel = null;
+				}
+			};
+			private boolean applyEvent() {
+				long tick = tickPositionModel.getTickPosition();
+				MidiMessageForm form = eventDialog.midiMessageForm;
+				MidiEvent newMidiEvent = new MidiEvent(form.getMessage(), tick);
+				if( midiEventsToBeOverwritten != null ) {
+					// 上書き消去するための選択済イベントがあった場合
+					trackModel.removeMidiEvents(midiEventsToBeOverwritten);
+				}
+				if( ! trackModel.addMidiEvent(newMidiEvent) ) {
+					System.out.println("addMidiEvent failure");
+					return false;
+				}
+				if(pairNoteOnOffModel.isSelected() && form.isNote()) {
+					ShortMessage sm = form.createPartnerMessage();
+					if(sm == null)
+						scrollToEventAt( tick );
+					else {
+						int duration = form.durationForm.getDuration();
+						if( form.isNote(false) ) {
+							duration = -duration;
+						}
+						long partnerTick = tick + (long)duration;
+						if( partnerTick < 0L ) partnerTick = 0L;
+						MidiEvent partner = new MidiEvent((MidiMessage)sm, partnerTick);
+						if( ! trackModel.addMidiEvent(partner) ) {
+							System.out.println("addMidiEvent failure (note on/off partner message)");
+						}
+						scrollToEventAt(partnerTick > tick ? partnerTick : tick);
+					}
+				}
+				SequenceTrackListTableModel seqModel = trackModel.sequenceTrackListTableModel;
+				seqModel.sequenceListTableModel.fireSequenceModified(seqModel);
+				eventDialog.setVisible(false);
+				return true;
+			}
 		}
+		private EventEditContext editContext = new EventEditContext();
 		/**
 		 * 指定のTick位置へジャンプするアクション
 		 */
@@ -921,16 +1004,9 @@ class MidiEditor extends JDialog implements DropTargetListener {
 				putValue(NAME,"Jump to ...");
 				setEnabled(false);
 			}
-			private Action jumpEventAction = new AbstractAction() {
-				{ putValue(NAME,"Jump"); }
-				public void actionPerformed(ActionEvent e) {
-					scrollToEventAt(tickPositionModel.getTickPosition());
-					eventDialog.setVisible(false);
-				}
-			};
 			public void actionPerformed(ActionEvent e) {
-				setSelectedEvent(getModel());
-				eventDialog.openTickForm("Jump selection to", jumpEventAction);
+				editContext.setSelectedEvent(getModel());
+				eventDialog.openTickForm("Jump selection to", editContext.jumpEventAction);
 			}
 		};
 		/**
@@ -943,8 +1019,8 @@ class MidiEditor extends JDialog implements DropTargetListener {
 			}
 			public void actionPerformed(ActionEvent e) {
 				TrackEventListTableModel model = getModel();
-				setSelectedEvent(model);
-				midiEventsToBeOverwritten = null;
+				editContext.setSelectedEvent(model);
+				editContext.midiEventsToBeOverwritten = null;
 				eventDialog.openEventForm(
 					"New MIDI event",
 					eventCellEditor.applyEventAction,
@@ -960,21 +1036,13 @@ class MidiEditor extends JDialog implements DropTargetListener {
 			private int copiedEventsPPQ = 0;
 			public void copy(TrackEventListTableModel model, boolean withRemove) {
 				copiedEventsToPaste = model.getSelectedMidiEvents();
-				copiedEventsPPQ = model.sequenceTrackListTableModel.sequenceListTableModel.getSelectedSequenceModel().getSequence().getResolution();
-				if( withRemove ) {
-					model.removeMidiEvents(copiedEventsToPaste);
-				}
-				queryPasteEventAction.setEnabled(
-					copiedEventsToPaste != null &&
-					copiedEventsToPaste.length > 0
-				);
+				copiedEventsPPQ = model.sequenceTrackListTableModel.getSequence().getResolution();
+				if( withRemove ) model.removeMidiEvents(copiedEventsToPaste);
+				boolean en = (copiedEventsToPaste != null && copiedEventsToPaste.length > 0);
+				queryPasteEventAction.setEnabled(en);
 			}
-			public void cut(TrackEventListTableModel model) {
-				copy(model, true);
-			}
-			public void copy(TrackEventListTableModel model) {
-				copy(model, false);
-			}
+			public void cut(TrackEventListTableModel model) {copy(model,true);}
+			public void copy(TrackEventListTableModel model){copy(model,false);}
 			public void paste(TrackEventListTableModel model, long tick) {
 				model.addMidiEvents(copiedEventsToPaste, tick, copiedEventsPPQ);
 			}
@@ -984,28 +1052,13 @@ class MidiEditor extends JDialog implements DropTargetListener {
 		 * 指定のTick位置へ貼り付けるアクション
 		 */
 		Action queryPasteEventAction = new AbstractAction() {
-			private TrackEventListTableModel pastingModel;
 			{
 				putValue(NAME,"Paste to ...");
 				setEnabled(false);
 			}
-			private Action pasteEventAction = new AbstractAction() {
-				{
-					putValue(NAME,"Paste");
-				}
-				public void actionPerformed(ActionEvent e) {
-					long tick = tickPositionModel.getTickPosition();
-					clipBoard.paste(pastingModel, tick);
-					scrollToEventAt(tick);
-					// プレイリストの曲の長さ表示を更新
-					pastingModel.sequenceTrackListTableModel.sequenceListTableModel.fireSelectedSequenceChanged();
-					eventDialog.setVisible(false);
-					pastingModel = null;
-				}
-			};
 			public void actionPerformed(ActionEvent e) {
-				setSelectedEvent(pastingModel = getModel());
-				eventDialog.openTickForm("Paste to", pasteEventAction);
+				editContext.setSelectedEvent(getModel());
+				eventDialog.openTickForm("Paste to", editContext.pasteEventAction);
 			}
 		};
 		/**
@@ -1063,7 +1116,7 @@ class MidiEditor extends JDialog implements DropTargetListener {
 			 */
 			public MidiEventCellEditor() {
 				eventDialog.midiMessageForm.setOutputMidiChannels(virtualMidiDevice.getChannels());
-				eventDialog.tickPositionInputForm.setModel(tickPositionModel);
+				eventDialog.tickPositionInputForm.setModel(editContext.tickPositionModel);
 				int index = TrackEventListTableModel.Column.MESSAGE.ordinal();
 				getColumnModel().getColumn(index).setCellEditor(this);
 			}
@@ -1086,28 +1139,10 @@ class MidiEditor extends JDialog implements DropTargetListener {
 			private Action editEventAction = new AbstractAction() {
 				public void actionPerformed(ActionEvent e) {
 					TrackEventListTableModel model = getModel();
-					setSelectedEvent(model);
-					if( selectedMidiEvent == null )
+					editContext.setSelectedEvent(model);
+					if( editContext.selectedMidiEvent == null )
 						return;
-					MidiEvent partnerEvent = null;
-					eventDialog.midiMessageForm.setMessage(selectedMidiEvent.getMessage());
-					if( eventDialog.midiMessageForm.isNote() ) {
-						int partnerIndex = model.getIndexOfPartnerFor(selectedIndex);
-						if( partnerIndex < 0 ) {
-							eventDialog.midiMessageForm.durationForm.setDuration(0);
-						}
-						else {
-							partnerEvent = model.getMidiEvent(partnerIndex);
-							long partnerTick = partnerEvent.getTick();
-							long duration = currentTick > partnerTick ?
-								currentTick - partnerTick : partnerTick - currentTick ;
-							eventDialog.midiMessageForm.durationForm.setDuration((int)duration);
-						}
-					}
-					if(partnerEvent == null)
-						midiEventsToBeOverwritten = new MidiEvent[] {selectedMidiEvent};
-					else
-						midiEventsToBeOverwritten = new MidiEvent[] {selectedMidiEvent, partnerEvent};
+					editContext.setupForEdit(model);
 					eventDialog.cancelButton.addActionListener(cancelActionListener);
 					eventDialog.openEventForm("Change MIDI event", applyEventAction);
 				}
@@ -1148,39 +1183,7 @@ class MidiEditor extends JDialog implements DropTargetListener {
 					putValue(NAME,"OK");
 				}
 				public void actionPerformed(ActionEvent e) {
-					TrackEventListTableModel trackModel = getModel();
-					long tick = tickPositionModel.getTickPosition();
-					MidiMessageForm form = eventDialog.midiMessageForm;
-					MidiEvent newMidiEvent = new MidiEvent(form.getMessage(), tick);
-					if( midiEventsToBeOverwritten != null ) {
-						// 上書き消去するための選択済イベントがあった場合
-						trackModel.removeMidiEvents(midiEventsToBeOverwritten);
-					}
-					if( ! trackModel.addMidiEvent(newMidiEvent) ) {
-						System.out.println("addMidiEvent failure");
-						return;
-					}
-					if(pairNoteOnOffModel.isSelected() && form.isNote()) {
-						ShortMessage sm = form.createPartnerMessage();
-						if(sm == null)
-							scrollToEventAt( tick );
-						else {
-							int duration = form.durationForm.getDuration();
-							if( form.isNote(false) ) {
-								duration = -duration;
-							}
-							long partnerTick = tick + (long)duration;
-							if( partnerTick < 0L ) partnerTick = 0L;
-							MidiEvent partner = new MidiEvent((MidiMessage)sm, partnerTick);
-							if( ! trackModel.addMidiEvent(partner) ) {
-								System.out.println("addMidiEvent failure (note on/off partner message)");
-							}
-							scrollToEventAt(partnerTick > tick ? partnerTick : tick);
-						}
-					}
-					trackModel.sequenceTrackListTableModel.sequenceListTableModel.fireSequenceModified(getModel().sequenceTrackListTableModel);
-					eventDialog.setVisible(false);
-					fireEditingStopped();
+					if( editContext.applyEvent() ) fireEditingStopped();
 				}
 			};
 		}
@@ -1791,7 +1794,7 @@ class SequenceListTableModel extends AbstractTableModel {
 	 * 指定されている選択範囲のシーケンスが変更されたことを通知します。
 	 * 更新済みフラグをセットし、選択されたシーケンスの全ての列を再表示します。
 	 */
-	public void fireSelectedSequenceChanged() {
+	public void fireSelectedSequenceModified() {
 		if( sequenceListSelectionModel.isSelectionEmpty() )
 			return;
 		int minIndex = sequenceListSelectionModel.getMinSelectionIndex();
@@ -2313,7 +2316,7 @@ class SequenceTrackListTableModel extends AbstractTableModel {
 		trackModelList.add(new TrackEventListTableModel(this, newTrack));
 		int lastRow = getRowCount() - 1;
 		fireTableRowsInserted(lastRow, lastRow);
-		sequenceListTableModel.fireSelectedSequenceChanged();
+		sequenceListTableModel.fireSelectedSequenceModified();
 		trackListSelectionModel.setSelectionInterval(lastRow, lastRow);
 		return lastRow;
 	}
@@ -2333,7 +2336,7 @@ class SequenceTrackListTableModel extends AbstractTableModel {
 			trackModelList.remove(i);
 		}
 		fireTableRowsDeleted(minIndex, maxIndex);
-		sequenceListTableModel.fireSelectedSequenceChanged();
+		sequenceListTableModel.fireSelectedSequenceModified();
 	}
 	/**
 	 * このシーケンスモデルのシーケンスをシーケンサーが操作しているか調べます。
@@ -2833,7 +2836,7 @@ class TrackEventListTableModel extends AbstractTableModel {
 		int oldLastIndex = lastIndex + midiEvents.length;
 		if(lastIndex < 0) lastIndex = 0;
 		fireTableRowsDeleted(oldLastIndex, lastIndex);
-		sequenceTrackListTableModel.sequenceListTableModel.fireSelectedSequenceChanged();
+		sequenceTrackListTableModel.sequenceListTableModel.fireSelectedSequenceModified();
 	}
 	/**
 	 * 引数の選択内容が示すMIDIイベントを除去します。

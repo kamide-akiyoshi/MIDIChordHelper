@@ -13,8 +13,10 @@ import java.awt.event.ActionListener;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.geom.AffineTransform;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.List;
 
 import javax.swing.JComponent;
 import javax.swing.JLayeredPane;
@@ -143,7 +145,7 @@ class AnoGakkiPane extends JComponent {
 	/**
 	 * いま描画すべき図形を覚えておくためのキュー
 	 */
-	LinkedList<QueueEntry> queue = new LinkedList<QueueEntry>();
+	List<QueueEntry> queue = new LinkedList<QueueEntry>();
 	/**
 	 * キューエントリ内容
 	 */
@@ -277,7 +279,16 @@ class AnoGakkiPane extends JComponent {
 		Graphics2D g2 = (Graphics2D)g;
 		g2.setStroke(stroke);
 		g2.setColor(color);
-		Iterator<QueueEntry> i = queue.iterator();
+		//
+		// timer が queue.iterator() の返すイテレータで反復中という
+		// 絶妙なタイミングで、別スレッドでここへ来てしまった場合、
+		// そこで同じイテレータを使ってしまうと
+		// ConcurrentModificationException が投げられてしまう。
+		//
+		// これを避けるため、
+		// 描画時のイテレータは timer とは別のものを使うようにする。
+		//
+		Iterator<QueueEntry> i = Collections.unmodifiableList(queue).iterator();
 		while( i.hasNext() ) {
 			QueueEntry entry = i.next();
 			entry.shape.draw(g2, entry);
