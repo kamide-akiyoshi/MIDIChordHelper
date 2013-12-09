@@ -1250,11 +1250,11 @@ public class Music {
 		 * あるかを表すインデックス値を返します。
 		 * 構成音に該当しない場合は -1 を返します。
 		 * ベース音は検索されません。
-		 * @param noteNo MIDIノート番号
+		 * @param noteNumber MIDIノート番号
 		 * @return 構成音のインデックス値
 		 */
-		public int indexOf(int noteNo) {
-			int relative_note = noteNo - rootNoteSymbol.toNoteNumber();
+		public int indexOf(int noteNumber) {
+			int relative_note = noteNumber - rootNoteSymbol.toNoteNumber();
 			if( mod12(relative_note) == 0 ) return 0;
 			int i=0;
 			for( int offset : offsets ) if( offset != ROOT ) {

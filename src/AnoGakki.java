@@ -13,7 +13,6 @@ import java.awt.event.ActionListener;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.geom.AffineTransform;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -258,10 +257,15 @@ class AnoGakkiPane extends JComponent {
 		new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent event) {
-				Iterator<QueueEntry> i = queue.iterator();
-				while( i.hasNext() )
-					if( i.next().countDown() <= 0 ) i.remove();
-				if( queue.isEmpty() ) timer.stop();
+				synchronized(queue) {
+					Iterator<QueueEntry> i = queue.iterator();
+					while( i.hasNext() ) {
+						if( i.next().countDown() <= 0 ) {
+							i.remove();
+						}
+					}
+				}
+				if(queue.isEmpty()) timer.stop();
 				repaint();
 			}
 		}
@@ -274,36 +278,29 @@ class AnoGakkiPane extends JComponent {
 	}
 	@Override
 	public void paint(Graphics g) {
-		if( queue.isEmpty() )
-			return;
+		if(queue.isEmpty()) return;
 		Graphics2D g2 = (Graphics2D)g;
 		g2.setStroke(stroke);
 		g2.setColor(color);
-		//
-		// timer が queue.iterator() の返すイテレータで反復中という
-		// 絶妙なタイミングで、別スレッドでここへ来てしまった場合、
-		// そこで同じイテレータを使ってしまうと
-		// ConcurrentModificationException が投げられてしまう。
-		//
-		// これを避けるため、
-		// 描画時のイテレータは timer とは別のものを使うようにする。
-		//
-		Iterator<QueueEntry> i = Collections.unmodifiableList(queue).iterator();
-		while( i.hasNext() ) {
-			QueueEntry entry = i.next();
-			entry.shape.draw(g2, entry);
+		synchronized(queue) {
+			Iterator<QueueEntry> i = queue.iterator();
+			while( i.hasNext() ) {
+				QueueEntry entry = i.next();
+				entry.shape.draw(g2, entry);
+			}
 		}
 	}
 	private long prevStartedAt = System.nanoTime();
-	public void start(Component source, Point clicked_point) {
+	public void start(Component source, Point clickedPoint) {
 		long startedAt = System.nanoTime();
 		if( startedAt - prevStartedAt < (INTERVAL_MS * 1000)*50 ) {
 			// 頻繁すぎる場合は無視する
 			return;
 		}
-		queue.add(new QueueEntry(
-			SwingUtilities.convertPoint(source, clicked_point, this)
-		));
+		clickedPoint = SwingUtilities.convertPoint(source, clickedPoint, this);
+		synchronized (queue) {
+			queue.add(new QueueEntry(clickedPoint));
+		}
 		timer.start();
 		prevStartedAt = startedAt;
 	}

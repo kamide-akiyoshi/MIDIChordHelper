@@ -992,7 +992,7 @@ class MidiChannelButtonSelecter extends JList<Integer>
 		return (MidiChannelComboBoxModel)(super.getModel());
 	}
 	public void setPianoKeyboard(PianoKeyboard keyboard) {
-		(this.keyboard = keyboard).midi_ch_button_selecter = this;
+		(this.keyboard = keyboard).midiChannelButtonSelecter = this;
 	}
 	class MyCellRenderer extends JLabel implements ListCellRenderer<Integer> {
 		private boolean cellHasFocus = false;

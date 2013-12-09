@@ -405,63 +405,63 @@ abstract class AbstractMidiStatus extends Vector<AbstractMidiChannelStatus>
 abstract class AbstractMidiChannelStatus implements MidiChannel {
 	protected int channel;
 	protected int program = 0;
-	protected int pitch_bend = MIDISpec.PITCH_BEND_NONE;
-	protected int controller_values[] = new int[0x80];
-	protected boolean is_rhythm_part = false;
+	protected int pitchBend = MIDISpec.PITCH_BEND_NONE;
+	protected int controllerValues[] = new int[0x80];
+	protected boolean isRhythmPart = false;
 
 	protected static final int DATA_NONE = 0;
 	protected static final int DATA_FOR_RPN = 1;
 	protected final int DATA_FOR_NRPN = 2;
-	protected int data_for = DATA_NONE;
+	protected int dataFor = DATA_NONE;
 
 	public AbstractMidiChannelStatus(int channel) {
 		this.channel = channel;
 		resetAllValues(true);
 	}
 	public int getChannel() { return channel; }
-	public boolean isRhythmPart() { return is_rhythm_part; }
+	public boolean isRhythmPart() { return isRhythmPart; }
 	public void setRhythmPart(boolean is_rhythm_part) {
-		this.is_rhythm_part = is_rhythm_part;
+		this.isRhythmPart = is_rhythm_part;
 	}
 	public void resetRhythmPart() {
-		is_rhythm_part = (channel == 9);
+		isRhythmPart = (channel == 9);
 	}
 	public void resetAllValues() { resetAllValues(false); }
 	public void resetAllValues(boolean is_GS) {
-		for( int i=0; i<controller_values.length; i++ )
-			controller_values[i] = 0;
+		for( int i=0; i<controllerValues.length; i++ )
+			controllerValues[i] = 0;
 		if( is_GS ) resetRhythmPart();
 		resetAllControllers();
-		controller_values[10] = 0x40; // Set pan to center
+		controllerValues[10] = 0x40; // Set pan to center
 	}
 	public void fireRpnChanged() {}
 	protected void changeRPNData( int data_diff ) {
-		int data_msb = controller_values[0x06];
-		int data_lsb = controller_values[0x26];
+		int dataMsb = controllerValues[0x06];
+		int dataLsb = controllerValues[0x26];
 		if( data_diff != 0 ) {
 			// Data increment or decrement
-			data_lsb += data_diff;
-			if( data_lsb >= 100 ) {
-				data_lsb = 0;
-				controller_values[0x26] = ++data_msb;
+			dataLsb += data_diff;
+			if( dataLsb >= 100 ) {
+				dataLsb = 0;
+				controllerValues[0x26] = ++dataMsb;
 			}
-			else if( data_lsb < 0 ) {
-				data_lsb = 0;
-				controller_values[0x26] = --data_msb;
+			else if( dataLsb < 0 ) {
+				dataLsb = 0;
+				controllerValues[0x26] = --dataMsb;
 			}
-			controller_values[0x06] = data_lsb;
+			controllerValues[0x06] = dataLsb;
 		}
 		fireRpnChanged();
 	}
 	@Override
-	public void noteOff( int note_no ) {}
+	public void noteOff( int noteNumber ) {}
 	@Override
-	public void noteOff( int note_no, int velocity ) {}
+	public void noteOff( int noteNumber, int velocity ) {}
 	@Override
-	public void noteOn( int note_no, int velocity ) {}
+	public void noteOn( int noteNumber, int velocity ) {}
 	@Override
 	public int getController(int controller) {
-		return controller_values[controller];
+		return controllerValues[controller];
 	}
 	@Override
 	public void programChange( int program ) {
@@ -476,11 +476,11 @@ abstract class AbstractMidiChannelStatus implements MidiChannel {
 	@Override
 	public int getProgram() { return program; }
 	@Override
-	public void setPitchBend(int bend) { pitch_bend = bend; }
+	public void setPitchBend(int bend) { pitchBend = bend; }
 	@Override
-	public int getPitchBend() { return pitch_bend; }
+	public int getPitchBend() { return pitchBend; }
 	@Override
-	public void setPolyPressure(int note_no, int pressure) {}
+	public void setPolyPressure(int noteNumber, int pressure) {}
 	@Override
 	public int getPolyPressure(int noteNumber) { return 0x40; }
 	@Override
@@ -500,16 +500,16 @@ abstract class AbstractMidiChannelStatus implements MidiChannel {
 		//   http://www.midi.org/techspecs/rp15.php
 		//
 		// modulation
-		controller_values[0] = 0;
+		controllerValues[0] = 0;
 		//
 		// pedals
-		for(int i=64; i<=67; i++) controller_values[i] = 0;
+		for(int i=64; i<=67; i++) controllerValues[i] = 0;
 		//
 		// Set pitch bend to center
-		pitch_bend = 8192;
+		pitchBend = 8192;
 		//
 		// Set NRPN / RPN to null value
-		for(int i=98; i<=101; i++) controller_values[i] = 127;
+		for(int i=98; i<=101; i++) controllerValues[i] = 127;
 	}
 	@Override
 	public boolean localControl(boolean on) {
@@ -536,7 +536,7 @@ abstract class AbstractMidiChannelStatus implements MidiChannel {
 	public boolean getSolo() { return false; }
 	@Override
 	public void controlChange(int controller, int value) {
-		controller_values[controller] = value & 0x7F;
+		controllerValues[controller] = value & 0x7F;
 		switch( controller ) {
 
 		case 0x78: // All Sound Off
@@ -567,14 +567,14 @@ abstract class AbstractMidiChannelStatus implements MidiChannel {
 			// Non-Registered Parameter Number
 		case 0x62: // NRPN (LSB)
 		case 0x63: // NRPN (MSB)
-			data_for = DATA_FOR_NRPN;
+			dataFor = DATA_FOR_NRPN;
 			// fireRpnChanged();
 			break;
 
 			// Registered Parameter Number
 		case 0x64: // RPN (LSB)
 		case 0x65: // RPN (MSB)
-			data_for = DATA_FOR_RPN;
+			dataFor = DATA_FOR_RPN;
 			fireRpnChanged();
 			break;
 		}
