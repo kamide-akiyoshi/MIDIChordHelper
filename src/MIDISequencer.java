@@ -13,13 +13,17 @@ import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.BoundedRangeModel;
 import javax.swing.BoxLayout;
+import javax.swing.ComboBoxModel;
 import javax.swing.DefaultBoundedRangeModel;
+import javax.swing.DefaultComboBoxModel;
 import javax.swing.Icon;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 import javax.swing.event.EventListenerList;
+import javax.swing.event.ListDataEvent;
+import javax.swing.event.ListDataListener;
 
 /**
  * シーケンサの現在位置（分：秒）を表示するビュー
@@ -493,5 +497,40 @@ class MidiSequencerModel extends MidiConnecterListModel
 		@Override
 		public void actionPerformed(ActionEvent event) { moveMeasure(1); }
 	};
+	/**
+	 * マスター同期モードのコンボボックスモデル
+	 */
+	public ComboBoxModel<Sequencer.SyncMode> masterSyncModeModel =
+		new DefaultComboBoxModel<Sequencer.SyncMode>(getSequencer().getMasterSyncModes()) {{
+			addListDataListener(new ListDataListener() {
+				@Override
+				public void intervalAdded(ListDataEvent e) { }
+				@Override
+				public void intervalRemoved(ListDataEvent e) { }
+				@Override
+				public void contentsChanged(ListDataEvent e) {
+					getSequencer().setMasterSyncMode(
+						(Sequencer.SyncMode)getSelectedItem()
+					);
+				}
+			});
+		}};
+	/**
+	 * スレーブ同期モードのコンボボックスモデル
+	 */
+	public ComboBoxModel<Sequencer.SyncMode> slaveSyncModeModel =
+		new DefaultComboBoxModel<Sequencer.SyncMode>(getSequencer().getSlaveSyncModes()) {{
+			addListDataListener(new ListDataListener() {
+				@Override
+				public void intervalAdded(ListDataEvent e) { }
+				@Override
+				public void intervalRemoved(ListDataEvent e) { }
+				@Override
+				public void contentsChanged(ListDataEvent e) {
+					getSequencer().setSlaveSyncMode(
+						(Sequencer.SyncMode)getSelectedItem()
+					);
+				}
+			});
+		}};
 }
-

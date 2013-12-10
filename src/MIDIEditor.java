@@ -304,7 +304,7 @@ class MidiEditor extends JDialog implements DropTargetListener {
 			for( SequenceListTableModel.Column c : SequenceListTableModel.Column.values() ) {
 				TableColumn tc = colModel.getColumn(c.ordinal());
 				tc.setPreferredWidth(c.preferredWidth);
-				if( c == SequenceListTableModel.Column.SEQ_LENGTH ) {
+				if( c == SequenceListTableModel.Column.LENGTH ) {
 					lengthColumn = tc;
 				}
 			}
@@ -317,7 +317,7 @@ class MidiEditor extends JDialog implements DropTargetListener {
 			// タイトルに合計シーケンス長を表示
 			if( lengthColumn != null ) {
 				int sec = getModel().getTotalSeconds();
-				String title = SequenceListTableModel.Column.SEQ_LENGTH.title;
+				String title = SequenceListTableModel.Column.LENGTH.title;
 				title = String.format(title+" [%02d:%02d]", sec/60, sec%60);
 				lengthColumn.setHeaderValue(title);
 			}
@@ -337,7 +337,7 @@ class MidiEditor extends JDialog implements DropTargetListener {
 			implements TableCellEditor
 		{
 			public PositionCellEditor() {
-				int column = SequenceListTableModel.Column.SEQ_POSITION.ordinal();
+				int column = SequenceListTableModel.Column.POSITION.ordinal();
 				TableColumn tc = getColumnModel().getColumn(column);
 				tc.setCellEditor(this);
 			}
@@ -381,7 +381,7 @@ class MidiEditor extends JDialog implements DropTargetListener {
 			);
 			public PlayButtonCellEditor() {
 				playButton.setMargin(ZERO_INSETS);
-				int column = SequenceListTableModel.Column.SEQ_PLAY.ordinal();
+				int column = SequenceListTableModel.Column.PLAY.ordinal();
 				TableColumn tc = getColumnModel().getColumn(column);
 				tc.setCellRenderer(this);
 				tc.setCellEditor(this);
@@ -1221,7 +1221,7 @@ class MidiEditor extends JDialog implements DropTargetListener {
 		);
 		// レイアウト
 		setTitle("MIDI Editor/Playlist - MIDI Chord Helper");
-		setBounds( 150, 200, 850, 500 );
+		setBounds( 150, 200, 900, 500 );
 		setLayout(new FlowLayout());
 		new DropTarget(this, DnDConstants.ACTION_COPY_OR_MOVE, this, true);
 		JPanel playlistPanel = new JPanel() {{
@@ -1239,6 +1239,12 @@ class MidiEditor extends JDialog implements DropTargetListener {
 						setMargin(ZERO_INSETS);
 					}});
 				}
+				if(sequenceListTable.base64EncodeAction != null) {
+					add(Box.createRigidArea(new Dimension(5, 0)));
+					add(new JButton(sequenceListTable.base64EncodeAction) {{
+						setMargin(ZERO_INSETS);
+					}});
+				}
 				add(Box.createRigidArea(new Dimension(5, 0)));
 				SequenceListTableModel sequenceListTableModel = sequenceListTable.getModel();
 				add(new JButton(sequenceListTableModel.moveToTopAction) {{
@@ -1248,12 +1254,6 @@ class MidiEditor extends JDialog implements DropTargetListener {
 				add(new JButton(sequenceListTableModel.moveToBottomAction) {{
 					setMargin(ZERO_INSETS);
 				}});
-				if(sequenceListTable.base64EncodeAction != null) {
-					add(Box.createRigidArea(new Dimension(5, 0)));
-					add(new JButton(sequenceListTable.base64EncodeAction) {{
-						setMargin(ZERO_INSETS);
-					}});
-				}
 				if( sequenceListTable.midiFileChooser != null ) {
 					add(Box.createRigidArea(new Dimension(5, 0)));
 					add(new JButton(
@@ -1270,6 +1270,18 @@ class MidiEditor extends JDialog implements DropTargetListener {
 				add(new SequencerSpeedSlider(
 					sequenceListTableModel.sequencerModel.speedSliderModel
 				));
+				add( Box.createRigidArea(new Dimension(5, 0)) );
+				add(new JPanel() {{
+					add(new JLabel("SyncMode:"));
+					add(new JLabel("Master"));
+					add(new JComboBox<Sequencer.SyncMode>(
+						sequenceListTable.getModel().sequencerModel.masterSyncModeModel
+					));
+					add(new JLabel("Slave"));
+					add(new JComboBox<Sequencer.SyncMode>(
+						sequenceListTable.getModel().sequencerModel.slaveSyncModeModel
+					));
+				}});
 			}};
 			setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
 			add(new JScrollPane(sequenceListTable));
@@ -1354,6 +1366,7 @@ class SequencerSpeedSlider extends JPanel {
 	private JLabel titleLabel;
 	private JSlider slider;
 	public SequencerSpeedSlider(BoundedRangeModel model) {
+		setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
 		add(titleLabel = new JLabel("Speed:"));
 		add(slider = new JSlider(model){{
 			setPaintTicks(true);
@@ -1480,7 +1493,7 @@ class SequenceListTableModel extends AbstractTableModel {
 			// セルのレンダラーが描く再生ボタンには効かないようなので、
 			// セルを突っついて再表示させる。
 			int rowIndex = indexOfSequenceOnSequencer();
-			int colIndex = Column.SEQ_PLAY.ordinal();
+			int colIndex = Column.PLAY.ordinal();
 			fireTableCellUpdated(rowIndex, colIndex);
 		}
 	}
@@ -1548,7 +1561,7 @@ class SequenceListTableModel extends AbstractTableModel {
 				if(value == newValue) return;
 				value = newValue;
 				int rowIndex = indexOfSequenceOnSequencer();
-				fireTableCellUpdated(rowIndex, Column.SEQ_POSITION.ordinal());
+				fireTableCellUpdated(rowIndex, Column.POSITION.ordinal());
 			}
 		}
 		@Override
@@ -1590,14 +1603,14 @@ class SequenceListTableModel extends AbstractTableModel {
 	 */
 	public enum Column {
 		/** MIDIシーケンスの番号 */
-		SEQ_NUMBER("No.", Integer.class, 20),
+		NUMBER("No.", Integer.class, 20),
 		/** 再生ボタン */
-		SEQ_PLAY("Play/Stop", String.class, 60) {
+		PLAY("Play/Stop", String.class, 60) {
 			@Override
 			public boolean isCellEditable() { return true; }
 		},
 		/** 再生中の時間位置（分：秒） */
-		SEQ_POSITION("Position", String.class, 60) {
+		POSITION("Position", String.class, 60) {
 			@Override
 			public boolean isCellEditable() { return true; } // ダブルクリックだけ有効
 			@Override
@@ -1607,7 +1620,7 @@ class SequenceListTableModel extends AbstractTableModel {
 			}
 		},
 		/** シーケンスの時間長（分：秒） */
-		SEQ_LENGTH("Length", String.class, 80) {
+		LENGTH("Length", String.class, 80) {
 			@Override
 			public Object getValueOf(SequenceTrackListTableModel sequenceModel) {
 				long usec = sequenceModel.getSequence().getMicrosecondLength();
@@ -1632,7 +1645,7 @@ class SequenceListTableModel extends AbstractTableModel {
 			}
 		},
 		/** シーケンス名（最初のトラックの名前） */
-		SEQ_NAME("Sequence name", String.class, 250) {
+		NAME("Sequence name", String.class, 250) {
 			@Override
 			public boolean isCellEditable() { return true; }
 			public Object getValueOf(SequenceTrackListTableModel sequenceModel) {
@@ -1708,7 +1721,7 @@ class SequenceListTableModel extends AbstractTableModel {
 	@Override
 	public Object getValueAt(int row, int column) {
 		Column c = Column.values()[column];
-		return c == Column.SEQ_NUMBER ? row : c.getValueOf(sequenceList.get(row));
+		return c == Column.NUMBER ? row : c.getValueOf(sequenceList.get(row));
 	}
 	@Override
 	public void setValueAt(Object val, int row, int column) {
@@ -1719,7 +1732,7 @@ class SequenceListTableModel extends AbstractTableModel {
 			sequenceList.get(row).setFilename((String)val);
 			fireTableCellUpdated(row, column);
 			break;
-		case SEQ_NAME:
+		case NAME:
 			// シーケンス名の設定または変更
 			if( sequenceList.get(row).setName((String)val) )
 				fireTableCellUpdated(row, Column.MODIFIED.ordinal());
@@ -1945,8 +1958,8 @@ class SequenceListTableModel extends AbstractTableModel {
 			return;
 		sequencerModel.setSequenceTrackListTableModel(newSeq);
 		int columnIndices[] = {
-			Column.SEQ_PLAY.ordinal(),
-			Column.SEQ_POSITION.ordinal(),
+			Column.PLAY.ordinal(),
+			Column.POSITION.ordinal(),
 		};
 		if( oldSeq != null ) {
 			int oldIndex = sequenceList.indexOf(oldSeq);
@@ -2376,17 +2389,46 @@ class TrackEventListTableModel extends AbstractTableModel {
 	 */
 	public enum Column {
 		/** MIDIイベント番号 */
-		EVENT_NUMBER("No.", Integer.class, 20),
+		EVENT_NUMBER("No.", Integer.class, 15) {
+			@Override
+			public boolean isCellEditable() { return false; }
+		},
 		/** tick位置 */
-		TICK_POSITION("TickPos.", Long.class, 40),
+		TICK_POSITION("TickPos.", Long.class, 40) {
+			@Override
+			public Object getValue(MidiEvent event) {
+				return event.getTick();
+			}
+		},
 		/** tick位置に対応する小節 */
-		MEASURE_POSITION("Measure", Integer.class, 40),
+		MEASURE_POSITION("Measure", Integer.class, 30) {
+			public Object getValue(SequenceTickIndex sti, MidiEvent event) {
+				return sti.tickToMeasure(event.getTick()) + 1;
+			}
+		},
 		/** tick位置に対応する拍 */
-		BEAT_POSITION("Beat", Integer.class, 20),
+		BEAT_POSITION("Beat", Integer.class, 20) {
+			@Override
+			public Object getValue(SequenceTickIndex sti, MidiEvent event) {
+				sti.tickToMeasure(event.getTick());
+				return sti.lastBeat + 1;
+			}
+		},
 		/** tick位置に対応する余剰tick（拍に収まらずに余ったtick数） */
-		EXTRA_TICK_POSITION("ExTick", Integer.class, 20),
+		EXTRA_TICK_POSITION("ExTick", Integer.class, 20) {
+			@Override
+			public Object getValue(SequenceTickIndex sti, MidiEvent event) {
+				sti.tickToMeasure(event.getTick());
+				return sti.lastExtraTick;
+			}
+		},
 		/** MIDIメッセージ */
-		MESSAGE("MIDI Message", String.class, 200);
+		MESSAGE("MIDI Message", String.class, 300) {
+			@Override
+			public Object getValue(MidiEvent event) {
+				return msgToString(event.getMessage());
+			}
+		};
 		private String title;
 		private Class<?> columnClass;
 		int preferredWidth;
@@ -2401,6 +2443,25 @@ class TrackEventListTableModel extends AbstractTableModel {
 			this.title = title;
 			this.columnClass = columnClass;
 			this.preferredWidth = preferredWidth;
+		}
+		/**
+		 * セルを編集できるときtrue、編集できないときfalseを返します。
+		 */
+		public boolean isCellEditable() { return true; }
+		/**
+		 * 列の値を返します。
+		 * @param event 対象イベント
+		 * @return この列の対象イベントにおける値
+		 */
+		public Object getValue(MidiEvent event) { return ""; }
+		/**
+		 * 列の値を返します。
+		 * @param sti MIDIシーケンスデータのtickインデックス
+		 * @param event 対象イベント
+		 * @return この列の対象イベントにおける値
+		 */
+		public Object getValue(SequenceTickIndex sti, MidiEvent event) {
+			return getValue(event);
 		}
 	}
 	/**
@@ -2452,19 +2513,16 @@ class TrackEventListTableModel extends AbstractTableModel {
 	}
 	@Override
 	public Object getValueAt(int row, int column) {
-		switch(Column.values()[column]) {
-		case EVENT_NUMBER: return row;
-		case TICK_POSITION: return track.get(row).getTick();
+		Column c = Column.values()[column];
+		if( c == Column.EVENT_NUMBER ) return row;
+		MidiEvent event = track.get(row);
+		switch(c) {
 		case MEASURE_POSITION:
-			return sequenceTrackListTableModel.getSequenceTickIndex().tickToMeasure(track.get(row).getTick()) + 1;
 		case BEAT_POSITION:
-			sequenceTrackListTableModel.getSequenceTickIndex().tickToMeasure(track.get(row).getTick());
-			return sequenceTrackListTableModel.getSequenceTickIndex().lastBeat + 1;
 		case EXTRA_TICK_POSITION:
-			sequenceTrackListTableModel.getSequenceTickIndex().tickToMeasure(track.get(row).getTick());
-			return sequenceTrackListTableModel.getSequenceTickIndex().lastExtraTick;
-		case MESSAGE: return msgToString(track.get(row).getMessage());
-		default: return "";
+			return c.getValue(sequenceTrackListTableModel.getSequenceTickIndex(), event);
+		default:
+			return c.getValue(event);
 		}
 	}
 	/**
@@ -2472,14 +2530,7 @@ class TrackEventListTableModel extends AbstractTableModel {
 	 */
 	@Override
 	public boolean isCellEditable(int row, int column) {
-		switch(Column.values()[column]) {
-		case TICK_POSITION:
-		case MEASURE_POSITION:
-		case BEAT_POSITION:
-		case EXTRA_TICK_POSITION:
-		case MESSAGE: return true;
-		default: return false;
-		}
+		return Column.values()[column].isCellEditable();
 	}
 	/**
 	 * セルの値を変更します。
