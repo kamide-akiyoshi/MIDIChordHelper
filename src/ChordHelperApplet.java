@@ -268,18 +268,20 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public static class VersionInfo {
 		public static final String	NAME = "MIDI Chord Helper";
-		public static final String	VERSION = "Ver.20131211.1";
+		public static final String	VERSION = "Ver.20131216.1";
 		public static final String	COPYRIGHT = "Copyright (C) 2004-2013";
 		public static final String	AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String	URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";
+		/**
+		 * バージョン情報を返します。
+		 * @return バージョン情報
+		 */
 		public static String getInfo() {
 			return NAME + " " + VERSION + " " + COPYRIGHT + " " + AUTHER + " " + URL;
 		}
 	}
 	@Override
-	public String getAppletInfo() {
-		return VersionInfo.getInfo();
-	}
+	public String getAppletInfo() { return VersionInfo.getInfo(); }
 	private class AboutMessagePane extends JEditorPane implements ActionListener {
 		URI uri = null;
 		public AboutMessagePane() { this(true); }
@@ -381,7 +383,7 @@ public class ChordHelperApplet extends JApplet {
 		String imageIconPath = "images/midichordhelper.png";
 		URL imageIconUrl = getClass().getResource(imageIconPath);
 		if( imageIconUrl == null ) {
-			// System.out.println("icon "+imageIconPath+" not found");
+			System.out.println("icon "+imageIconPath+" not found");
 			imageIcon = null;
 		}
 		else {
@@ -447,21 +449,20 @@ public class ChordHelperApplet extends JApplet {
 		editorDialog.setIconImage(iconImage);
 		deviceModelList.setMidiEditor(editorDialog);
 		new DropTarget(this, DnDConstants.ACTION_COPY_OR_MOVE, editorDialog, true);
-		keyboardPanel.eventDialog = editorDialog.eventDialog;
+		keyboardPanel.setEventDialog(editorDialog.eventDialog);
 		midiConnectionDialog = new MidiDeviceDialog(deviceModelList);
 		midiConnectionDialog.setIconImage(iconImage);
 		lyricDisplay = new ChordTextField() {
 			{
 				deviceModelList.sequencerModel.getSequencer().addMetaEventListener(this);
-				addActionListener(
-					new ActionListener() {
-						public void actionPerformed(ActionEvent event) {
-							chordMatrix.setSelectedChord(
-								event.getActionCommand().trim().split("[ \t\r\n]")[0]
-							);
-						}
+				addActionListener(new ActionListener() {
+					@Override
+					public void actionPerformed(ActionEvent event) {
+						chordMatrix.setSelectedChord(
+							event.getActionCommand().trim().split("[ \t\r\n]")[0]
+						);
 					}
-				);
+				});
 			}
 		};
 		lyricDisplayDefaultBorder = lyricDisplay.getBorder();
@@ -862,12 +863,12 @@ public class ChordHelperApplet extends JApplet {
  *
  ***************************************************************************/
 
-class ChordDisplay extends JLabel {
-	Music.Chord chord = null;
-	PianoKeyboard keyboard = null;
-	ChordMatrix chordMatrix = null;
-	String defaultString = null;
-	int noteNumber = -1;
+class ChordDisplay extends JLabel implements MouseListener {
+	private Music.Chord chord = null;
+	private PianoKeyboard keyboard = null;
+	private ChordMatrix chordMatrix = null;
+	private String defaultString = null;
+	private int noteNumber = -1;
 	private boolean isDark = false;
 	private boolean isMouseEntered = false;
 
@@ -877,45 +878,11 @@ class ChordDisplay extends JLabel {
 		this.keyboard = keyboard;
 		this.chordMatrix = chordMatrix;
 		if( chordMatrix != null ) {
-			addMouseListener(new MouseAdapter() {
-				public void mousePressed(MouseEvent e) {
-					if( chord != null ) { // コードが表示されている場合
-						if( (e.getModifiersEx() & InputEvent.BUTTON3_DOWN_MASK) != 0 ) {
-							// 右クリックでコードを止める
-							ChordDisplay.this.chordMatrix.setSelectedChord((Music.Chord)null);
-						}
-						else {
-							// コードを鳴らす。
-							//   キーボードが指定されている場合、オリジナルキー（カポ反映済）のコードを使う。
-							if( ChordDisplay.this.keyboard == null )
-								ChordDisplay.this.chordMatrix.setSelectedChord(chord);
-							else
-								ChordDisplay.this.chordMatrix.setSelectedChordCapo(chord);
-						}
-					}
-					else if( noteNumber >= 0 ) { // 音階が表示されている場合
-						ChordDisplay.this.keyboard.noteOn(noteNumber);
-					}
-				}
-				public void mouseReleased(MouseEvent e) {
-					if( noteNumber >= 0 )
-						ChordDisplay.this.keyboard.noteOff(noteNumber);
-				}
-				public void mouseEntered(MouseEvent e) {
-					mouseEntered(true);
-				}
-				public void mouseExited(MouseEvent e) {
-					mouseEntered(false);
-				}
-				private void mouseEntered(boolean isMouseEntered) {
-					ChordDisplay.this.isMouseEntered = isMouseEntered;
-					if( noteNumber >= 0 || chord != null )
-						repaint();
-				}
-			});
-			addMouseWheelListener(this.chordMatrix);
+			addMouseListener(this);
+			addMouseWheelListener(chordMatrix);
 		}
 	}
+	@Override
 	public void paint(Graphics g) {
 		super.paint(g);
 		Dimension d = getSize();
@@ -924,33 +891,70 @@ class ChordDisplay extends JLabel {
 			g.drawRect( 0, 0, d.width-1, d.height-1 );
 		}
 	}
-	private void setChordText() {
-		setText( chord.toHtmlString(isDark ? "#FFCC33" : "maroon") );
+	@Override
+	public void mousePressed(MouseEvent e) {
+		if( chord != null ) { // コードが表示されている場合
+			if( (e.getModifiersEx() & InputEvent.BUTTON3_DOWN_MASK) != 0 ) {
+				// 右クリックでコードを止める
+				chordMatrix.setSelectedChord((Music.Chord)null);
+			}
+			else {
+				// コードを鳴らす。
+				//   キーボードが指定されている場合、オリジナルキー（カポ反映済）のコードを使う。
+				if( keyboard == null )
+					chordMatrix.setSelectedChord(chord);
+				else
+					chordMatrix.setSelectedChordCapo(chord);
+			}
+		}
+		else if( noteNumber >= 0 ) { // 音階が表示されている場合
+			keyboard.noteOn(noteNumber);
+		}
 	}
-	void setNote(int note_no) { setNote( note_no, false ); }
-	void setNote(int note_no, boolean is_rhythm_part) {
+	@Override
+	public void mouseReleased(MouseEvent e) {
+		if( noteNumber >= 0 ) keyboard.noteOff(noteNumber);
+	}
+	@Override
+	public void mouseEntered(MouseEvent e) {
+		mouseEntered(true);
+	}
+	@Override
+	public void mouseExited(MouseEvent e) {
+		mouseEntered(false);
+	}
+	@Override
+	public void mouseClicked(MouseEvent e) {
+	}
+	private void mouseEntered(boolean isMouseEntered) {
+		ChordDisplay.this.isMouseEntered = isMouseEntered;
+		if( noteNumber >= 0 || chord != null )
+			repaint();
+	}
+	void setNote(int noteNumber) { setNote( noteNumber, false ); }
+	void setNote(int noteNumber, boolean isRhythmPart) {
 		setToolTipText(null);
 		this.chord = null;
-		this.noteNumber = note_no;
-		if( note_no < 0 ) {
+		this.noteNumber = noteNumber;
+		if( noteNumber < 0 ) {
 			//
 			// Clear
 			//
 			setText(defaultString);
 			return;
 		}
-		if( is_rhythm_part ) {
-			setText(
-					"MIDI note No." + note_no + " : "
-							+ MIDISpec.getPercussionName(note_no)
-					);
+		if( isRhythmPart ) {
+			String pn = MIDISpec.getPercussionName(noteNumber);
+			setText("MIDI note No." + noteNumber + " : " + pn);
 		}
 		else {
-			setText(
-					"Note: " + Music.NoteSymbol.noteNoToSymbol(note_no)
-					+ "  -  MIDI note No." + note_no + " : "
-					+ Math.round(Music.noteNoToFrequency(note_no)) + "Hz" );
+			String ns = Music.NoteSymbol.noteNoToSymbol(noteNumber);
+			double f = Music.noteNoToFrequency(noteNumber);
+			setText("Note: "+ns+"  -  MIDI note No."+noteNumber+" : "+Math.round(f)+"Hz");
 		}
+	}
+	private void setChordText() {
+		setText( chord.toHtmlString(isDark ? "#FFCC33" : "maroon") );
 	}
 	void setChord(Music.Chord chord) {
 		this.chord = chord;

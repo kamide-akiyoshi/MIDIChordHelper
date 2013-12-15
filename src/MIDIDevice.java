@@ -60,6 +60,7 @@ import javax.swing.JSplitPane;
 import javax.swing.JTree;
 import javax.swing.ListCellRenderer;
 import javax.swing.ListSelectionModel;
+import javax.swing.Timer;
 import javax.swing.event.EventListenerList;
 import javax.swing.event.InternalFrameAdapter;
 import javax.swing.event.InternalFrameEvent;
@@ -125,12 +126,6 @@ abstract class AbstractVirtualMidiDevice implements VirtualMidiDevice {
 		isOpen = false;
 	}
 	/**
-	 * MIDIデバイス情報
-	 */
-	protected Info info;
-	@Override
-	public Info getDeviceInfo() { return info; }
-	/**
 	 * レシーバのリスト
 	 */
 	protected List<Receiver> rxList = new Vector<Receiver>();
@@ -195,8 +190,7 @@ abstract class AbstractVirtualMidiDevice implements VirtualMidiDevice {
 		long timestamp = getMicrosecondPosition();
 		for( Transmitter tx : txList ) {
 			Receiver rx = tx.getReceiver();
-			if( rx != null )
-				rx.send( msg, timestamp );
+			if(rx != null) rx.send(msg, timestamp);
 		}
 	}
 }
@@ -311,37 +305,31 @@ abstract class AbstractMidiStatus extends Vector<AbstractMidiChannelStatus>
 		if ( message instanceof ShortMessage ) {
 			ShortMessage sm = (ShortMessage)message;
 			switch ( sm.getCommand() ) {
-
 			case ShortMessage.NOTE_ON:
-				get(sm.getChannel()).noteOn( sm.getData1(), sm.getData2() );
+				get(sm.getChannel()).noteOn(sm.getData1(), sm.getData2());
 				break;
-
 			case ShortMessage.NOTE_OFF:
-				get(sm.getChannel()).noteOff( sm.getData1(), sm.getData2() );
+				get(sm.getChannel()).noteOff(sm.getData1(), sm.getData2());
 				break;
-
 			case ShortMessage.CONTROL_CHANGE:
-				get(sm.getChannel()).controlChange( sm.getData1(), sm.getData2() );
+				get(sm.getChannel()).controlChange(sm.getData1(), sm.getData2());
 				break;
-
 			case ShortMessage.PROGRAM_CHANGE:
-				get(sm.getChannel()).programChange( sm.getData1() );
+				get(sm.getChannel()).programChange(sm.getData1());
 				break;
-
 			case ShortMessage.PITCH_BEND:
-				get(sm.getChannel()).setPitchBend(
-					( sm.getData1() & 0x7F ) + ( (sm.getData2() & 0x7F) << 7 )
-				);
+				{
+					int b = (sm.getData1() & 0x7F);
+					b += ((sm.getData2() & 0x7F) << 7);
+					get(sm.getChannel()).setPitchBend(b);
+				}
 				break;
-
-				/* Pressure系も受信したい場合、この部分を有効にする
-      case ShortMessage.POLY_PRESSURE:
-        get(sm.getChannel()).setPolyPressure( sm.getData1(), sm.getData2() );
-        break;
-      case ShortMessage.CHANNEL_PRESSURE:
-        get(sm.getChannel()).setChannelPressure( sm.getData1() );
-        break;
-				 */
+			case ShortMessage.POLY_PRESSURE:
+				get(sm.getChannel()).setPolyPressure(sm.getData1(), sm.getData2());
+				break;
+			case ShortMessage.CHANNEL_PRESSURE:
+				get(sm.getChannel()).setChannelPressure(sm.getData1());
+				break;
 			}
 		}
 		else if ( message instanceof SysexMessage ) {
@@ -635,18 +623,22 @@ class MidiConnecterListView extends JList<AutoCloseable>
         );
 		new DropTarget( this, DnDConstants.ACTION_COPY_OR_MOVE, this, true );
 	}
-	public static final DataFlavor transmitterFlavor =
+	private static final DataFlavor transmitterFlavor =
 		new DataFlavor(Transmitter.class, "Transmitter");
-	public static final DataFlavor transmitterFlavors[] = {transmitterFlavor};
+	private static final DataFlavor transmitterFlavors[] = {transmitterFlavor};
+	@Override
 	public Object getTransferData(DataFlavor flavor) {
 		return getModel().getElementAt(getSelectedIndex());
 	}
+	@Override
 	public DataFlavor[] getTransferDataFlavors() {
 		return transmitterFlavors;
 	}
+	@Override
 	public boolean isDataFlavorSupported(DataFlavor flavor) {
 		return flavor.equals(transmitterFlavor);
 	}
+	@Override
 	public void dragGestureRecognized(DragGestureEvent dge) {
 		int action = dge.getDragAction();
 		if( (action & DnDConstants.ACTION_COPY_OR_MOVE) == 0 )
@@ -657,13 +649,18 @@ class MidiConnecterListView extends JList<AutoCloseable>
 			dge.startDrag(DragSource.DefaultLinkDrop, this, null);
 		}
 	}
+	@Override
 	public void dragEnter(DropTargetDragEvent event) {
 		if( event.isDataFlavorSupported(transmitterFlavor) )
 			event.acceptDrag(DnDConstants.ACTION_COPY_OR_MOVE);
 	}
+	@Override
 	public void dragExit(DropTargetEvent dte) {}
+	@Override
 	public void dragOver(DropTargetDragEvent dtde) {}
+	@Override
 	public void dropActionChanged(DropTargetDragEvent dtde) {}
+	@Override
 	public void drop(DropTargetDropEvent event) {
 		event.acceptDrop(DnDConstants.ACTION_COPY_OR_MOVE);
 		try {
@@ -687,6 +684,12 @@ class MidiConnecterListView extends JList<AutoCloseable>
 	@Override
 	public MidiConnecterListModel getModel() {
 		return (MidiConnecterListModel)super.getModel();
+	}
+	/**
+	 * 選択しているトランスミッタを閉じます。
+	 */
+	public void closeSelectedTransmitter() {
+		getModel().closeTransmitter((Transmitter)getSelectedValue());
 	}
 }
 
@@ -964,16 +967,16 @@ class MidiDeviceFrame extends JInternalFrame {
 	 * MIDIデバイスのモデルからフレームビューを構築します。
 	 * @param model MIDIデバイスのTransmitter/Receiverリストモデル
 	 */
-	public MidiDeviceFrame( MidiConnecterListModel model ) {
+	public MidiDeviceFrame(MidiConnecterListModel model) {
 		super( null, true, true, false, false );
 		//
 		// タイトルの設定
 		String title = model.toString();
 		if( model.txSupported() ) {
-			if( ! model.rxSupported() ) title = "[IN] "+title;
+			title = (model.rxSupported()?"[I/O] ":"[IN] ")+title;
 		}
 		else {
-			title = (model.rxSupported()?"[OUT] ":"[No IN/OUT] ")+title;
+			title = (model.rxSupported()?"[OUT] ":"[No I/O] ")+title;
 		}
 		setTitle(title);
 		listView = new MidiConnecterListView(model);
@@ -993,41 +996,45 @@ class MidiDeviceFrame extends JInternalFrame {
 			}
 		);
 		setLayout( new BoxLayout( getContentPane(), BoxLayout.Y_AXIS ) );
-		add( new JScrollPane(listView) );
-		if( model.txSupported() ) {
-			JPanel button_panel = new JPanel();
-			button_panel.add(
-				new JButton("New Tx") {
-					{
-						setMargin(ZERO_INSETS);
-						addActionListener(
-							new ActionListener() {
-								public void actionPerformed(ActionEvent event) {
-									listView.getModel().getUnconnectedTransmitter();
-								}
-							}
-						);
+		add(new JScrollPane(listView));
+		add(new JPanel() {{
+			if( listView.getModel().txSupported() ) {
+				add(new JButton("New Tx") {{
+					setMargin(ZERO_INSETS);
+					addActionListener(new ActionListener() {
+						@Override
+						public void actionPerformed(ActionEvent event) {
+							listView.getModel().getUnconnectedTransmitter();
+						}
+					});
+				}});
+				add(new JButton("Close Tx") {{
+					setMargin(ZERO_INSETS);
+					addActionListener(new ActionListener() {
+						@Override
+						public void actionPerformed(ActionEvent event) {
+							listView.closeSelectedTransmitter();
+						}
+					});
+				}});
+			}
+			add(new JLabel() {{
+				Timer t = new Timer(50, new ActionListener() {
+					private long t = -2;
+					private MidiDevice dev = listView.getModel().getMidiDevice();
+					@Override
+					public void actionPerformed(ActionEvent e) {
+						long sec = dev.getMicrosecondPosition()/1000000;
+						if( sec == this.t ) return;
+						if( (this.t = sec) == -1 )
+							setText("No TimeStamp");
+						else
+							setText(String.format("TimeStamp: %02d:%02d", sec/60, sec%60));
 					}
-				}
-			);
-			button_panel.add(
-				new JButton("Close Tx") {
-					{
-						setMargin(ZERO_INSETS);
-						addActionListener(
-							new ActionListener() {
-								public void actionPerformed(ActionEvent event) {
-									listView.getModel().closeTransmitter(
-										(Transmitter)listView.getSelectedValue()
-									);
-								}
-							}
-						);
-					}
-				}
-			);
-			add(button_panel);
-		}
+				});
+				t.start();
+			}});
+		}});
 		setSize(250,100);
 	}
 	/**
@@ -1155,21 +1162,6 @@ class MidiDeviceTreeModel implements TreeModel {
 			}
 		}
 	}
-/*
-	private static final Object[] midiOutPath =
-		{rootNode, MidiDeviceInOutType.MIDI_OUT};
-	private static final Object[] midiInPath =
-		{rootNode, MidiDeviceInOutType.MIDI_IN};
-	public void fireDeviceStatusChanged(MidiConnecterListModel deviceModel) {
-		Object[] path = deviceModel.rxSupported() ? midiOutPath : midiInPath;
-		MidiDeviceInOutType parent = deviceModel.getMidiDeviceInOutType();
-		fireTreeNodesChanged(
-			this, path,
-			new int[]{ getIndexOfChild(parent, deviceModel) },
-			new Object[]{deviceModel}
-		);
-	}
-*/
 }
 
 /**
@@ -1262,6 +1254,10 @@ class MidiDeviceModelList extends Vector<MidiConnecterListModel> {
 	 */
 	MidiSequencerModel sequencerModel;
 	/**
+	 * MIDIシンセサイザーモデル
+	 */
+	private MidiConnecterListModel synthModel;
+	/**
 	 * 最初のMIDI出力
 	 */
 	private MidiConnecterListModel firstMidiOutModel;
@@ -1296,7 +1292,7 @@ class MidiDeviceModelList extends Vector<MidiConnecterListModel> {
 			if( device instanceof Sequencer ) continue;
 			if( device instanceof Synthesizer ) {
 				try {
-					addMidiDevice(MidiSystem.getSynthesizer());
+					synthModel = addMidiDevice(MidiSystem.getSynthesizer());
 				} catch( MidiUnavailableException e ) {
 					System.out.println(
 						ChordHelperApplet.VersionInfo.NAME +
@@ -1312,53 +1308,55 @@ class MidiDeviceModelList extends Vector<MidiConnecterListModel> {
 			if( m.txSupported() && firstMidiInModel == null )
 				firstMidiInModel = m;
 		}
-		// デバイスを開く
+		// デバイスを開く。
+		//   NOTE: 必ず MIDI OUT Rx デバイスを先に開くこと。
+		//
+		//   そうすれば、後から開いた MIDI IN Tx デバイスからの
+		//   タイムスタンプのほうが「若く」なる。これにより、
+		//   先に開かれ「少し歳を食った」Rx デバイスは
+		//   「信号が遅れてやってきた」と認識するので、
+		//   遅れを取り戻そうとして即座に音を出してくれる。
+		//
+		//   開く順序が逆になると「進みすぎるから遅らせよう」として
+		//   無用なレイテンシーが発生する原因になる。
 		try {
-			for( MidiConnecterListModel m : guiModels )
+			MidiConnecterListModel openModels[] = {
+				synthModel,
+				firstMidiOutModel,
+				sequencerModel,
+				firstMidiInModel,
+			};
+			for( MidiConnecterListModel m : openModels ) {
+				if( m != null ) m.openDevice();
+			}
+			for( MidiConnecterListModel m : guiModels ) {
 				m.openDevice();
-			if( firstMidiInModel != null )
-				firstMidiInModel.openDevice();
-			if( sequencerModel != null )
-				sequencerModel.openDevice();
-			if( firstMidiOutModel != null )
-				firstMidiOutModel.openDevice();
+			}
 		} catch( MidiUnavailableException ex ) {
 			ex.printStackTrace();
 		}
-		//
 		// 初期接続
 		//
 		for( MidiConnecterListModel mtx : guiModels ) {
 			for( MidiConnecterListModel mrx : guiModels )
 				mtx.connectToReceiverOf(mrx);
 			mtx.connectToReceiverOf(sequencerModel);
+			mtx.connectToReceiverOf(synthModel);
 			mtx.connectToReceiverOf(firstMidiOutModel);
 		}
 		if( firstMidiInModel != null ) {
 			for( MidiConnecterListModel m : guiModels )
 				firstMidiInModel.connectToReceiverOf(m);
 			firstMidiInModel.connectToReceiverOf(sequencerModel);
+			firstMidiInModel.connectToReceiverOf(synthModel);
 			firstMidiInModel.connectToReceiverOf(firstMidiOutModel);
 		}
 		if( sequencerModel != null ) {
 			for( MidiConnecterListModel m : guiModels )
 				sequencerModel.connectToReceiverOf(m);
 			sequencerModel.connectToReceiverOf(firstMidiOutModel);
+			sequencerModel.connectToReceiverOf(synthModel);
 		}
-	}
-	/**
-	 * 指定のMIDIデバイスからMIDIデバイスモデルを生成して追加します。
-	 * @param device MIDIデバイス
-	 * @return 生成されたMIDIデバイスモデル
-	 */
-	private MidiConnecterListModel addMidiDevice(MidiDevice device) {
-		MidiConnecterListModel m;
-		if( device instanceof Sequencer )
-			m = new MidiSequencerModel(this,(Sequencer)device,this);
-		else
-			m = new MidiConnecterListModel(device,this);
-		addElement(m);
-		return m;
 	}
 	/**
 	 * MIDIエディタを設定します。
@@ -1375,7 +1373,22 @@ class MidiDeviceModelList extends Vector<MidiConnecterListModel> {
 		} catch( MidiUnavailableException ex ) {
 			ex.printStackTrace();
 		}
+		mclm.connectToReceiverOf(synthModel);
 		mclm.connectToReceiverOf(firstMidiOutModel);
+	}
+	/**
+	 * 指定のMIDIデバイスからMIDIデバイスモデルを生成して追加します。
+	 * @param device MIDIデバイス
+	 * @return 生成されたMIDIデバイスモデル
+	 */
+	private MidiConnecterListModel addMidiDevice(MidiDevice device) {
+		MidiConnecterListModel m;
+		if( device instanceof Sequencer )
+			m = new MidiSequencerModel(this,(Sequencer)device,this);
+		else
+			m = new MidiConnecterListModel(device,this);
+		addElement(m);
+		return m;
 	}
 }
 
@@ -1435,7 +1448,7 @@ class MidiDeviceDialog extends JDialog implements ActionListener {
 			new JScrollPane(deviceTree),
 			new JScrollPane(deviceInfoPane)
 		){{
-			setDividerLocation(300);
+			setDividerLocation(260);
 		}};
 		add(new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, sideSplitPane, desktopPane) {{
 			setOneTouchExpandable(true);

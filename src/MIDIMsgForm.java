@@ -1469,10 +1469,10 @@ class KeySignatureSelecter extends JPanel implements ActionListener {
 	JCheckBox minorCheckbox = null;
 
 	public KeySignatureSelecter() { this(true); }
-	public KeySignatureSelecter(boolean use_minor_checkbox) {
+	public KeySignatureSelecter(boolean useMinorCheckbox) {
 		add(new JLabel("Key:"));
 		add(keysigCombobox);
-		if( use_minor_checkbox ) {
+		if(useMinorCheckbox) {
 			add( minorCheckbox = new JCheckBox("minor") );
 			minorCheckbox.addActionListener(this);
 		}

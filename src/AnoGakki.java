@@ -20,6 +20,7 @@ import java.util.List;
 import javax.swing.JComponent;
 import javax.swing.JLayeredPane;
 import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 /**
  * Innocence「あの楽器」風の表示を行う {@link JLayeredPane} 拡張クラスです。
  * start() メソッドで表示を開始でき、
@@ -252,7 +253,7 @@ class AnoGakkiPane extends JComponent {
 	/**
 	 * キューを更新するアニメーション用タイマー
 	 */
-	javax.swing.Timer timer = new javax.swing.Timer(
+	Timer timer = new Timer(
 		INTERVAL_MS,
 		new ActionListener() {
 			@Override

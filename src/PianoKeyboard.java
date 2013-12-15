@@ -23,8 +23,8 @@ import java.util.LinkedList;
 import java.util.Vector;
 
 import javax.sound.midi.MidiChannel;
+import javax.sound.midi.MidiMessage;
 import javax.swing.AbstractAction;
-import javax.swing.Action;
 import javax.swing.BoundedRangeModel;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -141,149 +141,165 @@ public class PianoKeyboard extends JComponent {
 	 */
 	MidiChannelButtonSelecter midiChannelButtonSelecter;
 
-	NoteList[] channelNotes = new NoteList[MIDISpec.MAX_CHANNELS];
-	int[] pitchBendValues = new int[MIDISpec.MAX_CHANNELS];
-	int[] pitchBendSensitivities = new int[MIDISpec.MAX_CHANNELS];
-	int[] modulations = new int[MIDISpec.MAX_CHANNELS];
+	private NoteList[] channelNotes = new NoteList[MIDISpec.MAX_CHANNELS];
+	private int[] pitchBendValues = new int[MIDISpec.MAX_CHANNELS];
+	private int[] pitchBendSensitivities = new int[MIDISpec.MAX_CHANNELS];
+	private int[] modulations = new int[MIDISpec.MAX_CHANNELS];
+
 	/**
-	 * この鍵盤の仮想MIDIデバイス
+	 * この鍵盤の仮想MIDIデバイスです。
+	 * ノートオンなどのMIDIメッセージを受け取り、画面に反映します。
 	 */
 	VirtualMidiDevice midiDevice = new AbstractVirtualMidiDevice() {
-		{
-			info = new MyInfo();
-			setReceiver(
-				new AbstractMidiStatus() {
-					{
-						for( int i=0; i<MIDISpec.MAX_CHANNELS; i++ )
-							add(new MidiChannelStatus(i));
-					}
-				}
-			);
-		}
 		class MyInfo extends Info {
 			protected MyInfo() {
 				super("MIDI Keyboard","Unknown vendor","Software MIDI keyboard","");
 			}
 		}
-	};
-	class MidiChannelStatus extends AbstractMidiChannelStatus {
-		public MidiChannelStatus(int channel) {
-			super(channel);
-			channelNotes[channel] = new NoteList();
-			pitchBendSensitivities[channel] = 2; // Default is wholetone = 2 semitones
-		}
+		/**
+		 * MIDIデバイス情報
+		 */
+		protected MyInfo info;
 		@Override
-		public void fireRpnChanged() {
-			if( dataFor != DATA_FOR_RPN ) return;
+		public Info getDeviceInfo() { return info; }
+		{
+			info = new MyInfo();
+			// 受信してMIDIチャンネルの状態を管理する
+			setReceiver(new AbstractMidiStatus() {{
+				for( int i=0; i<MIDISpec.MAX_CHANNELS; i++ )
+					add(new MidiChannelStatus(i));
+			}});
+		}
+		class MidiChannelStatus extends AbstractMidiChannelStatus {
+			public MidiChannelStatus(int channel) {
+				super(channel);
+				channelNotes[channel] = new NoteList();
+				pitchBendSensitivities[channel] = 2; // Default is wholetone = 2 semitones
+			}
+			@Override
+			public void fireRpnChanged() {
+				if( dataFor != DATA_FOR_RPN ) return;
 
-			// RPN (MSB) - Accept 0x00 only
-			if( controllerValues[0x65] != 0x00 ) return;
+				// RPN (MSB) - Accept 0x00 only
+				if( controllerValues[0x65] != 0x00 ) return;
 
-			// RPN (LSB)
-			switch( controllerValues[0x64] ) {
-			case 0x00: // Pitch Bend Sensitivity
-				if( controllerValues[0x06] == 0 ) return;
-				pitchBendSensitivities[channel] = controllerValues[0x06];
-				break;
-			}
-		}
-		@Override
-		public void noteOff(int noteNumber, int velocity) {
-			noteOff(noteNumber);
-		}
-		@Override
-		public void noteOff(int noteNumber) {
-			keyOff( channel, noteNumber );
-			if( chordMatrix != null ) {
-				if( ! isRhythmPart() )
-					chordMatrix.note(false, noteNumber);
-			}
-			if( midiChannelButtonSelecter != null ) {
-				midiChannelButtonSelecter.repaint();
-			}
-		}
-		@Override
-		public void noteOn(int noteNumber, int velocity) {
-			if( velocity <= 0 ) {
-				noteOff(noteNumber); return;
-			}
-			keyOn( channel, noteNumber );
-			if( midiChComboboxModel.getSelectedChannel() == channel ) {
-				if( chordDisplay != null ) {
-					if( chordMatrix != null && chordMatrix.isPlaying() )
-						chordDisplay.setNote(-1);
-					else
-						chordDisplay.setNote(noteNumber, isRhythmPart());
-				}
-				if( anoGakkiLayeredPane != null ) {
-					PianoKey piano_key = getPianoKey(noteNumber);
-					if( piano_key != null )
-						anoGakkiLayeredPane.start(PianoKeyboard.this, piano_key.indicator);
+				// RPN (LSB)
+				switch( controllerValues[0x64] ) {
+				case 0x00: // Pitch Bend Sensitivity
+					if( controllerValues[0x06] == 0 ) return;
+					pitchBendSensitivities[channel] = controllerValues[0x06];
+					break;
 				}
 			}
-			if( chordMatrix != null ) {
-				if( ! isRhythmPart() )
-					chordMatrix.note(true, noteNumber);
+			@Override
+			public void noteOff(int noteNumber, int velocity) {
+				noteOff(noteNumber);
 			}
-			if( midiChannelButtonSelecter != null ) {
-				midiChannelButtonSelecter.repaint();
+			@Override
+			public void noteOff(int noteNumber) {
+				keyOff( channel, noteNumber );
+				if( chordMatrix != null ) {
+					if( ! isRhythmPart() )
+						chordMatrix.note(false, noteNumber);
+				}
+				if( midiChannelButtonSelecter != null ) {
+					midiChannelButtonSelecter.repaint();
+				}
 			}
-		}
-		@Override
-		public void allNotesOff() {
-			allKeysOff( channel, -1 );
-			if( chordMatrix != null )
-				chordMatrix.clearIndicators();
-		}
-		@Override
-		public void setPitchBend(int bend) {
-			super.setPitchBend(bend);
-			pitchBendValues[channel] = bend;
-			repaintNotes();
-		}
-		@Override
-		public void resetAllControllers() {
-			super.resetAllControllers();
-			//
-			// See also: Response to Reset All Controllers
-			//     http://www.midi.org/about-midi/rp15.shtml
-			//
-			pitchBendValues[channel] = MIDISpec.PITCH_BEND_NONE;
-			modulations[channel] = 0;
-			repaintNotes();
-		}
-		@Override
-		public void controlChange(int controller, int value) {
-			super.controlChange(controller,value);
-			switch( controller ) {
-			case 0x01: // Moduration (MSB)
-				modulations[channel] = value;
+			@Override
+			public void noteOn(int noteNumber, int velocity) {
+				if( velocity <= 0 ) {
+					noteOff(noteNumber); return;
+				}
+				keyOn( channel, noteNumber );
+				if( midiChComboboxModel.getSelectedChannel() == channel ) {
+					if( chordDisplay != null ) {
+						if( chordMatrix != null && chordMatrix.isPlaying() )
+							chordDisplay.setNote(-1);
+						else
+							chordDisplay.setNote(noteNumber, isRhythmPart());
+					}
+					if( anoGakkiLayeredPane != null ) {
+						PianoKey piano_key = getPianoKey(noteNumber);
+						if( piano_key != null )
+							anoGakkiLayeredPane.start(PianoKeyboard.this, piano_key.indicator);
+					}
+				}
+				if( chordMatrix != null ) {
+					if( ! isRhythmPart() )
+						chordMatrix.note(true, noteNumber);
+				}
+				if( midiChannelButtonSelecter != null ) {
+					midiChannelButtonSelecter.repaint();
+				}
+			}
+			@Override
+			public void allNotesOff() {
+				allKeysOff( channel, -1 );
+				if( chordMatrix != null )
+					chordMatrix.clearIndicators();
+			}
+			@Override
+			public void setPitchBend(int bend) {
+				super.setPitchBend(bend);
+				pitchBendValues[channel] = bend;
 				repaintNotes();
-				break;
+			}
+			@Override
+			public void resetAllControllers() {
+				super.resetAllControllers();
+				//
+				// See also: Response to Reset All Controllers
+				//     http://www.midi.org/about-midi/rp15.shtml
+				//
+				pitchBendValues[channel] = MIDISpec.PITCH_BEND_NONE;
+				modulations[channel] = 0;
+				repaintNotes();
+			}
+			@Override
+			public void controlChange(int controller, int value) {
+				super.controlChange(controller,value);
+				switch( controller ) {
+				case 0x01: // Moduration (MSB)
+					modulations[channel] = value;
+					repaintNotes();
+					break;
+				}
+			}
+			private void repaintNotes() {
+				if( midiChComboboxModel.getSelectedChannel() != channel
+					|| channelNotes[channel] == null
+				)
+					return;
+				if( channelNotes[channel].size() > 0 || selectedKeyNoteList.size() > 0 )
+					repaint();
 			}
 		}
-		private void repaintNotes() {
-			if( midiChComboboxModel.getSelectedChannel() != channel
-				|| channelNotes[channel] == null
-			)
-				return;
-			if( channelNotes[channel].size() > 0 || selectedKeyNoteList.size() > 0 )
-				repaint();
-		}
-	}
+	};
+
+	/**
+	 * 現在選択中のMIDIチャンネルを返します。
+	 * @return 現在選択中のMIDIチャンネル
+	 */
 	public MidiChannel getSelectedChannel() {
 		return midiDevice.getChannels()[midiChComboboxModel.getSelectedChannel()];
 	}
-	private void note(boolean isOn, int noteNumber) {
-		MidiChannel ch = getSelectedChannel();
-		int velocity = velocityModel.getValue();
-		if( isOn )
-			ch.noteOn(noteNumber,velocity);
-		else
-			ch.noteOff(noteNumber,velocity);
+	/**
+	 * 現在選択中のMIDIチャンネルにノートオンメッセージを送出します。
+	 * ベロシティ値は現在画面で設定中の値となります。
+	 * @param noteNumber ノート番号
+	 */
+	public void noteOn(int noteNumber) {
+		getSelectedChannel().noteOn(noteNumber, velocityModel.getValue());
 	}
-	public void noteOn(int noteNumber) { note(true,noteNumber); }
-	public void noteOff(int noteNumber) { note(false,noteNumber); }
+	/**
+	 * 現在選択中のMIDIチャンネルにノートオフメッセージを送出します。
+	 * ベロシティ値は現在画面で設定中の値となります。
+	 * @param noteNumber ノート番号
+	 */
+	public void noteOff(int noteNumber) {
+		getSelectedChannel().noteOff(noteNumber, velocityModel.getValue());
+	}
 
 	/**
 	 * １個のピアノ鍵盤を表す矩形
@@ -352,6 +368,7 @@ public class PianoKeyboard extends JComponent {
 			return paintIndicator( g2, is_small, 0 );
 		}
 	}
+
 	private class MouseKeyListener
 		implements MouseListener, MouseMotionListener, KeyListener
 	{
@@ -365,6 +382,7 @@ public class PianoKeyboard extends JComponent {
 			noteOff(n);
 			firePianoKeyReleased(n,e);
 		}
+		@Override
 		public void mousePressed(MouseEvent e) {
 			int n = getNote(e.getPoint());
 			if( n < 0 ) return;
@@ -375,10 +393,12 @@ public class PianoKeyboard extends JComponent {
 			requestFocusInWindow();
 			repaint();
 		}
+		@Override
 		public void mouseReleased(MouseEvent e) {
 			int c = midiChComboboxModel.getSelectedChannel();
 			NoteList nl = channelNotes[c];
-			if( ! nl.isEmpty() ) released(c, nl.poll(), e);
+			if( ! nl.isEmpty() )
+				released(c, nl.poll(), e);
 		}
 		@Override
 		public void mouseEntered(MouseEvent e) {
@@ -393,7 +413,8 @@ public class PianoKeyboard extends JComponent {
 			int c = midiChComboboxModel.getSelectedChannel();
 			NoteList nl = channelNotes[c];
 			if( nl.contains(n) ) return;
-			if( ! nl.isEmpty() ) released(c, nl.poll(), e);
+			if( ! nl.isEmpty() )
+				released(c, nl.poll(), e);
 			pressed(c,n,e);
 		}
 		@Override
@@ -430,6 +451,7 @@ public class PianoKeyboard extends JComponent {
 		public void keyTyped(KeyEvent e) {
 		}
 	}
+
 	/**
 	 * 新しいピアノキーボードを構築します。
 	 */
@@ -588,29 +610,49 @@ public class PianoKeyboard extends JComponent {
 			}
 		}
 	}
-	public PianoKey getPianoKey(int note_no) {
-		int i = note_no - octaveRangeModel.getValue() * 12 ;
+	/**
+	 * 現在のオクターブ位置における、
+	 * 指定のノート番号に対する１個のピアノキーを返します。
+	 * @param noteNumber ノート番号
+	 * @return ピアノキー（範囲外の場合 null）
+	 */
+	private PianoKey getPianoKey(int noteNumber) {
+		int i = noteNumber - octaveRangeModel.getValue() * 12 ;
 		return i>=0 && i<keys.length ? keys[i]: null;
 	}
+	/**
+	 * 指定の座標におけるノート番号を返します。
+	 * @param point 座標
+	 * @return ノート番号（範囲外の場合 -1）
+	 */
 	private int getNote(Point point) {
-		PianoKey k = getPianoKey(point);
+		PianoKey k = getPianoKeyAt(point);
 		return k==null ? -1 : k.getNote(getChromaticOffset());
 	}
-	private PianoKey getPianoKey(Point point) {
-		int iWhiteKey = point.x / whiteKeySize.width;
-		int iOctave = iWhiteKey / 7;
-		int i = (iWhiteKey -= iOctave * 7) * 2 + iOctave * 12;
-		if( iWhiteKey >= 3 ) i--;
-		if( i < 0 || i > keys.length-1 ) return null;
-		if( point.y > blackKeySize.height ) return keys[i];
+	/**
+	 * 指定の座標における１個のピアノキーを返します。
+	 * @param point 座標
+	 * @return ピアノキー（範囲外の場合 null）
+	 */
+	private PianoKey getPianoKeyAt(Point point) {
+		int indexWhite = point.x / whiteKeySize.width;
+		int indexOctave = indexWhite / 7;
+		int i = (indexWhite -= indexOctave * 7) * 2 + indexOctave * 12;
+		if( indexWhite >= 3 ) i--;
+		if( i < 0 || i > keys.length-1 )
+			return null;
+		if( point.y > blackKeySize.height )
+			return keys[i];
 		PianoKey k;
 		if( i > 0 ) {
 			k = keys[i-1];
-			if( k.isBlack && !(k.outOfBounds) && k.contains(point) ) return k;
+			if( k.isBlack && !(k.outOfBounds) && k.contains(point) )
+				return k;
 		}
 		if( i < keys.length-1 ) {
 			k = keys[i+1];
-			if( k.isBlack && !(k.outOfBounds) && k.contains(point) ) return k;
+			if( k.isBlack && !(k.outOfBounds) && k.contains(point) )
+				return k;
 		}
 		return keys[i];
 	}
@@ -626,9 +668,9 @@ public class PianoKeyboard extends JComponent {
 		PianoKey k = getPianoKey(e);
 		return k==null ? -1 : k.getNote(getChromaticOffset());
 	}
-	void changeKeyBinding( int from, String key_chars ) {
+	private void changeKeyBinding(int from, String keyChars) {
 		PianoKey k;
-		bindedKeys = new PianoKey[(bindedKeyChars = key_chars).length()];
+		bindedKeys = new PianoKey[(bindedKeyChars = keyChars).length()];
 		bindedKeyPosition = from;
 		for( int i = 0; i < bindedKeyChars.length(); i++ ) {
 			bindedKeys[i] = k = keys[ bindedKeyPosition + i ];
@@ -641,21 +683,21 @@ public class PianoKeyboard extends JComponent {
 		if( keys == null ) return;
 		for( PianoKey k : keys ) k.getNote(getChromaticOffset());
 	}
-	void keyOff(int ch, int note_no) {
-		if( note_no < 0 || ch < 0 || ch >= channelNotes.length ) return;
-		channelNotes[ch].remove((Object)note_no);
+	private void keyOff(int ch, int noteNumber) {
+		if( noteNumber < 0 || ch < 0 || ch >= channelNotes.length ) return;
+		channelNotes[ch].remove((Object)noteNumber);
 		if( ch == midiChComboboxModel.getSelectedChannel() )
 			repaint();
 	}
-	void keyOn(int ch, int note_no) {
-		if( note_no < 0 || ch < 0 || ch >= channelNotes.length ) return;
-		channelNotes[ch].add(note_no);
-		setSelectedNote(ch,note_no);
+	private void keyOn(int ch, int noteNumber) {
+		if( noteNumber < 0 || ch < 0 || ch >= channelNotes.length ) return;
+		channelNotes[ch].add(noteNumber);
+		setSelectedNote(ch,noteNumber);
 	}
-	boolean autoScroll(int note_no) {
+	public boolean autoScroll(int noteNumber) {
 		if( octaveRangeModel == null || keys == null )
 			return false;
-		int i = note_no - getChromaticOffset();
+		int i = noteNumber - getChromaticOffset();
 		if( i < 0 ) {
 			octaveRangeModel.setValue(
 				octaveRangeModel.getValue() - (-i)/Music.SEMITONES_PER_OCTAVE - 1
@@ -878,76 +920,74 @@ class PianoKeyboardPanel extends JPanel {
 }
 
 class MidiKeyboardPanel extends JPanel {
-	MidiEventDialog eventDialog;
-	Action sendSventAction = new AbstractAction() {
-		{
-			putValue(NAME,"Send");
-		}
-		public void actionPerformed(ActionEvent e) {
-			keyboardCenterPanel.keyboard.midiDevice.sendMidiMessage(
-				eventDialog.midiMessageForm.getMessage()
-			);
-		}
-	};
-	JButton sendEventButton = new JButton(
-		new AbstractAction() {
-			{
-				putValue(NAME,"Send MIDI event");
-			}
-			public void actionPerformed(ActionEvent e) {
-				eventDialog.openMessageForm(
-					"Send MIDI event", sendSventAction,
-					keyboardCenterPanel.keyboard.midiChComboboxModel.getSelectedChannel()
-				);
-			}
-		}
-	);
-	JPanel keyboardChordPanel = new JPanel() {
-		{
-			setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
-		}
-	};
-	JPanel keyboardSouthPanel = new JPanel() {
-		{
-			setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
-		}
-	};
-	KeySignatureSelecter keySelecter = new KeySignatureSelecter(false);
-	PianoKeyboardPanel keyboardCenterPanel = new PianoKeyboardPanel();
-
-	MidiChannelComboSelecter midiChannelCombobox =
-		new MidiChannelComboSelecter(
-			"MIDI Channel",
-			keyboardCenterPanel.keyboard.midiChComboboxModel
-		);
-	MidiChannelButtonSelecter midiChannelButtons =
-		new MidiChannelButtonSelecter(keyboardCenterPanel.keyboard);
-	VelocitySelecter velocitySelecter =
-		new VelocitySelecter(keyboardCenterPanel.keyboard.velocityModel);
+	private MidiEventDialog eventDialog;
+	public void setEventDialog(MidiEventDialog eventDialog) {
+		this.eventDialog = eventDialog;
+	}
+	JButton sendEventButton;
+	JPanel keyboardChordPanel;
+	JPanel keyboardSouthPanel;
+	KeySignatureSelecter keySelecter;
+	PianoKeyboardPanel keyboardCenterPanel;
+	MidiChannelComboSelecter midiChannelCombobox;
+	MidiChannelButtonSelecter midiChannelButtons;
+	VelocitySelecter velocitySelecter;
 
 	private static final Insets ZERO_INSETS = new Insets(0,0,0,0);
 
-	public MidiKeyboardPanel( ChordMatrix chordMatrix ) {
+	public MidiKeyboardPanel(ChordMatrix chordMatrix) {
+		keyboardCenterPanel = new PianoKeyboardPanel();
 		keyboardCenterPanel.keyboard.chordMatrix = chordMatrix;
 		keyboardCenterPanel.keyboard.chordDisplay =
 			new ChordDisplay(
 				"MIDI Keyboard", chordMatrix, keyboardCenterPanel.keyboard
 			);
-		keyboardChordPanel.add( Box.createHorizontalStrut(5) );
-		keyboardChordPanel.add( velocitySelecter );
-		keyboardChordPanel.add( keySelecter );
-		keyboardChordPanel.add( keyboardCenterPanel.keyboard.chordDisplay );
-		keyboardChordPanel.add( Box.createHorizontalStrut(5) );
-		sendEventButton.setMargin(ZERO_INSETS);
-		keyboardSouthPanel.add( midiChannelCombobox );
-		keyboardSouthPanel.add( midiChannelButtons );
-		keyboardSouthPanel.add( sendEventButton );
 		//
 		setLayout( new BoxLayout( this, BoxLayout.Y_AXIS ) );
-		add( keyboardChordPanel );
-		add( keyboardCenterPanel );
-		add( Box.createVerticalStrut(5) );
-		add( keyboardSouthPanel );
+		add(keyboardChordPanel = new JPanel() {
+			{
+				setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
+				add( Box.createHorizontalStrut(5) );
+				add(velocitySelecter = new VelocitySelecter(
+					keyboardCenterPanel.keyboard.velocityModel)
+				);
+				add(keySelecter = new KeySignatureSelecter(false));
+				add( keyboardCenterPanel.keyboard.chordDisplay );
+				add( Box.createHorizontalStrut(5) );
+			}
+		});
+		add(keyboardCenterPanel);
+		add(Box.createVerticalStrut(5));
+		add(keyboardSouthPanel = new JPanel() {{
+			setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
+			add(midiChannelCombobox = new MidiChannelComboSelecter(
+				"MIDI Channel", keyboardCenterPanel.keyboard.midiChComboboxModel
+			));
+			add(midiChannelButtons = new MidiChannelButtonSelecter(
+				keyboardCenterPanel.keyboard
+			));
+			add(sendEventButton = new JButton(new AbstractAction() {
+				{ putValue(NAME,"Send MIDI event"); }
+				@Override
+				public void actionPerformed(ActionEvent e) {
+					eventDialog.openMessageForm(
+						"Send MIDI event",
+						new AbstractAction() {
+							{ putValue(NAME,"Send"); }
+							@Override
+							public void actionPerformed(ActionEvent e) {
+								VirtualMidiDevice vmd = keyboardCenterPanel.keyboard.midiDevice;
+								MidiMessage msg = eventDialog.midiMessageForm.getMessage();
+								vmd.sendMidiMessage(msg);
+							}
+						},
+						keyboardCenterPanel.keyboard.midiChComboboxModel.getSelectedChannel()
+					);
+				}
+			}) {
+				{ setMargin(ZERO_INSETS); }
+			});
+		}});
 	}
 
 	public void setDarkMode(boolean isDark) {

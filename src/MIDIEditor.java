@@ -103,6 +103,12 @@ class MidiEditor extends JDialog implements DropTargetListener {
 				super("MIDI Editor","Unknown vendor","MIDI sequence editor","");
 			}
 		}
+		/**
+		 * MIDIデバイス情報
+		 */
+		protected MyInfo info;
+		@Override
+		public Info getDeviceInfo() { return info; }
 		// 送信のみなので MIDI IN はサポートしない
 		{ info = new MyInfo(); setMaxReceivers(0); }
 	};
