@@ -686,10 +686,13 @@ class MidiConnecterListView extends JList<AutoCloseable>
 		return (MidiConnecterListModel)super.getModel();
 	}
 	/**
-	 * 選択しているトランスミッタを閉じます。
+	 * 選択されているトランスミッタを閉じます。
+	 * レシーバが選択されていた場合は無視されます。
 	 */
 	public void closeSelectedTransmitter() {
-		getModel().closeTransmitter((Transmitter)getSelectedValue());
+		AutoCloseable ac = getSelectedValue();
+		if( ac instanceof Transmitter )
+			getModel().closeTransmitter((Transmitter)ac);
 	}
 }
 
@@ -848,12 +851,10 @@ class MidiConnecterListModel extends AbstractListModel<AutoCloseable> {
 	 * @param txToClose 閉じたいトランスミッタ
 	 */
 	public void closeTransmitter(Transmitter txToClose) {
-		List<Transmitter> txList = device.getTransmitters();
-		if( ! txList.contains(txToClose) ) {
-			return;
+		if( device.getTransmitters().contains(txToClose) ) {
+			txToClose.close();
+			fireIntervalRemoved(this,0,getSize());
 		}
-		txToClose.close();
-		fireIntervalRemoved(this,0,getSize());
 	}
 	/**
 	 * 対象MIDIデバイスを開きます。
@@ -1020,16 +1021,19 @@ class MidiDeviceFrame extends JInternalFrame {
 			}
 			add(new JLabel() {{
 				Timer t = new Timer(50, new ActionListener() {
-					private long t = -2;
+					private long sec = -2;
 					private MidiDevice dev = listView.getModel().getMidiDevice();
 					@Override
 					public void actionPerformed(ActionEvent e) {
-						long sec = dev.getMicrosecondPosition()/1000000;
-						if( sec == this.t ) return;
-						if( (this.t = sec) == -1 )
-							setText("No TimeStamp");
+						long usec = dev.getMicrosecondPosition();
+						long sec = (usec == -1 ? -1 : usec/1000000);
+						if( sec == this.sec ) return;
+						String text;
+						if( (this.sec = sec) == -1 )
+							text = "No TimeStamp";
 						else
-							setText(String.format("TimeStamp: %02d:%02d", sec/60, sec%60));
+							text = String.format("TimeStamp: %02d:%02d", sec/60, sec%60);
+						setText(text);
 					}
 				});
 				t.start();
@@ -1396,22 +1400,18 @@ class MidiDeviceModelList extends Vector<MidiConnecterListModel> {
  * MIDIデバイスダイアログ (View)
  */
 class MidiDeviceDialog extends JDialog implements ActionListener {
-	JEditorPane deviceInfoPane = new JEditorPane("text/html","<html></html>") {{
-		setEditable(false);
-	}};
-	MidiDesktopPane desktopPane;
-	MidiDeviceTree deviceTree;
+	private JEditorPane deviceInfoPane;
+	private MidiDesktopPane desktopPane;
 	public MidiDeviceDialog(List<MidiConnecterListModel> deviceModelList) {
 		setTitle("MIDI device connection");
 		setBounds( 300, 300, 800, 500 );
-		desktopPane = new MidiDesktopPane(deviceTree = new MidiDeviceTree(
-			new MidiDeviceTreeModel(deviceModelList)
-		));
-		deviceTree.addTreeSelectionListener(
-			new TreeSelectionListener() {
+		MidiDeviceTreeModel treeModel = new MidiDeviceTreeModel(deviceModelList);
+		MidiDeviceTree deviceTree = new MidiDeviceTree(treeModel) {{
+			addTreeSelectionListener(new TreeSelectionListener() {
+				@Override
 				public void valueChanged(TreeSelectionEvent e) {
 					String html = "<html><head></head><body>";
-					Object obj = deviceTree.getLastSelectedPathComponent();
+					Object obj = getLastSelectedPathComponent();
 					if( obj instanceof MidiConnecterListModel ) {
 						MidiConnecterListModel deviceModel = (MidiConnecterListModel)obj;
 						MidiDevice device = deviceModel.getMidiDevice();
@@ -1442,15 +1442,19 @@ class MidiDeviceDialog extends JDialog implements ActionListener {
 					html += "</body></html>";
 					deviceInfoPane.setText(html);
 				}
-			}
-		);
-		JSplitPane sideSplitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT,
-			new JScrollPane(deviceTree),
-			new JScrollPane(deviceInfoPane)
-		){{
-			setDividerLocation(260);
+			});
 		}};
-		add(new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, sideSplitPane, desktopPane) {{
+		add(new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,
+			new JSplitPane(JSplitPane.VERTICAL_SPLIT,
+				new JScrollPane(deviceTree),
+				new JScrollPane(deviceInfoPane = new JEditorPane("text/html","<html></html>") {{
+					setEditable(false);
+				}})
+			){{
+				setDividerLocation(260);
+			}},
+			desktopPane = new MidiDesktopPane(deviceTree)
+		){{
 			setOneTouchExpandable(true);
 			setDividerLocation(250);
 		}});
@@ -1465,7 +1469,7 @@ class MidiDeviceDialog extends JDialog implements ActionListener {
  * 開いている MIDI デバイスを置くためのデスクトップ (View)
  */
 class MidiDesktopPane extends JDesktopPane implements DropTargetListener {
-	MidiCablePane cablePane = new MidiCablePane(this);
+	private MidiCablePane cablePane = new MidiCablePane(this);
 	public MidiDesktopPane(MidiDeviceTree deviceTree) {
 		add(cablePane, JLayeredPane.PALETTE_LAYER);
 		int i=0;
@@ -1625,21 +1629,20 @@ class MidiCablePane extends JComponent
 	public void intervalRemoved(ListDataEvent e) { repaint(); }
 	//
 	// ケーブル描画用
-	private static final int ARROW_SIZE = 15;
-	private static final double ARROW_ANGLE = Math.PI / 6.0;
 	private static final Stroke CABLE_STROKE = new BasicStroke(
 		3, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND
 	);
 	private static final Color[] CABLE_COLORS = {
-		new Color(255,0,0,191),
-		new Color(0,255,0,191),
-		new Color(0,0,255,191),
-		new Color(191,191,0,191),
-		new Color(0,191,191,191),
-		new Color(191,0,191,191),
+		new Color(255, 0, 0,144),
+		new Color(0, 255, 0,144),
+		new Color(0, 0, 255,144),
+		new Color(191,191,0,144),
+		new Color(0,191,191,144),
+		new Color(191,0,191,144),
 	};
 	private int nextColorIndex = 0;
 	private Hashtable<Receiver,Color> colorMap = new Hashtable<>();
+	@Override
 	public void paint(Graphics g) {
 		super.paint(g);
 		Graphics2D g2 = (Graphics2D)g;
@@ -1689,36 +1692,21 @@ class MidiCablePane extends JComponent
 				}
 				g2.setColor(color);
 				//
-				// 始点
+				// Tx 始点
 				int fromX = txRect.x;
-				int fromY = txRect.y;
-				int d = txRect.height - 2;
-				g2.fillOval( fromX, fromY, d, d );
-				// 線
-				int halfHeight = d / 2;
-				fromX += halfHeight;
-				fromY += halfHeight;
-				halfHeight = (rxRect.height / 2) - 1;
-				int toX = rxRect.x + halfHeight;
-				int toY = rxRect.y + halfHeight;
-				g2.drawLine( fromX, fromY, toX, toY );
-				// 矢印
-				double lineAngle = Math.atan2(
-					(double)(toY - fromY),
-					(double)(toX - fromX)
-				);
-				double arrowAngle = lineAngle-ARROW_ANGLE;
-				g2.drawLine(
-					toX, toY,
-					toX - (int)(ARROW_SIZE * Math.cos(arrowAngle)),
-					toY - (int)(ARROW_SIZE * Math.sin(arrowAngle))
-				);
-				arrowAngle = lineAngle+ARROW_ANGLE;
-				g2.drawLine(
-					toX, toY,
-					toX - (int)(ARROW_SIZE * Math.cos(arrowAngle)),
-					toY - (int)(ARROW_SIZE * Math.sin(arrowAngle))
-				);
+				int fromY = txRect.y + 2;
+				int d = txRect.height - 5;
+				g2.fillOval(fromX, fromY, d, d);
+				//
+				// Tx → Rx 線
+				int r = d / 2;
+				fromX += r;
+				fromY += r;
+				d = rxRect.height - 5;
+				r = d / 2;
+				int toX = rxRect.x + r;
+				int toY = rxRect.y + r + 2;
+				g2.drawLine(fromX, fromY, toX, toY);
 			}
 		}
 	}
