@@ -24,6 +24,8 @@ import java.awt.event.ActionListener;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.ComponentListener;
+import java.awt.event.WindowEvent;
+import java.awt.event.WindowListener;
 import java.beans.PropertyVetoException; // PropertyVetoException
 import java.util.Hashtable;
 import java.util.List;
@@ -965,6 +967,10 @@ class MidiDeviceFrame extends JInternalFrame {
 	 */
 	MidiConnecterListView listView;
 	/**
+	 * デバイスのタイムスタンプを更新するタイマー
+	 */
+	Timer timer;
+	/**
 	 * MIDIデバイスのモデルからフレームビューを構築します。
 	 * @param model MIDIデバイスのTransmitter/Receiverリストモデル
 	 */
@@ -996,7 +1002,7 @@ class MidiDeviceFrame extends JInternalFrame {
 				}
 			}
 		);
-		setLayout( new BoxLayout( getContentPane(), BoxLayout.Y_AXIS ) );
+		setLayout(new BoxLayout(getContentPane(), BoxLayout.Y_AXIS));
 		add(new JScrollPane(listView));
 		add(new JPanel() {{
 			if( listView.getModel().txSupported() ) {
@@ -1020,7 +1026,7 @@ class MidiDeviceFrame extends JInternalFrame {
 				}});
 			}
 			add(new JLabel() {{
-				Timer t = new Timer(50, new ActionListener() {
+				timer = new Timer(50, new ActionListener() {
 					private long sec = -2;
 					private MidiDevice dev = listView.getModel().getMidiDevice();
 					@Override
@@ -1036,7 +1042,6 @@ class MidiDeviceFrame extends JInternalFrame {
 						setText(text);
 					}
 				});
-				t.start();
 			}});
 		}});
 		setSize(250,100);
@@ -1083,7 +1088,6 @@ enum MidiDeviceInOutType {
 		return description;
 	}
 }
-
 /**
  * MIDIデバイスツリーモデル
  */
@@ -1258,6 +1262,14 @@ class MidiDeviceModelList extends Vector<MidiConnecterListModel> {
 	 */
 	MidiSequencerModel sequencerModel;
 	/**
+	 * MIDIエディタ
+	 */
+	MidiEditor editorDialog;
+	/**
+	 * MIDIシンセサイザーモデル
+	 */
+	private MidiConnecterListModel editorDialogModel;
+	/**
 	 * MIDIシンセサイザーモデル
 	 */
 	private MidiConnecterListModel synthModel;
@@ -1286,6 +1298,8 @@ class MidiDeviceModelList extends Vector<MidiConnecterListModel> {
 			);
 			e.printStackTrace();
 		}
+		editorDialog = new MidiEditor(sequencerModel);
+		editorDialogModel = addMidiDevice(editorDialog.virtualMidiDevice);
 		for( MidiDevice.Info info : devInfos ) {
 			MidiDevice device;
 			try {
@@ -1329,6 +1343,7 @@ class MidiDeviceModelList extends Vector<MidiConnecterListModel> {
 				firstMidiOutModel,
 				sequencerModel,
 				firstMidiInModel,
+				editorDialogModel,
 			};
 			for( MidiConnecterListModel m : openModels ) {
 				if( m != null ) m.openDevice();
@@ -1358,27 +1373,13 @@ class MidiDeviceModelList extends Vector<MidiConnecterListModel> {
 		if( sequencerModel != null ) {
 			for( MidiConnecterListModel m : guiModels )
 				sequencerModel.connectToReceiverOf(m);
-			sequencerModel.connectToReceiverOf(firstMidiOutModel);
 			sequencerModel.connectToReceiverOf(synthModel);
+			sequencerModel.connectToReceiverOf(firstMidiOutModel);
 		}
-	}
-	/**
-	 * MIDIエディタを設定します。
-	 *
-	 * <p>MIDIエディタが持つ仮想MIDIデバイスからMIDIデバイスモデルを生成し、
-	 * このデバイスモデルリストに追加します。
-	 * </p>
-	 * @param editorDialog MIDIエディタ
-	 */
-	public void setMidiEditor(MidiEditor editorDialog) {
-		MidiConnecterListModel mclm = addMidiDevice(editorDialog.virtualMidiDevice);
-		try {
-			mclm.openDevice();
-		} catch( MidiUnavailableException ex ) {
-			ex.printStackTrace();
+		if( editorDialogModel != null ) {
+			editorDialogModel.connectToReceiverOf(synthModel);
+			editorDialogModel.connectToReceiverOf(firstMidiOutModel);
 		}
-		mclm.connectToReceiverOf(synthModel);
-		mclm.connectToReceiverOf(firstMidiOutModel);
 	}
 	/**
 	 * 指定のMIDIデバイスからMIDIデバイスモデルを生成して追加します。
@@ -1414,8 +1415,7 @@ class MidiDeviceDialog extends JDialog implements ActionListener {
 					Object obj = getLastSelectedPathComponent();
 					if( obj instanceof MidiConnecterListModel ) {
 						MidiConnecterListModel deviceModel = (MidiConnecterListModel)obj;
-						MidiDevice device = deviceModel.getMidiDevice();
-						MidiDevice.Info info = device.getDeviceInfo();
+						MidiDevice.Info info = deviceModel.getMidiDevice().getDeviceInfo();
 						html += "<b>"+deviceModel+"</b><br/>";
 						html += "<table border=\"1\"><tbody>";
 						html += "<tr><th>Version</th><td>"+info.getVersion()+"</td></tr>";
@@ -1458,6 +1458,31 @@ class MidiDeviceDialog extends JDialog implements ActionListener {
 			setOneTouchExpandable(true);
 			setDividerLocation(250);
 		}});
+		addWindowListener(new WindowListener() {
+			@Override
+			public void windowOpened(WindowEvent e) {
+			}
+			@Override
+			public void windowClosing(WindowEvent e) {
+				desktopPane.setAllDeviceTimestampTimers(false);
+			}
+			@Override
+			public void windowClosed(WindowEvent e) {
+			}
+			@Override
+			public void windowIconified(WindowEvent e) {
+			}
+			@Override
+			public void windowDeiconified(WindowEvent e) {
+			}
+			@Override
+			public void windowActivated(WindowEvent e) {
+				desktopPane.setAllDeviceTimestampTimers(true);
+			}
+			@Override
+			public void windowDeactivated(WindowEvent e) {
+			}
+		});
 	}
 	@Override
 	public void actionPerformed(ActionEvent event) {
@@ -1574,13 +1599,30 @@ class MidiDesktopPane extends JDesktopPane implements DropTargetListener {
 	public MidiDeviceFrame getFrameOf(MidiConnecterListModel deviceModel) {
 		JInternalFrame[] frames = getAllFramesInLayer(JLayeredPane.DEFAULT_LAYER);
 		for( JInternalFrame frame : frames ) {
-			if( frame instanceof MidiDeviceFrame ) {
-				MidiDeviceFrame deviceFrame = (MidiDeviceFrame)frame;
-				if( deviceFrame.listView.getModel() == deviceModel )
-					return deviceFrame;
-			}
+			if( ! (frame instanceof MidiDeviceFrame) )
+				continue;
+			MidiDeviceFrame deviceFrame = (MidiDeviceFrame)frame;
+			if( deviceFrame.listView.getModel() == deviceModel )
+				return deviceFrame;
 		}
 		return null;
+	}
+	private boolean isTimerStarted;
+	/**
+	 * タイムスタンプを更新するタイマーを開始または停止します。
+	 * @param toStart trueで開始、falseで停止
+	 */
+	public void setAllDeviceTimestampTimers(boolean toStart) {
+		if( isTimerStarted == toStart ) return;
+		isTimerStarted = toStart;
+		JInternalFrame[] frames = getAllFramesInLayer(JLayeredPane.DEFAULT_LAYER);
+		for( JInternalFrame frame : frames ) {
+			if( ! (frame instanceof MidiDeviceFrame) )
+				continue;
+			MidiDeviceFrame deviceFrame = (MidiDeviceFrame)frame;
+			Timer timer = deviceFrame.timer;
+			if( toStart ) timer.start(); else timer.stop();
+		}
 	}
 }
 

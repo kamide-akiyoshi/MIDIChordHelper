@@ -65,7 +65,7 @@ public class MidiChordHelper {
 			} else {
 				frame = new AppletFrame(applet = new ChordHelperApplet());
 			}
-			applet.editorDialog.loadAndPlay(fileList);
+			applet.deviceModelList.editorDialog.loadAndPlay(fileList);
 		}
 	}
 }
@@ -110,7 +110,7 @@ class AppletFrame extends JFrame implements AppletStub, AppletContext {
 		 * @param applet 対象アプレット
 		 */
 		public TitleUpdater(ChordHelperApplet applet) {
-			applet.editorDialog.sequenceListTable.getModel().addTableModelListener(this);
+			applet.deviceModelList.editorDialog.sequenceListTable.getModel().addTableModelListener(this);
 			sequencerModel = applet.deviceModelList.sequencerModel;
 			sequencerModel.addChangeListener(this);
 		}

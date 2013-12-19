@@ -75,7 +75,7 @@ public class ChordHelperApplet extends JApplet {
 	 * @return 未保存の修正済み MIDI ファイルがあれば true
 	 */
 	public boolean isModified() {
-		return editorDialog.sequenceListTable.getModel().isModified();
+		return deviceModelList.editorDialog.sequenceListTable.getModel().isModified();
 	}
 	/**
 	 * 指定された小節数の曲を、乱数で自動作曲してプレイリストへ追加します。
@@ -83,9 +83,9 @@ public class ChordHelperApplet extends JApplet {
 	 * @return 追加先のインデックス値（０から始まる）。追加できなかったときは -1
 	 */
 	public int addRandomSongToPlaylist(int measureLength) {
-		editorDialog.newSequenceDialog.setRandomChordProgression(measureLength);
-		Sequence sequence = editorDialog.newSequenceDialog.getMidiSequence();
-		return editorDialog.sequenceListTable.getModel().addSequenceAndPlay(sequence);
+		deviceModelList.editorDialog.newSequenceDialog.setRandomChordProgression(measureLength);
+		Sequence sequence = deviceModelList.editorDialog.newSequenceDialog.getMidiSequence();
+		return deviceModelList.editorDialog.sequenceListTable.getModel().addSequenceAndPlay(sequence);
 	}
 	/**
 	 * URLで指定されたMIDIファイルをプレイリストへ追加します。
@@ -98,12 +98,12 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public int addToPlaylist(String midiFileUrl) {
 		try {
-			return editorDialog.sequenceListTable.getModel().addSequenceFromURL(midiFileUrl);
+			return deviceModelList.editorDialog.sequenceListTable.getModel().addSequenceFromURL(midiFileUrl);
 		} catch( URISyntaxException|IOException|InvalidMidiDataException e ) {
-			editorDialog.showWarning(e.getMessage());
+			deviceModelList.editorDialog.showWarning(e.getMessage());
 		} catch( AccessControlException e ) {
 			e.printStackTrace();
-			editorDialog.showError(e.getMessage());
+			deviceModelList.editorDialog.showError(e.getMessage());
 		}
 		return -1;
 	}
@@ -125,13 +125,13 @@ public class ChordHelperApplet extends JApplet {
 	 * @return 追加先のインデックス値（０から始まる）。追加できなかったときは -1
 	 */
 	public int addToPlaylistBase64(String base64EncodedText, String filename) {
-		Base64Dialog d = editorDialog.base64Dialog;
+		Base64Dialog d = deviceModelList.editorDialog.base64Dialog;
 		d.setBase64Data(base64EncodedText);
 		try {
-			return editorDialog.sequenceListTable.getModel().addSequence(d.getMIDIData(), filename);
+			return deviceModelList.editorDialog.sequenceListTable.getModel().addSequence(d.getMIDIData(), filename);
 		} catch (IOException | InvalidMidiDataException e) {
 			e.printStackTrace();
-			editorDialog.showWarning(e.getMessage());
+			deviceModelList.editorDialog.showWarning(e.getMessage());
 			return -1;
 		}
 	}
@@ -140,7 +140,7 @@ public class ChordHelperApplet extends JApplet {
 	 * シーケンサへロードして再生します。
 	 */
 	public void play() {
-		play(editorDialog.sequenceListTable.getModel().sequenceListSelectionModel.getMinSelectionIndex());
+		play(deviceModelList.editorDialog.sequenceListTable.getModel().sequenceListSelectionModel.getMinSelectionIndex());
 	}
 	/**
 	 * 指定されたインデックス値が示すプレイリスト上のMIDIシーケンスを、
@@ -148,7 +148,7 @@ public class ChordHelperApplet extends JApplet {
 	 * @param index インデックス値（０から始まる）
 	 */
 	public void play(int index) {
-		editorDialog.sequenceListTable.getModel().loadToSequencer(index);
+		deviceModelList.editorDialog.sequenceListTable.getModel().loadToSequencer(index);
 		deviceModelList.sequencerModel.start();
 	}
 	/**
@@ -172,9 +172,9 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public String getMidiDataBase64() {
 		SequenceTrackListTableModel sequenceModel =
-			editorDialog.sequenceListTable.getModel().sequencerModel.getSequenceTrackListTableModel();
-		editorDialog.base64Dialog.setMIDIData(sequenceModel.getMIDIdata());
-		return editorDialog.base64Dialog.getBase64Data();
+			deviceModelList.editorDialog.sequenceListTable.getModel().sequencerModel.getSequenceTrackListTableModel();
+		deviceModelList.editorDialog.base64Dialog.setMIDIData(sequenceModel.getMIDIdata());
+		return deviceModelList.editorDialog.base64Dialog.getBase64Data();
 	}
 	/**
 	 * 現在シーケンサにロードされているMIDIファイルのファイル名を返します。
@@ -268,7 +268,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public static class VersionInfo {
 		public static final String	NAME = "MIDI Chord Helper";
-		public static final String	VERSION = "Ver.20131218.1";
+		public static final String	VERSION = "Ver.20131220.1";
 		public static final String	COPYRIGHT = "Copyright (C) 2004-2013";
 		public static final String	AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String	URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";
@@ -368,7 +368,6 @@ public class ChordHelperApplet extends JApplet {
 	private JToggleButton darkModeToggleButton;
 	MidiDeviceModelList	deviceModelList;
 	MidiDeviceDialog midiConnectionDialog;
-	MidiEditor editorDialog;
 	ChordDiagram chordDiagram;
 	TempoSelecter tempoSelecter;
 	TimeSignatureSelecter timesigSelecter;
@@ -422,6 +421,7 @@ public class ChordHelperApplet extends JApplet {
 		keyboardPanel = new MidiKeyboardPanel(chordMatrix) {{
 			keyboardCenterPanel.keyboard.addPianoKeyboardListener(
 				new PianoKeyboardAdapter() {
+					@Override
 					public void pianoKeyPressed(int n, InputEvent e) {
 						chordDiagram.clear();
 					}
@@ -429,6 +429,7 @@ public class ChordHelperApplet extends JApplet {
 			);
 			keySelecter.keysigCombobox.addActionListener(
 				new ActionListener() {
+					@Override
 					public void actionPerformed(ActionEvent e) {
 						Music.Key key = keySelecter.getKey();
 						key.transpose( - chordMatrix.capoSelecter.getCapo() );
@@ -445,26 +446,22 @@ public class ChordHelperApplet extends JApplet {
 				}
 			}
 		);
-		editorDialog = new MidiEditor(deviceModelList.sequencerModel);
-		editorDialog.setIconImage(iconImage);
-		deviceModelList.setMidiEditor(editorDialog);
-		new DropTarget(this, DnDConstants.ACTION_COPY_OR_MOVE, editorDialog, true);
-		keyboardPanel.setEventDialog(editorDialog.eventDialog);
+		deviceModelList.editorDialog.setIconImage(iconImage);
+		new DropTarget(this, DnDConstants.ACTION_COPY_OR_MOVE, deviceModelList.editorDialog, true);
+		keyboardPanel.setEventDialog(deviceModelList.editorDialog.eventDialog);
 		midiConnectionDialog = new MidiDeviceDialog(deviceModelList);
 		midiConnectionDialog.setIconImage(iconImage);
-		lyricDisplay = new ChordTextField() {
-			{
-				deviceModelList.sequencerModel.getSequencer().addMetaEventListener(this);
-				addActionListener(new ActionListener() {
-					@Override
-					public void actionPerformed(ActionEvent event) {
-						chordMatrix.setSelectedChord(
-							event.getActionCommand().trim().split("[ \t\r\n]")[0]
-						);
-					}
-				});
-			}
-		};
+		lyricDisplay = new ChordTextField() {{
+			deviceModelList.sequencerModel.getSequencer().addMetaEventListener(this);
+			addActionListener(new ActionListener() {
+				@Override
+				public void actionPerformed(ActionEvent event) {
+					chordMatrix.setSelectedChord(
+						event.getActionCommand().trim().split("[ \t\r\n]")[0]
+					);
+				}
+			});
+		}};
 		lyricDisplayDefaultBorder = lyricDisplay.getBorder();
 		lyricDisplayDefaultBgcolor = lyricDisplay.getBackground();
 		//
@@ -524,7 +521,7 @@ public class ChordHelperApplet extends JApplet {
 			@Override
 			public void stateChanged(ChangeEvent e) {
 				SequenceTrackListTableModel sequenceTableModel = deviceModelList.sequencerModel.getSequenceTrackListTableModel();
-				int loadedSequenceIndex = editorDialog.sequenceListTable.getModel().indexOfSequenceOnSequencer();
+				int loadedSequenceIndex = deviceModelList.editorDialog.sequenceListTable.getModel().indexOfSequenceOnSequencer();
 				songTitleLabel.setText(
 					"<html>"+(
 						loadedSequenceIndex < 0 ? "[No MIDI file loaded]" :
@@ -648,7 +645,7 @@ public class ChordHelperApplet extends JApplet {
 					add( Box.createHorizontalStrut(12) );
 					add( songTitleLabel );
 					add( Box.createHorizontalStrut(12) );
-					add( new JButton(editorDialog.openAction) {{ setMargin(ZERO_INSETS); }});
+					add( new JButton(deviceModelList.editorDialog.openAction) {{ setMargin(ZERO_INSETS); }});
 				}});
 				add(new JPanel() {{
 					setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
@@ -656,7 +653,7 @@ public class ChordHelperApplet extends JApplet {
 					add( new JSlider(deviceModelList.sequencerModel) );
 					add( new TimeIndicator(deviceModelList.sequencerModel) );
 					add( Box.createHorizontalStrut(5) );
-					add( new JButton(editorDialog.sequenceListTable.getModel().moveToTopAction) {{
+					add( new JButton(deviceModelList.editorDialog.sequenceListTable.getModel().moveToTopAction) {{
 						setMargin(ZERO_INSETS);
 					}});
 					add(new JButton(deviceModelList.sequencerModel.moveBackwardAction) {{
@@ -666,10 +663,10 @@ public class ChordHelperApplet extends JApplet {
 					add(new JButton(deviceModelList.sequencerModel.moveForwardAction) {{
 						setMargin(ZERO_INSETS);
 					}});
-					add(new JButton(editorDialog.sequenceListTable.getModel().moveToBottomAction) {{
+					add(new JButton(deviceModelList.editorDialog.sequenceListTable.getModel().moveToBottomAction) {{
 						setMargin(ZERO_INSETS);
 					}});
-					add(new JToggleButton(editorDialog.sequenceListTable.getModel().toggleRepeatAction) {{
+					add(new JToggleButton(deviceModelList.editorDialog.sequenceListTable.getModel().toggleRepeatAction) {{
 						setMargin(ZERO_INSETS);
 					}});
 					add( Box.createHorizontalStrut(10) );
