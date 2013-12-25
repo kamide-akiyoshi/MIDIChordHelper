@@ -101,7 +101,7 @@ public class MIDISpec {
 	 * @param b バイト列
 	 * @return テンポ[QPM]
 	 */
-	public static int byteArrayToQpmTempo( byte[] b ) {
+	public static int byteArrayToQpmTempo(byte[] b) {
 		int tempoInUsPerQuarter
 			= ((b[0] & 0xFF) << 16) | ((b[1] & 0xFF) << 8) | (b[2] & 0xFF);
 		return MICROSECOND_PER_MINUTE / tempoInUsPerQuarter;
@@ -111,47 +111,47 @@ public class MIDISpec {
 	 * @param qpm テンポ[QPM]
 	 * @return MIDIのテンポメッセージ用バイト列
 	 */
-	public static byte[] qpmTempoToByteArray( int qpm ) {
-		int tempo_in_us_per_quarter = MICROSECOND_PER_MINUTE / qpm;
+	public static byte[] qpmTempoToByteArray(int qpm) {
+		int tempoInUsPerQuarter = MICROSECOND_PER_MINUTE / qpm;
 		byte[] b = new byte[3];
-		b[0] = (byte)((tempo_in_us_per_quarter >> 16) & 0xFF);
-		b[1] = (byte)((tempo_in_us_per_quarter >> 8) & 0xFF);
-		b[2] = (byte)(tempo_in_us_per_quarter & 0xFF);
+		b[0] = (byte)((tempoInUsPerQuarter >> 16) & 0xFF);
+		b[1] = (byte)((tempoInUsPerQuarter >> 8) & 0xFF);
+		b[2] = (byte)(tempoInUsPerQuarter & 0xFF);
 		return b;
 	}
 	/**
-	 * トラック名を返します。
+	 * トラック名のバイト列を返します。
 	 * @param track MIDIトラック
-	 * @return トラック名
+	 * @return トラック名のバイト列
 	 */
-	public static String getNameOf( Track track ) {
-		MidiEvent midi_event;
-		MidiMessage msg;
-		MetaMessage meta_msg;
+	public static byte[] getNameBytesOf(Track track) {
+		MidiEvent midiEvent;
+		MidiMessage message;
+		MetaMessage metaMessage;
 		for( int i=0; i<track.size(); i++ ) {
-			midi_event = track.get(i);
-			if( midi_event.getTick() > 0 ) { // No more event at top, try next track
+			midiEvent = track.get(i);
+			if( midiEvent.getTick() > 0 ) { // No more event at top, try next track
 				break;
 			}
-			msg = midi_event.getMessage();
-			if( ! (msg instanceof MetaMessage) ) { // Not meta message
+			message = midiEvent.getMessage();
+			if( ! (message instanceof MetaMessage) ) { // Not meta message
 				continue;
 			}
-			meta_msg = (MetaMessage)msg;
-			if( meta_msg.getType() != 0x03 ) { // Not sequence name
+			metaMessage = (MetaMessage)message;
+			if( metaMessage.getType() != 0x03 ) { // Not sequence name
 				continue;
 			}
-			return new String(meta_msg.getData());
+			return metaMessage.getData();
 		}
 		return null;
 	}
 	/**
-	 * トラック名を設定します。
+	 * トラック名のバイト列を設定します。
 	 * @param track MIDIトラック
 	 * @param name トラック名
 	 * @return 成功：true、失敗：false
 	 */
-	public static boolean setNameOf( Track track, String name ) {
+	public static boolean setNameBytesOf(Track track, byte[] name) {
 		MidiEvent midiEvent = null;
 		MidiMessage msg = null;
 		MetaMessage metaMsg = null;
@@ -168,14 +168,13 @@ public class MIDISpec {
 			metaMsg = null;
 		}
 		if( metaMsg == null ) {
-			if( name.isEmpty() ) return false;
+			if( name.length == 0 ) return false;
 			track.add(new MidiEvent(
 				(MidiMessage)(metaMsg = new MetaMessage()), 0
 			));
 		}
-		byte ub[] = name.getBytes();
 		try {
-			metaMsg.setMessage( 0x03, ub, ub.length );
+			metaMsg.setMessage(0x03, name, name.length);
 		}
 		catch( InvalidMidiDataException e ) {
 			e.printStackTrace();
@@ -184,38 +183,37 @@ public class MIDISpec {
 		return true;
 	}
 	/**
-	 * シーケンス名を返します。
+	 * シーケンス名のバイト列を返します。
 	 * <p>トラック名の入った最初のトラックにあるトラック名を
 	 * シーケンス名として返します。
 	 * </p>
 	 * @param seq MIDIシーケンス
-	 * @return シーケンス名
+	 * @return シーケンス名のバイト列
 	 */
-	public static String getNameOf(Sequence seq) {
+	public static byte[] getNameBytesOf(Sequence seq) {
 		// Returns name of the MIDI sequence.
 		// A sequence name is placed at top of first track of the sequence.
 		//
 		Track tracks[] = seq.getTracks();
-		String s;
+		byte b[];
 		for( Track track : tracks )
-			if( (s = getNameOf(track)) != null )
-				return s;
+			if( (b = getNameBytesOf(track)) != null ) return b;
 		return null;
 	}
 	/**
-	 * シーケンス名を設定します。
+	 * シーケンス名のバイト列を設定します。
 	 * <p>先頭のトラックに設定されます。
 	 * 設定に失敗した場合、順に次のトラックへの設定を試みます。
 	 * </p>
 	 *
 	 * @param seq MIDIシーケンス
-	 * @param name シーケンス名
+	 * @param name シーケンス名のバイト列
 	 * @return 成功：true、失敗：false
 	 */
-	public static boolean setNameOf( Sequence seq, String name ) {
+	public static boolean setNameBytesOf(Sequence seq, byte[] name) {
 		Track tracks[] = seq.getTracks();
 		for( Track track : tracks )
-			if( setNameOf(track,name) ) return true;
+			if( setNameBytesOf(track,name) ) return true;
 		return false;
 	}
 	///////////////////////////////////////////////////////////////////

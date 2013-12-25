@@ -24,15 +24,18 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.charset.Charset;
 import java.security.AccessControlException;
 import java.util.ArrayList;
 import java.util.EventObject;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.Vector;
 
 import javax.sound.midi.InvalidMidiDataException;
@@ -280,9 +283,17 @@ class MidiEditor extends JDialog implements DropTargetListener {
 				// アクセスできないので、ファイル選択ダイアログは使用不可。
 				midiFileChooser = null;
 			}
-			// 列モデルに再生ボタンを埋め込む
+			// 再生ボタンを埋め込む
 			new PlayButtonCellEditor();
 			new PositionCellEditor();
+			//
+			// 文字コード選択をプルダウンにする
+			int column = SequenceListTableModel.Column.CHARSET.ordinal();
+			TableCellEditor ce = new DefaultCellEditor(new JComboBox<Charset>() {{
+				Set<Map.Entry<String,Charset>> entrySet = Charset.availableCharsets().entrySet();
+				for( Map.Entry<String,Charset> entry : entrySet ) addItem(entry.getValue());
+			}});
+			getColumnModel().getColumn(column).setCellEditor(ce);
 			setAutoCreateColumnsFromModel(false);
 			//
 			// Base64エンコードアクションの生成
@@ -924,7 +935,10 @@ class MidiEditor extends JDialog implements DropTargetListener {
 			}
 			public void setupForEdit(TrackEventListTableModel trackModel) {
 				MidiEvent partnerEvent = null;
-				eventDialog.midiMessageForm.setMessage(selectedMidiEvent.getMessage());
+				eventDialog.midiMessageForm.setMessage(
+					selectedMidiEvent.getMessage(),
+					trackModel.sequenceTrackListTableModel.charset
+				);
 				if( eventDialog.midiMessageForm.isNote() ) {
 					int partnerIndex = trackModel.getIndexOfPartnerFor(selectedIndex);
 					if( partnerIndex < 0 ) {
@@ -968,7 +982,8 @@ class MidiEditor extends JDialog implements DropTargetListener {
 			private boolean applyEvent() {
 				long tick = tickPositionModel.getTickPosition();
 				MidiMessageForm form = eventDialog.midiMessageForm;
-				MidiEvent newMidiEvent = new MidiEvent(form.getMessage(), tick);
+				SequenceTrackListTableModel seqModel = trackModel.sequenceTrackListTableModel;
+				MidiEvent newMidiEvent = new MidiEvent(form.getMessage(seqModel.charset), tick);
 				if( midiEventsToBeOverwritten != null ) {
 					// 上書き消去するための選択済イベントがあった場合
 					trackModel.removeMidiEvents(midiEventsToBeOverwritten);
@@ -995,7 +1010,6 @@ class MidiEditor extends JDialog implements DropTargetListener {
 						scrollToEventAt(partnerTick > tick ? partnerTick : tick);
 					}
 				}
-				SequenceTrackListTableModel seqModel = trackModel.sequenceTrackListTableModel;
 				seqModel.sequenceListTableModel.fireSequenceModified(seqModel);
 				eventDialog.setVisible(false);
 				return true;
@@ -1638,6 +1652,7 @@ class SequenceListTableModel extends AbstractTableModel {
 		FILENAME("Filename", String.class, 100) {
 			@Override
 			public boolean isCellEditable() { return true; }
+			@Override
 			public Object getValueOf(SequenceTrackListTableModel sequenceModel) {
 				String filename = sequenceModel.getFilename();
 				return filename == null ? "" : filename;
@@ -1654,9 +1669,19 @@ class SequenceListTableModel extends AbstractTableModel {
 		NAME("Sequence name", String.class, 250) {
 			@Override
 			public boolean isCellEditable() { return true; }
+			@Override
 			public Object getValueOf(SequenceTrackListTableModel sequenceModel) {
 				String name = sequenceModel.toString();
 				return name == null ? "" : name;
+			}
+		},
+		/** 文字コード */
+		CHARSET("CharSet", String.class, 80) {
+			@Override
+			public boolean isCellEditable() { return true; }
+			@Override
+			public Object getValueOf(SequenceTrackListTableModel sequenceModel) {
+				return sequenceModel.charset;
 			}
 		},
 		/** タイミング解像度 */
@@ -1744,6 +1769,15 @@ class SequenceListTableModel extends AbstractTableModel {
 				fireTableCellUpdated(row, Column.MODIFIED.ordinal());
 			fireTableCellUpdated(row, column);
 			break;
+		case CHARSET:
+			// 文字コードの変更
+			SequenceTrackListTableModel seq = sequenceList.get(row);
+			seq.charset = Charset.forName(val.toString());
+			fireTableCellUpdated(row, column);
+			// シーケンス名の表示更新
+			fireTableCellUpdated(row, Column.NAME.ordinal());
+			// トラック名の表示更新
+			seq.fireTableDataChanged();
 		default:
 			break;
 		}
@@ -2063,6 +2097,10 @@ class SequenceTrackListTableModel extends AbstractTableModel {
 	 */
 	private String filename = "";
 	/**
+	 * テキスト部分の文字コード（タイトル、歌詞など）
+	 */
+	Charset charset = Charset.defaultCharset();
+	/**
 	 * トラックリスト
 	 */
 	private List<TrackEventListTableModel> trackModelList = new ArrayList<>();
@@ -2209,24 +2247,49 @@ class SequenceTrackListTableModel extends AbstractTableModel {
 	 * @param sequence MIDIシーケンス（nullを指定するとトラックリストが空になる）
 	 */
 	private void setSequence(Sequence sequence) {
-		// シーケンサーの録音を中止
+		//
+		// 旧シーケンスの録音モードを解除
 		sequenceListTableModel.sequencerModel.getSequencer().recordDisable(null); // The "null" means all tracks
+		//
 		// トラックリストをクリア
 		int oldSize = trackModelList.size();
 		if( oldSize > 0 ) {
 			trackModelList.clear();
 			fireTableRowsDeleted(0, oldSize-1);
 		}
+		// 新シーケンスに置き換える
 		if( (this.sequence = sequence) == null ) {
+			// 新シーケンスがない場合
 			sequenceTickIndex = null;
 			return;
 		}
-		// 新しいシーケンスからtickインデックスとトラックリストを再構築
+		// tickインデックスを再構築
 		fireTimeSignatureChanged();
+		//
+		// トラックリストを再構築
 		Track tracks[] = sequence.getTracks();
 		for(Track track : tracks) {
 			trackModelList.add(new TrackEventListTableModel(this, track));
 		}
+		// 文字コードの判定
+		byte b[] = MIDISpec.getNameBytesOf(sequence);
+		if( b != null && b.length > 0 ) {
+			try {
+				String autoDetectedName = new String(b, "JISAutoDetect");
+				Set<Map.Entry<String,Charset>> entrySet;
+				entrySet = Charset.availableCharsets().entrySet();
+				for( Map.Entry<String,Charset> entry : entrySet ) {
+					Charset cs = entry.getValue();
+					if( ! autoDetectedName.equals(new String(b, cs)) )
+						continue;
+					charset = cs;
+					break;
+				}
+			} catch (UnsupportedEncodingException e) {
+				e.printStackTrace();
+			}
+		}
+		// トラックが挿入されたことを通知
 		fireTableRowsInserted(0, tracks.length-1);
 	}
 	/**
@@ -2257,14 +2320,20 @@ class SequenceTrackListTableModel extends AbstractTableModel {
 	 */
 	public String getFilename() { return filename; }
 	@Override
-	public String toString() { return MIDISpec.getNameOf(sequence); }
+	public String toString() {
+		byte b[] = MIDISpec.getNameBytesOf(sequence);
+		return b == null ? "" : new String(b, charset);
+	}
 	/**
 	 * シーケンス名を設定します。
 	 * @param name シーケンス名
 	 * @return 成功したらtrue
 	 */
 	public boolean setName(String name) {
-		if( name.equals(toString()) || ! MIDISpec.setNameOf(sequence,name) )
+		if( name.equals(toString()) )
+			return false;
+		byte b[] = name.getBytes(charset);
+		if( ! MIDISpec.setNameBytesOf(sequence, b) )
 			return false;
 		setModified(true);
 		fireTableDataChanged();
@@ -2408,14 +2477,15 @@ class TrackEventListTableModel extends AbstractTableModel {
 		},
 		/** tick位置に対応する小節 */
 		MEASURE_POSITION("Measure", Integer.class, 30) {
-			public Object getValue(SequenceTickIndex sti, MidiEvent event) {
-				return sti.tickToMeasure(event.getTick()) + 1;
+			public Object getValue(SequenceTrackListTableModel seq, MidiEvent event) {
+				return seq.getSequenceTickIndex().tickToMeasure(event.getTick()) + 1;
 			}
 		},
 		/** tick位置に対応する拍 */
 		BEAT_POSITION("Beat", Integer.class, 20) {
 			@Override
-			public Object getValue(SequenceTickIndex sti, MidiEvent event) {
+			public Object getValue(SequenceTrackListTableModel seq, MidiEvent event) {
+				SequenceTickIndex sti = seq.getSequenceTickIndex();
 				sti.tickToMeasure(event.getTick());
 				return sti.lastBeat + 1;
 			}
@@ -2423,7 +2493,8 @@ class TrackEventListTableModel extends AbstractTableModel {
 		/** tick位置に対応する余剰tick（拍に収まらずに余ったtick数） */
 		EXTRA_TICK_POSITION("ExTick", Integer.class, 20) {
 			@Override
-			public Object getValue(SequenceTickIndex sti, MidiEvent event) {
+			public Object getValue(SequenceTrackListTableModel seq, MidiEvent event) {
+				SequenceTickIndex sti = seq.getSequenceTickIndex();
 				sti.tickToMeasure(event.getTick());
 				return sti.lastExtraTick;
 			}
@@ -2431,8 +2502,8 @@ class TrackEventListTableModel extends AbstractTableModel {
 		/** MIDIメッセージ */
 		MESSAGE("MIDI Message", String.class, 300) {
 			@Override
-			public Object getValue(MidiEvent event) {
-				return msgToString(event.getMessage());
+			public Object getValue(SequenceTrackListTableModel seq, MidiEvent event) {
+				return msgToString(event.getMessage(), seq.charset);
 			}
 		};
 		private String title;
@@ -2462,11 +2533,11 @@ class TrackEventListTableModel extends AbstractTableModel {
 		public Object getValue(MidiEvent event) { return ""; }
 		/**
 		 * 列の値を返します。
-		 * @param sti MIDIシーケンスデータのtickインデックス
+		 * @param sti 対象シーケンスモデル
 		 * @param event 対象イベント
 		 * @return この列の対象イベントにおける値
 		 */
-		public Object getValue(SequenceTickIndex sti, MidiEvent event) {
+		public Object getValue(SequenceTrackListTableModel seq, MidiEvent event) {
 			return getValue(event);
 		}
 	}
@@ -2526,7 +2597,8 @@ class TrackEventListTableModel extends AbstractTableModel {
 		case MEASURE_POSITION:
 		case BEAT_POSITION:
 		case EXTRA_TICK_POSITION:
-			return c.getValue(sequenceTrackListTableModel.getSequenceTickIndex(), event);
+		case MESSAGE:
+			return c.getValue(sequenceTrackListTableModel, event);
 		default:
 			return c.getValue(event);
 		}
@@ -2592,14 +2664,24 @@ class TrackEventListTableModel extends AbstractTableModel {
 	 * トラック名を返します。
 	 */
 	@Override
-	public String toString() { return MIDISpec.getNameOf(track); }
+	public String toString() {
+		byte b[] = MIDISpec.getNameBytesOf(track);
+		if( b == null ) return "";
+		Charset cs = Charset.defaultCharset();
+		if( sequenceTrackListTableModel != null )
+			cs = sequenceTrackListTableModel.charset;
+		return new String(b, cs);
+	}
 	/**
 	 * トラック名を設定します。
 	 * @param name トラック名
 	 * @return 設定が行われたらtrue
 	 */
 	public boolean setString(String name) {
-		if(name.equals(toString()) || ! MIDISpec.setNameOf(track, name))
+		if(name.equals(toString()))
+			return false;
+		byte b[] = name.getBytes(sequenceTrackListTableModel.charset);
+		if( ! MIDISpec.setNameBytesOf(track, b) )
 			return false;
 		sequenceTrackListTableModel.setModified(true);
 		sequenceTrackListTableModel.sequenceListTableModel.fireSequenceModified(sequenceTrackListTableModel);
@@ -2908,7 +2990,7 @@ class TrackEventListTableModel extends AbstractTableModel {
 	 * @param msg MIDIメッセージ
 	 * @return MIDIメッセージの内容を表す文字列
 	 */
-	public static String msgToString(MidiMessage msg) {
+	public static String msgToString(MidiMessage msg, Charset charset) {
 		String str = "";
 		if( msg instanceof ShortMessage ) {
 			ShortMessage shortmsg = (ShortMessage)msg;
@@ -3010,7 +3092,7 @@ class TrackEventListTableModel extends AbstractTableModel {
 			//
 			// Add the text data
 			if( MIDISpec.hasMetaText(msgtype) ) {
-				str +=" ["+(new String(msgdata))+"]";
+				str +=" ["+(new String(msgdata,charset))+"]";
 				return str;
 			}
 			// Add the numeric data

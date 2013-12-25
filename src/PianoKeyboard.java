@@ -18,6 +18,7 @@ import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
+import java.nio.charset.Charset;
 import java.util.EventListener;
 import java.util.LinkedList;
 import java.util.Vector;
@@ -977,7 +978,7 @@ class MidiKeyboardPanel extends JPanel {
 							@Override
 							public void actionPerformed(ActionEvent e) {
 								VirtualMidiDevice vmd = keyboardCenterPanel.keyboard.midiDevice;
-								MidiMessage msg = eventDialog.midiMessageForm.getMessage();
+								MidiMessage msg = eventDialog.midiMessageForm.getMessage(Charset.defaultCharset());
 								vmd.sendMidiMessage(msg);
 							}
 						},

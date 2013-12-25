@@ -12,6 +12,7 @@ import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 
 import javax.sound.midi.InvalidMidiDataException;
@@ -118,8 +119,10 @@ class MidiEventDialog extends JDialog {
 			}
 		});
 	}
-	public void openForm(String title, Action okAction, int midiChannel,
-		boolean useTick, boolean useMessage ) {
+	public void openForm(
+		String title, Action okAction, int midiChannel,
+		boolean useTick, boolean useMessage
+	) {
 		setTitle(title);
 		okButton.setAction(okAction);
 		if( useMessage && midiChannel >= 0 ) {
@@ -549,45 +552,46 @@ class MidiMessageForm extends JPanel implements ActionListener {
 	}
 	/**
 	 * 入力している内容からMIDIメッセージを生成して返します。
+	 * @param charset 文字コード
 	 * @return 入力している内容から生成したMIDIメッセージ
 	 */
-	public MidiMessage getMessage() {
-		int msg_status = statusText.getValue();
-		if( msg_status < 0 ) {
+	public MidiMessage getMessage(Charset charset) {
+		int msgStatus = statusText.getValue();
+		if( msgStatus < 0 ) {
 			return null;
 		}
-		else if( msg_status == 0xFF ) {
-			int msg_type = data1Text.getValue();
-			if( msg_type < 0 ) return null;
-			byte msg_data[];
-			if( MIDISpec.hasMetaText( msg_type ) ) {
-				msg_data = dataText.getBytesFromString();
+		else if( msgStatus == 0xFF ) {
+			int msgType = data1Text.getValue();
+			if( msgType < 0 ) return null;
+			byte msgData[];
+			if( MIDISpec.hasMetaText(msgType) ) {
+				msgData = dataText.getString().getBytes(charset);
 			}
-			else if( msg_type == 0x2F ) { // EOT
+			else if( msgType == 0x2F ) { // EOT
 				// To avoid inserting un-removable EOT, ignore the data.
-				msg_data = new byte[0];
+				msgData = new byte[0];
 			}
 			else {
-				if( (msg_data = dataText.getBytes() ) == null ) {
+				if( (msgData = dataText.getBytes() ) == null ) {
 					return null;
 				}
 			}
 			MetaMessage msg = new MetaMessage();
 			try {
-				msg.setMessage( msg_type, msg_data, msg_data.length );
+				msg.setMessage( msgType, msgData, msgData.length );
 			} catch( InvalidMidiDataException e ) {
 				e.printStackTrace();
 				return null;
 			}
 			return (MidiMessage)msg;
 		}
-		else if( msg_status == 0xF0 || msg_status == 0xF7 ) {
+		else if( msgStatus == 0xF0 || msgStatus == 0xF7 ) {
 			SysexMessage msg = new SysexMessage();
 			byte data[] = dataText.getBytes();
 			if( data == null ) return null;
 			try {
 				msg.setMessage(
-						(int)(msg_status & 0xFF), data, data.length
+						(int)(msgStatus & 0xFF), data, data.length
 						);
 			} catch( InvalidMidiDataException e ) {
 				e.printStackTrace();
@@ -601,15 +605,15 @@ class MidiMessageForm extends JPanel implements ActionListener {
 		int msg_data2 = data2Text.getValue();
 		if( msg_data2 < 0 ) msg_data2 = 0;
 		try {
-			if( MIDISpec.isChannelMessage( msg_status ) ) {
+			if( MIDISpec.isChannelMessage( msgStatus ) ) {
 				msg.setMessage(
-					(msg_status & 0xF0),
+					(msgStatus & 0xF0),
 					channelText.getSelectedChannel(),
 					msg_data1, msg_data2
 				);
 			}
 			else {
-				msg.setMessage( msg_status, msg_data1, msg_data2 );
+				msg.setMessage( msgStatus, msg_data1, msg_data2 );
 			}
 		} catch( InvalidMidiDataException e ) {
 			e.printStackTrace();
@@ -621,42 +625,42 @@ class MidiMessageForm extends JPanel implements ActionListener {
 	 * MIDIメッセージを入力欄に反映します。
 	 * @param msg MIDIメッセージ
 	 */
-	public void setMessage( MidiMessage msg ) {
+	public void setMessage(MidiMessage msg, Charset charset) {
 		if( msg instanceof ShortMessage ) {
 			ShortMessage smsg = (ShortMessage)msg;
-			int msg_ch = 0;
-			int msg_status = smsg.getStatus();
-			if( MIDISpec.isChannelMessage(msg_status) ) {
-				msg_status = smsg.getCommand();
-				msg_ch = smsg.getChannel();
+			int msgChannel = 0;
+			int msgStatus = smsg.getStatus();
+			if( MIDISpec.isChannelMessage(msgStatus) ) {
+				msgStatus = smsg.getCommand();
+				msgChannel = smsg.getChannel();
 			}
-			statusText.setValue( msg_status );
-			channelText.setSelectedChannel( msg_ch );
+			statusText.setValue( msgStatus );
+			channelText.setSelectedChannel( msgChannel );
 			data1Text.setValue( smsg.getData1() );
 			data2Text.setValue( smsg.getData2() );
 		}
 		else if( msg instanceof SysexMessage ) {
-			SysexMessage sysex_msg = (SysexMessage)msg;
-			statusText.setValue( sysex_msg.getStatus() );
-			dataText.setValue( sysex_msg.getData() );
+			SysexMessage sysexMsg = (SysexMessage)msg;
+			statusText.setValue( sysexMsg.getStatus() );
+			dataText.setValue( sysexMsg.getData() );
 		}
 		else if( msg instanceof MetaMessage ) {
-			MetaMessage meta_msg = (MetaMessage)msg;
-			int msg_type = meta_msg.getType();
-			byte data[] = meta_msg.getData();
+			MetaMessage metaMsg = (MetaMessage)msg;
+			int msgType = metaMsg.getType();
+			byte data[] = metaMsg.getData();
 			statusText.setValue( 0xFF );
-			data1Text.setValue( msg_type );
-			switch( msg_type ) {
-			case 0x51: tempoSelecter.setTempo( data ); break;
-			case 0x58: timesigSelecter.setValue( data[0], data[1] ); break;
-			case 0x59: keysigSelecter.setKey( new Music.Key(data) ); break;
+			data1Text.setValue(msgType);
+			switch(msgType) {
+			case 0x51: tempoSelecter.setTempo(data); break;
+			case 0x58: timesigSelecter.setValue(data[0], data[1]); break;
+			case 0x59: keysigSelecter.setKey(new Music.Key(data)); break;
 			default: break;
 			}
-			if( MIDISpec.hasMetaText( msg_type ) ) {
-				dataText.setString( new String(data) );
+			if( MIDISpec.hasMetaText(msgType) ) {
+				dataText.setString(new String(data,charset));
 			}
 			else {
-				dataText.setValue( data );
+				dataText.setValue(data);
 			}
 			updateVisible();
 		}
@@ -714,7 +718,7 @@ class MidiMessageForm extends JPanel implements ActionListener {
 	 * @return パートナーメッセージ（ない場合null）
 	 */
 	public ShortMessage createPartnerMessage() {
-		ShortMessage sm = (ShortMessage)getMessage();
+		ShortMessage sm = (ShortMessage)getMessage(Charset.defaultCharset());
 		if( sm == null ) return null;
 		ShortMessage partnerSm;
 		if( isNote(true) ) { // NoteOn
@@ -770,9 +774,6 @@ class HexTextForm extends JPanel {
 	}
 	public String getString() {
 		return textArea.getText();
-	}
-	public byte[] getBytesFromString() {
-		return getString().getBytes();
 	}
 	public byte[] getBytes() {
 		String words[] = getString().trim().split(" +");
