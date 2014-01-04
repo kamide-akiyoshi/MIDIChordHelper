@@ -14,6 +14,9 @@ import java.awt.dnd.DropTargetEvent;
 import java.awt.dnd.DropTargetListener;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
+import java.awt.event.ComponentListener;
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
 import java.awt.event.MouseEvent;
@@ -93,7 +96,7 @@ import javax.swing.table.TableModel;
  * MIDIエディタ（MIDI Editor/Playlist for MIDI Chord Helper）
  *
  * @author
- *	Copyright (C) 2006-2013 Akiyoshi Kamide
+ *	Copyright (C) 2006-2014 Akiyoshi Kamide
  *	http://www.yk.rim.or.jp/~kamide/music/chordhelper/
  */
 class MidiEditor extends JDialog implements DropTargetListener {
@@ -1154,6 +1157,17 @@ class MidiEditor extends JDialog implements DropTargetListener {
 			@Override
 			public Object getCellEditorValue() { return null; }
 			/**
+			 * MIDIメッセージダイアログが閉じたときにセル編集を中止するリスナー
+			 */
+			private ComponentListener dialogComponentListener = new ComponentAdapter() {
+				@Override
+				public void componentHidden(ComponentEvent e) {
+					fireEditingCanceled();
+					// 用が済んだら当リスナーを除去
+					eventDialog.removeComponentListener(this);
+				}
+			};
+			/**
 			 * 既存イベントを編集するアクション
 			 */
 			private Action editEventAction = new AbstractAction() {
@@ -1163,7 +1177,7 @@ class MidiEditor extends JDialog implements DropTargetListener {
 					if( editContext.selectedMidiEvent == null )
 						return;
 					editContext.setupForEdit(model);
-					eventDialog.cancelButton.addActionListener(cancelActionListener);
+					eventDialog.addComponentListener(dialogComponentListener);
 					eventDialog.openEventForm("Change MIDI event", applyEventAction);
 				}
 			};
@@ -1180,21 +1194,6 @@ class MidiEditor extends JDialog implements DropTargetListener {
 				editEventButton.setText(value.toString());
 				return editEventButton;
 			}
-			/**
-			 * イベント入力をキャンセルするアクションリスナーです。
-			 *
-			 * <p>セル編集によって表示されたMIDIメッセージダイアログを
-			 * キャンセルする場合、セル編集を中止する処理の追加が必要です。
-			 * その追加処理をこのリスナーでカバーします。
-			 * </p>
-			 */
-			private ActionListener cancelActionListener = new ActionListener() {
-				public void actionPerformed(ActionEvent e) {
-					fireEditingCanceled();
-					// 用が済んだら当リスナーを除去
-					eventDialog.cancelButton.removeActionListener(this);
-				}
-			};
 			/**
 			 * 入力したイベントを反映するアクション
 			 */

@@ -22,6 +22,8 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.security.AccessControlException;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Vector;
 
 import javax.sound.midi.InvalidMidiDataException;
@@ -268,8 +270,8 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public static class VersionInfo {
 		public static final String	NAME = "MIDI Chord Helper";
-		public static final String	VERSION = "Ver.20131226.1";
-		public static final String	COPYRIGHT = "Copyright (C) 2004-2013";
+		public static final String	VERSION = "Ver.20140105.1";
+		public static final String	COPYRIGHT = "Copyright (C) 2004-2014";
 		public static final String	AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String	URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";
 		/**
@@ -451,8 +453,7 @@ public class ChordHelperApplet extends JApplet {
 		keyboardPanel.setEventDialog(deviceModelList.editorDialog.eventDialog);
 		midiConnectionDialog = new MidiDeviceDialog(deviceModelList);
 		midiConnectionDialog.setIconImage(iconImage);
-		lyricDisplay = new ChordTextField() {{
-			deviceModelList.sequencerModel.getSequencer().addMetaEventListener(this);
+		lyricDisplay = new ChordTextField(deviceModelList.sequencerModel) {{
 			addActionListener(new ActionListener() {
 				@Override
 				public void actionPerformed(ActionEvent event) {
@@ -1054,9 +1055,8 @@ class InversionAndOmissionLabel extends JLabel
 }
 
 class ChordTextField extends JTextField implements MetaEventListener {
-	Music.Chord currentChord = null;
-	private long lyricArrivedTime = System.nanoTime();
-	public ChordTextField() {
+	private MidiSequencerModel sequencerModel;
+	public ChordTextField(MidiSequencerModel sequencerModel) {
 		super(80);
 		//
 		// JTextField は、サイズ設定をしないとリサイズ時に縦に伸び過ぎてしまう。
@@ -1069,69 +1069,110 @@ class ChordTextField extends JTextField implements MetaEventListener {
 		setMaximumSize(
 			java.awt.Toolkit.getDefaultToolkit().getScreenSize()
 		);
+		this.sequencerModel = sequencerModel;
+		sequencerModel.getSequencer().addMetaEventListener(this);
 	}
 	@Override
 	public void meta(MetaMessage msg) {
-		switch(msg.getType()) {
+		int t = msg.getType();
+		switch(t) {
 		case 0x01: // Text（任意のテキスト：コメントなど）
-		case 0x02: // Copyright（著作権表示）
 		case 0x05: // Lyrics（歌詞）
-		case 0x06: // Marker
+		case 0x02: // Copyright（著作権表示）
 		case 0x03: // Sequence Name / Track Name（曲名またはトラック名）
-			byte[] data = msg.getData();
+		case 0x06: // Marker
+			byte[] d = msg.getData();
 			if( ! SwingUtilities.isEventDispatchThread() ) {
 				// MIDIシーケンサの EDT から呼ばれた場合、
 				// 表示処理を Swing の EDT に振り直す。
-				SwingUtilities.invokeLater(new AddLyricJob(data));
-				break;
+				SwingUtilities.invokeLater(new AddTextJob(t,d));
+				return;
 			}
-			addLyric(data);
+			addText(t,d);
 			break;
 		default:
-			break;
+			return;
 		}
 	}
 	/**
 	 * 歌詞を追加するジョブ
 	 */
-	private class AddLyricJob implements Runnable {
+	private class AddTextJob implements Runnable {
+		private int type;
 		private byte[] data;
-		public AddLyricJob(byte[] data) { this.data = data; }
+		public AddTextJob(int type, byte[] data) {
+			this.type = type;
+			this.data = data;
+		}
 		@Override
-		public void run() { addLyric(data); }
+		public void run() { addText(type, data); }
 	}
 	/**
-	 * 歌詞を追加し、カーソルを末尾に移動します。
-	 * @param data 歌詞データ
+	 * 前回のタイムスタンプ
 	 */
-	public void addLyric(byte[] data) {
-		long startTime = System.nanoTime();
-		// 歌詞を表示
-		String additionalLyric;
-		try {
-			additionalLyric = (new String(data,"JISAutoDetect")).trim();
-		} catch( UnsupportedEncodingException e ) {
-			additionalLyric = (new String(data)).trim();
+	private long lastArrivedTime = System.nanoTime();
+	/**
+	 * スキップするテキスト
+	 */
+	private Map<Integer,String> skippingTextMap = new HashMap<>();
+	/**
+	 * テキストを追加し、カーソルを末尾に移動します。
+	 * @param data テキストの元データ
+	 */
+	private void addText(int type, byte[] data) {
+		// 頻繁に来たかどうかだけとりあえずチェック
+		long arrivedTime = System.nanoTime();
+		boolean isSoon = (arrivedTime - lastArrivedTime < 1000000000L /* 1sec */);
+		lastArrivedTime = arrivedTime;
+		//
+		// 文字コード確認用シーケンス
+		SequenceTrackListTableModel m = sequencerModel.getSequenceTrackListTableModel();
+		//
+		// 追加するデータを適切な文字コードで文字列に変換
+		String additionalText;
+		if( m != null ) {
+			additionalText = new String(data,m.charset);
 		}
-		String lyric = getText();
-		if( startTime - lyricArrivedTime > 1000000000L /* 1sec */
-			&& (
-				additionalLyric.length() > 8 || additionalLyric.isEmpty()
-				|| lyric == null || lyric.isEmpty()
-			)
-		) {
-			// 長い歌詞や空白が来たり、追加先に歌詞がなかった場合は上書きする。
-			// ただし、前回から充分に時間が経っていない場合は上書きしない。
-			lyric = additionalLyric;
+		else try {
+			additionalText = new String(data,"JISAutoDetect");
 		}
-		else {
-			// 短い歌詞だった場合は、既存の歌詞に追加する
-			lyric += " " + additionalLyric;
+		catch( UnsupportedEncodingException e ) {
+			additionalText = new String(data);
 		}
-		setText(lyric);
+		additionalText = additionalText.trim();
+		String lastAdditionalText = skippingTextMap.remove(type);
+		// 歌詞とテキストで同じもの同士がすぐに来た場合は追加しない
+		if( ! (isSoon && additionalText.equals(lastAdditionalText)) ) {
+			// テキストと歌詞が同じかどうかチェックするための比較対象を記録
+			switch(type) {
+			case 0x01: skippingTextMap.put(0x05,additionalText);
+			case 0x05: skippingTextMap.put(0x01,additionalText);
+			}
+			// 既存の歌詞
+			String currentText = getText();
+			if(
+				currentText != null && ! currentText.isEmpty()
+				&& (
+					isSoon ||
+					! additionalText.isEmpty() && additionalText.length() <= 8
+				)
+			) {
+				// 既存歌詞がある場合、頻繁に来たか短い歌詞だったら追加
+				currentText += " " + additionalText;
+			}
+			else {
+				// それ以外の場合は上書き
+				currentText = additionalText;
+			}
+			setText(currentText);
+		}
+		// 入力カーソル（キャレット）をテキストの末尾へ
 		setCaretPosition(getText().length());
-		lyricArrivedTime = startTime;
 	}
+	/**
+	 * 現在のコード
+	 */
+	Music.Chord currentChord = null;
 	/**
 	 * コードを追加します。
 	 * @param chord コード

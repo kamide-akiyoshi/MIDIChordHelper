@@ -408,7 +408,7 @@ class MidiSequencerModel extends MidiConnecterListModel
 	private SequenceTrackListTableModel sequenceTableModel = null;
 	/**
 	 * このシーケンサーに現在ロードされているシーケンスのMIDIトラックリストテーブルモデルを返します。
-	 * @return MIDIトラックリストテーブルモデル
+	 * @return MIDIトラックリストテーブルモデル（何もロードされていなければnull）
 	 */
 	public SequenceTrackListTableModel getSequenceTrackListTableModel() {
 		return sequenceTableModel;
