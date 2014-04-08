@@ -11,6 +11,7 @@ import javax.sound.midi.MidiEvent;
 import javax.sound.midi.MidiMessage;
 import javax.sound.midi.Sequence;
 import javax.sound.midi.ShortMessage;
+import javax.sound.midi.SysexMessage;
 import javax.sound.midi.Track;
 // for ComboBoxModel implementation
 import javax.swing.ComboBoxModel;
@@ -2005,23 +2006,47 @@ public class Music {
 		Track track = null;
 		FirstTrackSpec first_track_spec = null;
 		Sequence sequence = null;
-		long min_note_ticks = 0;
+		long minNoteTicks = 0;
 		int pre_measures = 2;
+		/**
+		 * トラック名なしでMIDIトラック仕様を構築します。
+		 */
 		public AbstractTrackSpec() { }
+		/**
+		 * トラック名を指定してMIDIトラック仕様を構築します。
+		 * @param name
+		 */
 		public AbstractTrackSpec(String name) {
 			this.name = name;
 		}
+		/**
+		 * このオブジェクトの文字列表現としてトラック名を返します。
+		 * トラック名がない場合はスーパークラスの toString() と同じです。
+		 */
 		public String toString() {
-			return name;
+			return name==null ? super.toString() : name;
 		}
-		public Track createTrack( Sequence seq, FirstTrackSpec first_track_spec ) {
-			this.first_track_spec = first_track_spec;
+		/**
+		 * トラックを生成して返します。
+		 * @param seq MIDIシーケンス
+		 * @param firstTrackSpec 最初のトラック仕様
+		 * @return 生成したトラック
+		 */
+		public Track createTrack( Sequence seq, FirstTrackSpec firstTrackSpec ) {
+			this.first_track_spec = firstTrackSpec;
 			track = (sequence = seq).createTrack();
 			if( name != null ) addStringTo( 0x03, name, 0 );
-			min_note_ticks = (long)( seq.getResolution() >> 2 );
+			minNoteTicks = (long)( seq.getResolution() >> 2 );
 			return track;
 		}
-		public boolean addMetaEventTo( int type, byte data[], long tick_pos  ) {
+		/**
+		 * メタイベントを追加します。
+		 * @param type メタイベントのタイプ
+		 * @param data メタイベントのデータ
+		 * @param tickPos tick位置
+		 * @return {@link Track#add(MidiEvent)} と同じ
+		 */
+		public boolean addMetaEventTo( int type, byte data[], long tickPos  ) {
 			MetaMessage meta_msg = new MetaMessage();
 			try {
 				meta_msg.setMessage( type, data, data.length );
@@ -2029,11 +2054,18 @@ public class Music {
 				ex.printStackTrace();
 				return false;
 			}
-			return track.add(new MidiEvent( (MidiMessage)meta_msg, tick_pos ));
+			return track.add(new MidiEvent(meta_msg, tickPos));
 		}
-		public boolean addStringTo( int type, String str, long tick_pos ) {
+		/**
+		 * 文字列をメタイベントとして追加します。
+		 * @param type メタイベントのタイプ
+		 * @param str 追加する文字列
+		 * @param tickPos tick位置
+		 * @return {@link #addMetaEventTo(int, byte[], long)} と同じ
+		 */
+		public boolean addStringTo( int type, String str, long tickPos ) {
 			if( str == null ) str = "";
-			return addMetaEventTo( type, str.getBytes(), tick_pos );
+			return addMetaEventTo( type, str.getBytes(), tickPos );
 		}
 		public boolean addStringTo( int type, ChordProgression.ChordStroke cs ) {
 			return addStringTo(type, cs.chord.toString(), cs.tick_range.start_tick_pos);
@@ -2046,6 +2078,16 @@ public class Music {
 		}
 		public void setChordSymbolText( ChordProgression cp ) {
 			cp.setChordSymbolTextTo( this );
+		}
+		public boolean addSysEx(byte[] data, long tickPos) {
+			SysexMessage msg = new SysexMessage();
+			try {
+				msg.setMessage( SysexMessage.SYSTEM_EXCLUSIVE, data, data.length );
+			} catch( InvalidMidiDataException ex ) {
+				ex.printStackTrace();
+				return false;
+			}
+			return track.add(new MidiEvent( msg, tickPos ));
 		}
 	}
 
@@ -2258,7 +2300,7 @@ public class Music {
 					for(
 							tick = range.start_tick_pos, mask = 0x8000;
 							tick < range.end_tick_pos;
-							tick += min_note_ticks, mask >>>= 1
+							tick += minNoteTicks, mask >>>= 1
 							) {
 						for( i=0; i<beat_patterns.length; i++ ) {
 							if( (beat_patterns[i] & mask) == 0 )
@@ -2275,44 +2317,71 @@ public class Music {
 		}
 	}
 
+	/**
+	 * メロディトラック仕様
+	 */
 	public static class MelodyTrackSpec extends AbstractNoteTrackSpec {
-
-		Range range; // 音域
-
-		// 音を出すかどうかを表すビット列
-		int beat_pattern = 0xFFFF;
-
-		// あとで音を出し続けるかどうかを表すビット列
-		int continuous_beat_pattern = 0xEEEE;
-
-		// ベース音を使う場合 true
-		// それ以外のコード構成音を使う場合 false
-		boolean is_bass = false;
-
-		// 乱数メロディを作るかどうか
-		boolean random_melody = false;
-
-		// 乱数歌詞を作るかどうか
-		boolean random_lyric = false;
-
+		/**
+		 * 音域
+		 */
+		Range range;
+		/**
+		 * 音を出すかどうかを表すビット列
+		 */
+		int beatPattern = 0xFFFF;
+		/**
+		 * あとで音を出し続けるかどうかを表すビット列
+		 */
+		int continuousBeatPattern = 0xEEEE;
+		/**
+		 * ベース音を使う場合 true、それ以外のコード構成音を使う場合 false
+		 */
+		boolean isBass = false;
+		/**
+		 * 乱数メロディを作るかどうか
+		 */
+		boolean randomMelody = false;
+		/**
+		 * 乱数歌詞を作るかどうか
+		 */
+		boolean randomLyric = false;
+		/**
+		 * 乱数歌詞をNSX-39（ポケット・ミク）対応の
+		 * システムエクスクルーシブを使って出力するかどうか
+		 */
+		boolean nsx39 = false;
+		/**
+		 * メロディトラック仕様を構築
+		 * @param ch MIDIチャンネル
+		 * @param name トラック名
+		 */
 		public MelodyTrackSpec(int ch, String name) {
 			super(ch,name);
 			range = new Range(
 				SEMITONES_PER_OCTAVE * 5, SEMITONES_PER_OCTAVE * 6 );
 		}
+		/**
+		 * 音域を指定してメロディトラック仕様を構築
+		 * @param ch MIDIチャンネル
+		 * @param name トラック名
+		 * @param range 音域
+		 */
 		public MelodyTrackSpec(int ch, String name, Range range) {
 			super(ch,name);
 			this.range = range;
 		}
-
+		/**
+		 * コードの追加
+		 * @param cp コード進行
+		 */
 		public void addChords( ChordProgression cp ) {
 			int mask;
 			long tick;
-			long start_tick_pos;
+			long startTickPos;
 
 			// 音階ごとの生起確率を決める重みリスト（random_melody の場合）
-			int i, note_no, prev_note_no = 1;
-			int note_weights[] = new int[range.max_note - range.min_note];
+			int i, noteNumber, prevNoteNumber = 1;
+			int noteWeights[] = new int[range.max_note - range.min_note];
 			//
 			Key key = cp.key;
 			if( key == null ) key = new Key("C");
@@ -2321,59 +2390,59 @@ public class Music {
 				for( ChordProgression.Measure measure : line ) { // 小節単位の処理
 					if( measure.ticks_per_beat == null )
 						continue;
-					ChordProgression.TickRange tick_range = measure.getRange();
-					boolean is_note_on = false;
+					ChordProgression.TickRange tickRange = measure.getRange();
+					boolean isNoteOn = false;
 					//
 					// 各ビートごとに繰り返し
 					for(
-							tick = start_tick_pos = tick_range.start_tick_pos, mask = 0x8000;
-							tick < tick_range.end_tick_pos;
-							tick += min_note_ticks, mask >>>= 1
-							) {
+						tick = startTickPos = tickRange.start_tick_pos, mask = 0x8000;
+						tick < tickRange.end_tick_pos;
+						tick += minNoteTicks, mask >>>= 1
+					) {
 						// そのtick地点のコードを調べる
 						Chord chord = measure.chordStrokeAt(tick).chord;
 						int notes[] = chord.toNoteArray(range);
 						//
 						// 各音階ごとに繰り返し
 						if( Math.random() < 0.9 ) {
-							if( (beat_pattern & mask) == 0 ) {
+							if( (beatPattern & mask) == 0 ) {
 								// 音を出さない
 								continue;
 							}
 						}
 						else {
 							// ランダムに逆パターン
-							if( (beat_pattern & mask) != 0 ) {
+							if( (beatPattern & mask) != 0 ) {
 								continue;
 							}
 						}
-						if( ! is_note_on ) {
+						if( ! isNoteOn ) {
 							// 前回のビートで継続していなかったので、
 							// この地点で音を出し始めることにする。
-							start_tick_pos = tick;
-							is_note_on = true;
+							startTickPos = tick;
+							isNoteOn = true;
 						}
 						if( Math.random() < 0.9 ) {
-							if( (continuous_beat_pattern & mask) != 0 ) {
+							if( (continuousBeatPattern & mask) != 0 ) {
 								// 音を継続
 								continue;
 							}
 						}
 						else {
 							// ランダムに逆パターン
-							if( (continuous_beat_pattern & mask) == 0 ) {
+							if( (continuousBeatPattern & mask) == 0 ) {
 								continue;
 							}
 						}
 						// このビートの終了tickで音を出し終わることにする。
-						if( random_melody ) {
+						if( randomMelody ) {
 							// 音階ごとに出現確率を決める
-							int total_weight = 0;
-							for( i=0; i<note_weights.length; i++ ) {
-								note_no = range.min_note + i;
-								int m12 = mod12(note_no - chord.rootNoteSymbol().toNoteNumber());
+							int totalWeight = 0;
+							for( i=0; i<noteWeights.length; i++ ) {
+								noteNumber = range.min_note + i;
+								int m12 = mod12(noteNumber - chord.rootNoteSymbol().toNoteNumber());
 								int w;
-								if( chord.indexOf(note_no) >= 0 ) {
+								if( chord.indexOf(noteNumber) >= 0 ) {
 									// コード構成音は確率を上げる
 									w = 255;
 								}
@@ -2388,49 +2457,59 @@ public class Music {
 									default:
 										w = 0; break;
 									}
-									if( ! key.isOnScale( note_no ) ) {
+									if( ! key.isOnScale( noteNumber ) ) {
 										// スケールを外れている音は採用しない
 										w = 0;
 									}
 								}
 								// 乱高下軽減のため、前回との差によって確率を調整する
-								int diff = note_no - prev_note_no;
+								int diff = noteNumber - prevNoteNumber;
 								if( diff < 0 ) diff = -diff;
 								if( diff == 0 ) w /= 8;
 								else if( diff > 7 ) w = 0;
 								else if( diff > 4 ) w /= 8;
-								total_weight += (note_weights[i] = w);
+								totalWeight += (noteWeights[i] = w);
 							}
 							// さいころを振って音階を決定
-							note_no = range.invertedNoteOf(key.rootNoteNumber());
+							noteNumber = range.invertedNoteOf(key.rootNoteNumber());
 							double r = Math.random();
-							total_weight *= r;
-							for( i=0; i<note_weights.length; i++ ) {
-								if( (total_weight -= note_weights[i]) < 0 ) {
-									note_no = range.min_note + i;
+							totalWeight *= r;
+							for( i=0; i<noteWeights.length; i++ ) {
+								if( (totalWeight -= noteWeights[i]) < 0 ) {
+									noteNumber = range.min_note + i;
 									break;
 								}
 							}
-							// 決定された音符を追加
-							addNote(
-								start_tick_pos, tick + min_note_ticks,
-								note_no, velocity
-							);
-							if( random_lyric ) {
-								// ランダムな歌詞を追加
-								addStringTo(
-									0x05,
-									VocaloidLyricGenerator.getRandomLyric(),
-									start_tick_pos
+							if( randomLyric ) {
+								// ランダムな歌詞を作成
+								int index = (int)(Math.random() * nsx39LyricElements.length);
+								if( nsx39 ) {
+									// ポケット・ミク用システムエクスクルーシブ
+									nsx39SysEx[6] = (byte)(index & 0x7F);
+									addSysEx(nsx39SysEx, startTickPos);
+								}
+								// 決定された音符を追加
+								addNote(
+									startTickPos, tick + minNoteTicks,
+									noteNumber, velocity
+								);
+								// 歌詞をテキストとして追加
+								addStringTo(0x05, nsx39LyricElements[index], startTickPos);
+							}
+							else {
+								// 決定された音符を追加
+								addNote(
+									startTickPos, tick + minNoteTicks,
+									noteNumber, velocity
 								);
 							}
-							prev_note_no = note_no;
+							prevNoteNumber = noteNumber;
 						}
-						else if( is_bass ) {
+						else if( isBass ) {
 							// ベース音を追加
 							int note = range.invertedNoteOf(chord.bassNoteSymbol().toNoteNumber());
 							addNote(
-								start_tick_pos, tick + min_note_ticks,
+								startTickPos, tick + minNoteTicks,
 								note, velocity
 							);
 						}
@@ -2438,12 +2517,12 @@ public class Music {
 							// コード本体の音を追加
 							for( int note : notes ) {
 								addNote(
-									start_tick_pos, tick + min_note_ticks,
+									startTickPos, tick + minNoteTicks,
 									note, velocity
 								);
 							}
 						}
-						is_note_on = false;
+						isNoteOn = false;
 					}
 				}
 			}
@@ -2452,66 +2531,41 @@ public class Music {
 
 	}
 
-	//
-	// VOCALOID互換の音素単位で歌詞を生成するクラス
-	//
-	public static class VocaloidLyricGenerator {
-		private static String lyric_elements[] = {
-			/*
-		      "きゃ","きゅ","きょ",
-		      "しゃ","しゅ","しょ",
-		      "ちゃ","ちゅ","ちょ",
-		      "にゃ","にゅ","にょ",
-		      "ひゃ","ひゅ","ひょ",
-		      "みゃ","みゅ","みょ",
-		      "りゃ","りゅ","りょ",
-		      "ぎゃ","ぎゅ","ぎょ",
-		      "じゃ","じゅ","じょ",
-		      "ぢゃ","ぢゅ","ぢょ",
-		      "びゃ","びゅ","びょ",
-		      "ぴゃ","ぴゅ","ぴょ",
-			 */
-			"あ","い","う","え","お",
-			"か","き","く","け","こ",
-			"さ","し","す","せ","そ",
-			"た","ち","つ","て","と",
-			"な","に","ぬ","ね","の",
-			"は","ひ","ふ","へ","ほ",
-			"ま","み","む","め","も",
-			"や","ゆ","よ",
-			"ら","り","る","れ","ろ",
-			"わ","を","ん",
-			"が","ぎ","ぐ","げ","ご",
-			"ざ","じ","ず","ぜ","ぞ",
-			"だ","ぢ","づ","で","ど",
-			"ば","び","ぶ","べ","ぼ",
-			"ぱ","ぴ","ぷ","ぺ","ぽ",
-		};
-		//
-		// ランダムに音素を返す
-		public static String getRandomLyric() {
-			return lyric_elements[(int)(Math.random() * lyric_elements.length)];
-		}
-		/*
-    // テキストを音素に分解する
-    public static Vector<String> split(String text) {
-      Vector<String> sv = new Vector<String>();
-      String s, prev_s;
-      int i;
-      for( i=0; i < text.length(); i++ ) {
-        s = text.substring(i,i+1);
-        if( "ゃゅょ".indexOf(s) < 0 ) {
-          sv.add(s);
-        }
-        else {
-          prev_s = sv.remove(sv.size()-1);
-          sv.add( prev_s + s );
-        }
-      }
-      return sv;
-    }
-		 */
-	}
+	private static byte nsx39SysEx[] = {
+		0x43, 0x79, 0x09, 0x11, 0x0A, 0x00, 0x00, (byte) 0xF7
+	};
+	private static String nsx39LyricElements[] = {
+		"あ","い","う","え","お",
+		"か","き","く","け","こ",
+		"が","ぎ","ぐ","げ","ご",
+	    "きゃ","きゅ","きょ",
+	    "ぎゃ","ぎゅ","ぎょ",
+		"さ","すぃ","す","せ","そ",
+		"ざ","ずぃ","ず","ぜ","ぞ",
+	    "しゃ","し","しゅ","しぇ","しょ",
+	    "じゃ","じ","じゅ","じぇ","じょ",
+		"た","てぃ","とぅ","て","と",
+		"だ","でぃ","どぅ","で","ど",
+		"てゅ","でゅ",
+		"ちゃ","ち","ちゅ","ちぇ","ちょ",
+		"つぁ","つぃ","つ","つぇ","つぉ",
+		"な","に","ぬ","ね","の",
+	    "にゃ","にゅ","にょ",
+		"は","ひ","ふ","へ","ほ",
+		"ば","び","ぶ","べ","ぼ",
+		"ぱ","ぴ","ぷ","ぺ","ぽ",
+		"ひゃ","ひゅ","ひょ",
+		"びゃ","びゅ","びょ",
+		"ぴゃ","ぴゅ","ぴょ",
+		"ふぁ","ふぃ","ふゅ","ふぇ","ふぉ",
+		"ま","み","む","め","も",
+		"みゃ","みゅ","みょ",
+		"や","ゆ","よ",
+		"ら","り","る","れ","ろ",
+		"りゃ","りゅ","りょ",
+		"わ","うぃ","うぇ","を",
+		"ん","ん","ん","ん","ん",
+	};
 
 }
 

@@ -54,7 +54,7 @@ import javax.swing.event.ListSelectionListener;
  * MIDI Message Form for MIDI Chord Helper
  *
  * @auther
- *	Copyright (C) 2006-2013 ＠きよし - Akiyoshi Kamide
+ *	Copyright (C) 2006-2014 ＠きよし - Akiyoshi Kamide
  *	http://www.yk.rim.or.jp/~kamide/music/chordhelper/
  */
 class MidiEventDialog extends JDialog {
@@ -498,30 +498,30 @@ class MidiMessageForm extends JPanel implements ActionListener {
 		switch( msgStatus & 0xF0 ) {
 		// ステータスに応じて、１バイト目のデータモデルを切り替える。
 
-		case 0x80: // Note Off
-		case 0x90: // Note On
-		case 0xA0: // Polyphonic Key Pressure
+		case ShortMessage.NOTE_OFF:
+		case ShortMessage.NOTE_ON:
+		case ShortMessage.POLY_PRESSURE:
 			int ch = channelText.getSelectedChannel();
 			data1Text.setTitle("[Data1] "+(ch == 9 ? "Percussion" : "Note No."));
 			data1ComboBox.setModel(ch == 9 ? percussionComboBoxModel : noteComboBoxModel);
 			break;
 
-		case 0xB0: // Control Change / Mode Change
+		case ShortMessage.CONTROL_CHANGE: // Control Change / Mode Change
 			data1Text.setTitle("[Data1] Control/Mode No.");
 			data1ComboBox.setModel(controlChangeComboBoxModel);
 			break;
 
-		case 0xC0: // Program Change
+		case ShortMessage.PROGRAM_CHANGE:
 			data1Text.setTitle( "[Data1] Program No.");
 			data1ComboBox.setModel(instrumentComboBoxModel);
 			break;
 
-		case 0xD0: // Channel Pressure
+		case ShortMessage.CHANNEL_PRESSURE:
 			data1Text.setTitle("[Data1] Pressure");
 			data1ComboBox.setModel(hexData1ComboBoxModel);
 			break;
 
-		case 0xE0: // Pitch Bend
+		case ShortMessage.PITCH_BEND:
 			data1Text.setTitle("[Data1] Low 7bit value");
 			data1ComboBox.setModel(hexData1ComboBoxModel);
 			break;

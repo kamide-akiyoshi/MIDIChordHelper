@@ -57,18 +57,17 @@ class NewSequenceDialog extends JDialog {
 		Music.DrumTrackSpec dts = new Music.DrumTrackSpec(9, "Percussion track");
 		dts.velocity = 127;
 		addTrackSpec(dts);
-		//
 		Music.MelodyTrackSpec mts;
-		mts = new Music.MelodyTrackSpec(0, "Bass track", new Music.Range(36,48));
-		mts.is_bass = true;
+		mts = new Music.MelodyTrackSpec(2, "Bass track", new Music.Range(36,48));
+		mts.isBass = true;
 		mts.velocity = 96;
 		addTrackSpec(mts);
 		mts =  new Music.MelodyTrackSpec(1, "Chord track", new Music.Range(60,72));
 		addTrackSpec(mts);
-		mts = new Music.MelodyTrackSpec(2, "Melody track", new Music.Range(60,84));
-		mts.random_melody = true;
-		mts.beat_pattern = 0xFFFF;
-		mts.continuous_beat_pattern = 0x820A;
+		mts = new Music.MelodyTrackSpec(0, "Melody track", new Music.Range(60,84));
+		mts.randomMelody = true;
+		mts.beatPattern = 0xFFFF;
+		mts.continuousBeatPattern = 0x820A;
 		addTrackSpec(mts);
 	}};
 	/**
@@ -250,8 +249,7 @@ class NewSequenceDialog extends JDialog {
 class TrackSpecPanel extends JPanel
 	implements PianoKeyboardListener, ActionListener, ChangeListener
 {
-	JComboBox<Music.AbstractNoteTrackSpec> trackSelecter =
-		new JComboBox<Music.AbstractNoteTrackSpec>();
+	JComboBox<Music.AbstractNoteTrackSpec> trackSelecter = new JComboBox<>();
 	JLabel trackTypeLabel = new JLabel();
 	JTextField nameTextField = new JTextField(20);
 	MidiChannelComboSelecter chSelecter =
@@ -272,7 +270,8 @@ class TrackSpecPanel extends JPanel
 	}};
 	JCheckBox randomMelodyCheckbox = new JCheckBox("Random melody");
 	JCheckBox bassCheckbox = new JCheckBox("Bass note");
-	JCheckBox randomLyricCheckbox = new JCheckBox("Random lyrics");;
+	JCheckBox randomLyricCheckbox = new JCheckBox("Random lyrics");
+	JCheckBox nsx39Checkbox = new JCheckBox("NSX-39");;
 	BeatPadPanel beatPadPanel = new BeatPadPanel(this);
 	private MidiChannel[] midiChannels;
 
@@ -301,6 +300,8 @@ class TrackSpecPanel extends JPanel
 		add(randomMelodyCheckbox);
 		randomLyricCheckbox.addChangeListener(this);
 		add(randomLyricCheckbox);
+		nsx39Checkbox.addChangeListener(this);
+		add(nsx39Checkbox);
 		add(beatPadPanel);
 		trackSelecter.addActionListener(this);
 		chSelecter.comboBox.addActionListener(this);
@@ -321,21 +322,28 @@ class TrackSpecPanel extends JPanel
 			Music.AbstractNoteTrackSpec ants = getTrackSpec();
 			if( ants instanceof Music.MelodyTrackSpec ) {
 				Music.MelodyTrackSpec mts = (Music.MelodyTrackSpec)ants;
-				mts.is_bass = bassCheckbox.isSelected();
+				mts.isBass = bassCheckbox.isSelected();
 			}
 		}
 		else if( src == randomMelodyCheckbox ) {
 			Music.AbstractNoteTrackSpec ants = getTrackSpec();
 			if( ants instanceof Music.MelodyTrackSpec ) {
 				Music.MelodyTrackSpec mts = (Music.MelodyTrackSpec)ants;
-				mts.random_melody = randomMelodyCheckbox.isSelected();
+				mts.randomMelody = randomMelodyCheckbox.isSelected();
 			}
 		}
 		else if( src == randomLyricCheckbox ) {
 			Music.AbstractNoteTrackSpec ants = getTrackSpec();
 			if( ants instanceof Music.MelodyTrackSpec ) {
 				Music.MelodyTrackSpec mts = (Music.MelodyTrackSpec)ants;
-				mts.random_lyric = randomLyricCheckbox.isSelected();
+				mts.randomLyric = randomLyricCheckbox.isSelected();
+			}
+		}
+		else if( src == nsx39Checkbox ) {
+			Music.AbstractNoteTrackSpec ants = getTrackSpec();
+			if( ants instanceof Music.MelodyTrackSpec ) {
+				Music.MelodyTrackSpec mts = (Music.MelodyTrackSpec)ants;
+				mts.nsx39 = nsx39Checkbox.isSelected();
 			}
 		}
 	}
@@ -362,6 +370,7 @@ class TrackSpecPanel extends JPanel
 				rangePanel.setVisible(false);
 				randomMelodyCheckbox.setVisible(false);
 				randomLyricCheckbox.setVisible(false);
+				nsx39Checkbox.setVisible(false);
 				bassCheckbox.setVisible(false);
 			}
 			else if( ants instanceof Music.MelodyTrackSpec ) {
@@ -370,11 +379,12 @@ class TrackSpecPanel extends JPanel
 				keyboardPanel.keyboard.setSelectedNote(ts.range.min_note);
 				keyboardPanel.keyboard.setSelectedNote(ts.range.max_note);
 				keyboardPanel.keyboard.autoScroll(ts.range.min_note);
-				randomMelodyCheckbox.setSelected(ts.random_melody);
-				randomLyricCheckbox.setSelected(ts.random_lyric);
-				bassCheckbox.setSelected(ts.is_bass);
+				randomMelodyCheckbox.setSelected(ts.randomMelody);
+				randomLyricCheckbox.setSelected(ts.randomLyric);
+				bassCheckbox.setSelected(ts.isBass);
 				randomMelodyCheckbox.setVisible(true);
 				randomLyricCheckbox.setVisible(true);
+				nsx39Checkbox.setVisible(true);
 				bassCheckbox.setVisible(true);
 			}
 			beatPadPanel.setTrackSpec(ants);
@@ -562,12 +572,12 @@ class BeatPad extends JComponent implements MouseListener, ComponentListener {
 			Music.MelodyTrackSpec mts = (Music.MelodyTrackSpec)track_spec;
 			for( beat=0, mask=0x8000; beat<MAX_BEATS; beat++, mask >>>= 1 ) {
 				r = beat_buttons[0][beat];
-				if( (mts.beat_pattern & mask) != 0 )
+				if( (mts.beatPattern & mask) != 0 )
 					g2.fillRect( r.x, r.y, r.width, r.height );
 				else
 					g2.drawRect( r.x, r.y, r.width, r.height );
 				r = continuous_beat_buttons[0][beat];
-				if( (mts.continuous_beat_pattern & mask) != 0 )
+				if( (mts.continuousBeatPattern & mask) != 0 )
 					g2.fillRect( r.x, r.y, r.width, r.height );
 				else
 					g2.drawRect( r.x, r.y, r.width, r.height );
@@ -653,11 +663,11 @@ class BeatPad extends JComponent implements MouseListener, ComponentListener {
 			Music.MelodyTrackSpec mts = (Music.MelodyTrackSpec)track_spec;
 			for( beat=0, mask=0x8000; beat<MAX_BEATS; beat++, mask >>>= 1 ) {
 				if( beat_buttons[0][beat].contains(point) ) {
-					mts.beat_pattern ^= mask;
+					mts.beatPattern ^= mask;
 					repaint(); return;
 				}
 				if( continuous_beat_buttons[0][beat].contains(point) ) {
-					mts.continuous_beat_pattern ^= mask;
+					mts.continuousBeatPattern ^= mask;
 					repaint(); return;
 				}
 			}
