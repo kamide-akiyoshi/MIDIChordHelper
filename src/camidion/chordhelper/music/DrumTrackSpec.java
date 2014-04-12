@@ -1,0 +1,96 @@
+package camidion.chordhelper.music;
+
+import javax.swing.ComboBoxModel;
+import javax.swing.event.ListDataListener;
+
+public class DrumTrackSpec extends AbstractNoteTrackSpec {
+	public static int defaultPercussions[] = { // ドラムの音色リスト
+		36, // Bass Drum 1
+		44, // Pedal Hi-Hat
+		39, // Hand Clap
+		48, // Hi Mid Tom
+		50, // High Tom
+		38, // Acoustic Snare
+		62, // Mute Hi Conga
+		63, // Open Hi Conga
+	};
+	public PercussionComboBoxModel models[]
+		= new PercussionComboBoxModel[defaultPercussions.length];
+	public int[] beat_patterns = {
+		0x8888, 0x2222, 0x0008, 0x0800,
+		0, 0, 0, 0
+	};
+	public class PercussionComboBoxModel implements ComboBoxModel<String> {
+		private int note_no;
+		public PercussionComboBoxModel(int default_note_no) {
+			note_no = default_note_no;
+		}
+		// ComboBoxModel
+		public Object getSelectedItem() {
+			return note_no + ": " +
+				MIDISpec.PERCUSSION_NAMES[note_no - MIDISpec.MIN_PERCUSSION_NUMBER];
+		}
+		public void setSelectedItem(Object anItem) {
+			String name = (String)anItem;
+			int i = MIDISpec.MIN_PERCUSSION_NUMBER;
+			for( String pname : MIDISpec.PERCUSSION_NAMES ) {
+				if( name.equals(i + ": " + pname) ) {
+					note_no = i; return;
+				}
+				i++;
+			}
+		}
+		// ListModel
+		public String getElementAt(int index) {
+			return (index + MIDISpec.MIN_PERCUSSION_NUMBER) + ": "
+					+ MIDISpec.PERCUSSION_NAMES[index];
+		}
+		public int getSize() {
+			return MIDISpec.PERCUSSION_NAMES.length;
+		}
+		public void addListDataListener(ListDataListener l) { }
+		public void removeListDataListener(ListDataListener l) { }
+		// Methods
+		public int getSelectedNoteNo() {
+			return note_no;
+		}
+		public void setSelectedNoteNo(int note_no) {
+			this.note_no = note_no;
+		}
+	}
+
+	public DrumTrackSpec(int ch, String name) {
+		super(ch,name);
+		for( int i=0; i<defaultPercussions.length; i++ ) {
+			models[i] = new PercussionComboBoxModel(defaultPercussions[i]);
+		}
+	}
+
+	public void addDrums( ChordProgression cp ) {
+		int i;
+		long tick;
+		for( ChordProgression.Line line : cp.lines ) { // 行単位の処理
+			for( ChordProgression.Measure measure : line ) { // 小節単位の処理
+				if( measure.ticks_per_beat == null )
+					continue;
+				ChordProgression.TickRange range = measure.getRange();
+				int mask;
+				for(
+						tick = range.start_tick_pos, mask = 0x8000;
+						tick < range.end_tick_pos;
+						tick += minNoteTicks, mask >>>= 1
+						) {
+					for( i=0; i<beat_patterns.length; i++ ) {
+						if( (beat_patterns[i] & mask) == 0 )
+							continue;
+						addNote(
+								tick, tick+10,
+								models[i].getSelectedNoteNo(),
+								velocity
+								);
+					}
+				}
+			}
+		}
+	}
+}
