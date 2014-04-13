@@ -80,17 +80,17 @@ public enum SymbolLanguage {
 	public int majorCo5Of(String noteSymbol) {
 		if( Objects.requireNonNull(
 			noteSymbol,
-			"Note symbol must not be null"
+			"Musical note symbol must not be null"
 		).isEmpty() ) {
 			throw new IllegalArgumentException(
-				"Empty note symbol specified"
+				"Empty musical note symbol specified"
 			);
 		}
 		char topChar = noteSymbol.charAt(0);
 		int co5 = notes.indexOf(topChar);
 		if( co5 < 0 ) {
 			throw new IllegalArgumentException(
-				"Unknown note symbol " + noteSymbol
+				"Invalid musical note symbol "+noteSymbol+", not in "+notes
 			);
 		}
 		co5--;

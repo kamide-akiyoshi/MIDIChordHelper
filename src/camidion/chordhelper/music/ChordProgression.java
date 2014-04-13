@@ -294,51 +294,52 @@ public class ChordProgression {
 		if( source_text == null ) return;
 		Measure measure;
 		Line line;
-		String[] lines_src, measures_src, elements_src;
-		Chord last_chord = null;
-		String key_regex = "^Key(\\s*):(\\s*)";
+		String[] linesSrc, measuresSrc, elementsSrc;
+		Chord lastChord = null;
+		String keyHeaderRegex = "^Key(\\s*):(\\s*)";
+		String keyValueRegex = "[A-G]+.*$";
 		//
 		// キーであるかどうか見分けるためのパターン
-		Pattern key_match_pattern = Pattern.compile(
-				key_regex+".*$", Pattern.CASE_INSENSITIVE
-				);
+		Pattern keyMatchPattern = Pattern.compile(
+			keyHeaderRegex + keyValueRegex,
+			Pattern.CASE_INSENSITIVE
+		);
 		// キーのヘッダーを取り除くためのパターン
-		Pattern key_repl_pattern = Pattern.compile(
-				key_regex, Pattern.CASE_INSENSITIVE
-				);
+		Pattern keyReplPattern = Pattern.compile(
+			keyHeaderRegex, Pattern.CASE_INSENSITIVE
+		);
 		//
-		lines_src = source_text.split("[\r\n]+");
+		linesSrc = source_text.split("[\r\n]+");
 		lines = new Vector<Line>();
-		for( String line_src : lines_src ) {
-			measures_src = line_src.split("\\|");
-			if( measures_src.length > 0 ) {
-				String key_string = measures_src[0].trim();
-				if( key_match_pattern.matcher(key_string).matches() ) {
-					key = new Key(
-							key_repl_pattern.matcher(key_string).replaceFirst("")
-							);
-					// System.out.println("Key = " + key);
-					continue;
+		for( String line_src : linesSrc ) {
+			measuresSrc = line_src.split("\\|");
+			if( measuresSrc.length > 0 ) {
+				String keyString = measuresSrc[0].trim();
+				if( keyMatchPattern.matcher(keyString).matches() ) {
+					try {
+						key = new Key(keyReplPattern.matcher(keyString).replaceFirst(""));
+						continue;
+					} catch( Exception e ) {
+						e.printStackTrace();
+					}
 				}
 			}
 			line = new Line();
-			for( String measure_src : measures_src ) {
-				elements_src = measure_src.split("[ \t]+");
+			for( String measureSrc : measuresSrc ) {
+				elementsSrc = measureSrc.split("[ \t]+");
 				measure = new Measure();
-				for( String element_src : elements_src ) {
-					if( element_src.isEmpty() ) continue;
-					if( element_src.equals("%") ) {
+				for( String elementSrc : elementsSrc ) {
+					if( elementSrc.isEmpty() ) continue;
+					if( elementSrc.equals("%") ) {
 						if( measure.addBeat() == 0 ) {
-							measure.add( new ChordStroke(last_chord) );
+							measure.add( new ChordStroke(lastChord) );
 						}
 						continue;
 					}
 					try {
-						measure.add( new ChordStroke(
-								last_chord = new Chord(element_src)
-								));
+						measure.add(new ChordStroke(lastChord = new Chord(elementSrc)));
 					} catch( IllegalArgumentException ex ) {
-						measure.add( new Lyrics(element_src) );
+						measure.add( new Lyrics(elementSrc) );
 					}
 				}
 				line.add(measure);
@@ -353,7 +354,7 @@ public class ChordProgression {
 	}
 
 	// コード進行の移調
-	public void transpose(int chromatic_offset) {
+	public void transpose(int chromaticOffset) {
 		for( Line line : lines ) {
 			for( Measure measure : line ) {
 				for( int i=0; i<measure.size(); i++ ) {
@@ -365,13 +366,13 @@ public class ChordProgression {
 						// キーが未設定のときは、最初のコードから推測して設定
 						if( key == null ) key = new Key( new_chord );
 						//
-						new_chord.transpose( chromatic_offset, key );
+						new_chord.transpose( chromaticOffset, key );
 						measure.set( i, new ChordStroke( new_chord, cs.beat_length ) );
 					}
 				}
 			}
 		}
-		key.transpose(chromatic_offset);
+		key.transpose(chromaticOffset);
 	}
 	// 異名同音の♭と＃を切り替える
 	public void toggleEnharmonically() {
@@ -475,12 +476,17 @@ public class ChordProgression {
 	}
 	/**
 	 * 小節数、トラック仕様、コード進行をもとに MIDI シーケンスを生成します。
+	 * @param ppq 分解能（pulse per quarter）
+	 * @param startMeasure 開始小節位置
+	 * @param endMeasure 終了小節位置
+	 * @param firstTrack 最初のトラックの仕様
+	 * @param trackSpecs 残りのトラックの仕様
 	 * @return MIDIシーケンス
 	 */
 	public Sequence toMidiSequence(
-		int ppq, int start_measure_pos, int end_measure_pos,
-		FirstTrackSpec first_track,
-		Vector<AbstractNoteTrackSpec> track_specs
+		int ppq, int startMeasure, int endMeasure,
+		FirstTrackSpec firstTrack,
+		Vector<AbstractNoteTrackSpec> trackSpecs
 	) {
 		Sequence seq;
 		try {
@@ -490,25 +496,25 @@ public class ChordProgression {
 			return null;
 		}
 		// マスタートラックの生成
-		if( first_track == null ) {
-			first_track = new FirstTrackSpec();
+		if( firstTrack == null ) {
+			firstTrack = new FirstTrackSpec();
 		}
-		first_track.key = this.key;
-		first_track.createTrack( seq, start_measure_pos, end_measure_pos );
+		firstTrack.key = this.key;
+		firstTrack.createTrack( seq, startMeasure, endMeasure );
 		//
 		// 中身がなければここで終了
-		if( lines == null || track_specs == null ) return seq;
+		if( lines == null || trackSpecs == null ) return seq;
 		//
 		// コード進行の中に時間軸（MIDI tick）を書き込む
-		setTickPositions( first_track );
+		setTickPositions(firstTrack);
 		//
 		// コードのテキストと歌詞を書き込む
-		setChordSymbolTextTo( first_track );
-		setLyricsTo( first_track );
+		setChordSymbolTextTo(firstTrack);
+		setLyricsTo(firstTrack);
 		//
 		// 残りのトラックを生成
-		for( AbstractNoteTrackSpec ts : track_specs ) {
-			ts.createTrack( seq, first_track );
+		for( AbstractNoteTrackSpec ts : trackSpecs ) {
+			ts.createTrack(seq, firstTrack);
 			if( ts instanceof DrumTrackSpec ) {
 				((DrumTrackSpec)ts).addDrums(this);
 			}

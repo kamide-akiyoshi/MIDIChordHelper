@@ -203,10 +203,10 @@ public class Chord implements Cloneable {
 	}
 	//
 	// コードネームの文字列が示すコードに置き換えます。
-	public Chord setChordSymbol(String chord_symbol) {
+	public Chord setChordSymbol(String chordSymbol) {
 		//
 		// 分数コードの分子と分母に分ける
-		String parts[] = chord_symbol.trim().split("(/|on)");
+		String parts[] = chordSymbol.trim().split("(/|on)");
 		if( parts.length == 0 ) {
 			return this;
 		}

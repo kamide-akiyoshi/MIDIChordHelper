@@ -157,7 +157,7 @@ public class NewSequenceDialog extends JDialog {
 						addActionListener(new ActionListener() {
 							@Override
 							public void actionPerformed(ActionEvent e) {
-								ChordProgression cp = getChordProgression();
+								ChordProgression cp = createChordProgression();
 								cp.transpose(1);
 								setChordProgression(cp);
 							}
@@ -168,7 +168,7 @@ public class NewSequenceDialog extends JDialog {
 						addActionListener(new ActionListener() {
 							@Override
 							public void actionPerformed(ActionEvent e) {
-								ChordProgression cp = getChordProgression();
+								ChordProgression cp = createChordProgression();
 								cp.transpose(-1);
 								setChordProgression(cp);
 							}
@@ -179,7 +179,7 @@ public class NewSequenceDialog extends JDialog {
 						addActionListener(new ActionListener() {
 							@Override
 							public void actionPerformed(ActionEvent e) {
-								ChordProgression cp = getChordProgression();
+								ChordProgression cp = createChordProgression();
 								cp.toggleEnharmonically();
 								setChordProgression(cp);
 							}
@@ -190,7 +190,7 @@ public class NewSequenceDialog extends JDialog {
 						addActionListener(new ActionListener() {
 							@Override
 							public void actionPerformed(ActionEvent e) {
-								ChordProgression cp = getChordProgression();
+								ChordProgression cp = createChordProgression();
 								cp.toggleKeyMajorMinor();
 								setChordProgression(cp);
 							}
@@ -211,7 +211,7 @@ public class NewSequenceDialog extends JDialog {
 	 * 新しいコード進行を生成して返します。
 	 * @return 新しいコード進行
 	 */
-	private ChordProgression getChordProgression() {
+	private ChordProgression createChordProgression() {
 		return new ChordProgression(chordText.getText());
 	}
 	/**
@@ -224,7 +224,7 @@ public class NewSequenceDialog extends JDialog {
 			tempoSelecter.getTempoByteArray(),
 			timesigSelecter.getByteArray()
 		);
-		return getChordProgression().toMidiSequence(
+		return createChordProgression().toMidiSequence(
 			(int)ppqComboBox.getSelectedItem(),
 			measureSelecter.getStartMeasurePosition(),
 			measureSelecter.getEndMeasurePosition(),

@@ -243,33 +243,30 @@ public class AnoGakkiPane extends JComponent {
 		}
 	}
 	/**
-	 * クリックされたコンポーネントの中央から図形の表示を開始します。
-	 * @param source 元のAWTコンポーネント
-	 * @param clickedComponent クリックされたコンポーネント
-	 */
-	public void start(Component source, Component clickedComponent) {
-		start(source,clickedComponent.getBounds());
-	}
-	/**
 	 * 指定された長方形領域（{@link Rectangle}）の中央から図形の表示を開始します。
-	 * @param source 元のAWTコンポーネント
-	 * @param rect 長方形領域
+	 * @param source AWTコンポーネント
+	 * @param rect AWTコンポーネント内の座標系を基準とした長方形領域
 	 */
 	public void start(Component source, Rectangle rect) {
 		Point point = rect.getLocation();
 		point.translate( rect.width/2, rect.height/2 );
-		start(source,point);
+		start(source, point);
 	}
 	private long prevStartedAt = System.nanoTime();
-	public void start(Component source, Point clickedPoint) {
+	/**
+	 * 指定された場所から図形の表示を開始します。
+	 * @param source AWTコンポーネント
+	 * @param point AWTコンポーネント内の座標系を基準とした場所
+	 */
+	public void start(Component source, Point point) {
 		long startedAt = System.nanoTime();
 		if( startedAt - prevStartedAt < (INTERVAL_MS * 1000)*50 ) {
 			// 頻繁すぎる場合は無視する
 			return;
 		}
-		clickedPoint = SwingUtilities.convertPoint(source, clickedPoint, this);
+		point = SwingUtilities.convertPoint(source, point, this);
 		synchronized (queue) {
-			queue.add(new QueueEntry(clickedPoint));
+			queue.add(new QueueEntry(point));
 		}
 		timer.start();
 		prevStartedAt = startedAt;

@@ -188,9 +188,9 @@ public class PianoKeyboard extends JComponent {
 						chordDisplay.setNote(noteNumber, isRhythmPart());
 				}
 				if( anoGakkiPane != null ) {
-					PianoKey piano_key = getPianoKey(noteNumber);
-					if( piano_key != null )
-						anoGakkiPane.start(PianoKeyboard.this, piano_key.indicator);
+					PianoKey pienoKey = getPianoKey(noteNumber);
+					if( pienoKey != null )
+						anoGakkiPane.start(PianoKeyboard.this, pienoKey.indicator);
 				}
 			}
 			if( chordMatrix != null ) {

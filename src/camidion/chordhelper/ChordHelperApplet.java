@@ -284,7 +284,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public static class VersionInfo {
 		public static final String	NAME = "MIDI Chord Helper";
-		public static final String	VERSION = "Ver.20140413.2";
+		public static final String	VERSION = "Ver.20140413.3";
 		public static final String	COPYRIGHT = "Copyright (C) 2004-2014";
 		public static final String	AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String	URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";
@@ -398,10 +398,10 @@ public class ChordHelperApplet extends JApplet {
 	private JToggleButton anoGakkiToggleButton;
 
 	public void init() {
-		String imageIconPath = "images/midichordhelper.png";
+		String imageIconPath = "midichordhelper.png";
 		URL imageIconUrl = getClass().getResource(imageIconPath);
 		if( imageIconUrl == null ) {
-			System.out.println("icon "+imageIconPath+" not found");
+			System.out.println("Icon image "+imageIconPath+" not found");
 			imageIcon = null;
 		}
 		else {
@@ -474,9 +474,8 @@ public class ChordHelperApplet extends JApplet {
 			addActionListener(new ActionListener() {
 				@Override
 				public void actionPerformed(ActionEvent event) {
-					chordMatrix.setSelectedChord(
-						event.getActionCommand().trim().split("[ \t\r\n]")[0]
-					);
+					String symbol = event.getActionCommand().trim().split("[ \t\r\n]")[0];
+					chordMatrix.setSelectedChord(symbol);
 				}
 			});
 		}};
@@ -593,11 +592,12 @@ public class ChordHelperApplet extends JApplet {
 				add( Box.createHorizontalStrut(2) );
 				add( enterButtonLabel = new ChordButtonLabel("Enter",chordMatrix) {{
 					addMouseListener(new MouseAdapter() {
-						public void mousePressed(MouseEvent e) {
-							if( (e.getModifiersEx() & InputEvent.BUTTON3_DOWN_MASK) != 0 ) // RightClicked
-								chordMatrix.setSelectedChord( (Chord)null );
-							else
-								chordMatrix.setSelectedChord( lyricDisplay.getText() );
+						public void mousePressed(MouseEvent event) {
+							if( (event.getModifiersEx() & InputEvent.BUTTON3_DOWN_MASK) != 0 ) // RightClicked
+								chordMatrix.setSelectedChord((Chord)null);
+							else {
+								chordMatrix.setSelectedChord(lyricDisplay.getText());
+							}
 						}
 					});
 				}});
@@ -812,8 +812,7 @@ public class ChordHelperApplet extends JApplet {
 		// あの楽器っぽい表示
 		if( keyboardPanel.keyboardCenterPanel.keyboard.anoGakkiPane != null ) {
 			JComponent btn = chordMatrix.getSelectedButton();
-			if( btn != null )
-				anoGakkiPane.start(chordMatrix,btn);
+			if( btn != null ) anoGakkiPane.start(chordMatrix, btn.getBounds());
 		}
 		// コードボタンからのコードを、カポつき演奏キーからオリジナルキーへ変換
 		Key originalKey = chordMatrix.getKeySignatureCapo();

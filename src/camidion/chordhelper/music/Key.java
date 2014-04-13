@@ -73,9 +73,10 @@ public class Key implements Cloneable {
 	}
 	/**
 	 * C、Am のような文字列から調を構築します。
-	 * @param keySymbol キーを表す文字列
+	 * @param keySymbol 調を表す文字列
+	 * @throw IllegalArgumentException 調を表す文字列が不正の場合
 	 */
-	public Key(String keySymbol) {
+	public Key(String keySymbol) throws IllegalArgumentException {
 		boolean isMinor = keySymbol.matches(".*m");
 		setKey((new NoteSymbol(keySymbol)).toCo5(isMinor), isMinor);
 	}

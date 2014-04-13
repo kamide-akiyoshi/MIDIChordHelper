@@ -27,6 +27,7 @@ import javax.swing.ComboBoxModel;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 
 import camidion.chordhelper.ButtonIcon;
@@ -1136,13 +1137,21 @@ public class ChordMatrix extends JPanel
 		selectedChordCapo = (chord == null ? null : chord.clone().transpose(capo,key));
 		fireChordChanged();
 	}
-	public void setSelectedChord( String chordSymbol ) {
+	/**
+	 * コードを文字列で設定します。
+	 * @param chordSymbol コード名
+	 */
+	public void setSelectedChord(String chordSymbol) throws IllegalArgumentException {
 		Chord chord = null;
 		if( chordSymbol != null && ! chordSymbol.isEmpty() ) {
 			try {
 				chord = new Chord(chordSymbol);
-			} catch( IllegalArgumentException ex ) {
-				// 手入力で誤ったコードが入力されても無視
+			} catch( IllegalArgumentException e ) {
+				JOptionPane.showMessageDialog(
+					null, e.getMessage(), "Input error",
+					JOptionPane.ERROR_MESSAGE
+				);
+				return;
 			}
 		}
 		setSelectedChord(chord);
