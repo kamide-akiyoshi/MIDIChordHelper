@@ -10,7 +10,7 @@ import javax.sound.midi.Sequencer;
 import javax.sound.midi.Synthesizer;
 
 import camidion.chordhelper.ChordHelperApplet;
-import camidion.chordhelper.midieditor.MidiEditor;
+import camidion.chordhelper.midieditor.MidiSequenceEditor;
 
 /**
  * MIDIデバイスモデルリスト
@@ -19,7 +19,7 @@ public class MidiDeviceModelList extends Vector<MidiConnecterListModel> {
 	/**
 	 * MIDIエディタ
 	 */
-	public MidiEditor editorDialog;
+	public MidiSequenceEditor editorDialog;
 	/**
 	 * MIDIエディタモデル
 	 */
@@ -53,7 +53,7 @@ public class MidiDeviceModelList extends Vector<MidiConnecterListModel> {
 			);
 			e.printStackTrace();
 		}
-		editorDialog = new MidiEditor(sequencerModel);
+		editorDialog = new MidiSequenceEditor(sequencerModel);
 		editorDialogModel = addMidiDevice(editorDialog.getVirtualMidiDevice());
 		for( MidiDevice.Info info : devInfos ) {
 			MidiDevice device;

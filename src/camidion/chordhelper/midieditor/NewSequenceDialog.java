@@ -93,7 +93,7 @@ public class NewSequenceDialog extends JDialog {
 		@Override
 		public void actionPerformed(ActionEvent e) { setVisible(true); }
 	};
-	private MidiEditor midiEditor;
+	private MidiSequenceEditor midiEditor;
 	/**
 	 * MIDIシーケンス生成アクション
 	 */
@@ -111,7 +111,7 @@ public class NewSequenceDialog extends JDialog {
 	 * 新しいMIDIシーケンスを生成するダイアログを構築します。
 	 * @param midiEditor シーケンス追加先エディタ
 	 */
-	public NewSequenceDialog(MidiEditor midiEditor) {
+	public NewSequenceDialog(MidiSequenceEditor midiEditor) {
 		this.midiEditor = midiEditor;
 		trackSpecPanel.setChannels(midiEditor.getVirtualMidiDevice().getChannels());
 		setTitle("Generate new sequence - " + ChordHelperApplet.VersionInfo.NAME);

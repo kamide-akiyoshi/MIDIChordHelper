@@ -82,7 +82,7 @@ import camidion.chordhelper.music.MIDISpec;
  *	Copyright (C) 2006-2014 Akiyoshi Kamide
  *	http://www.yk.rim.or.jp/~kamide/music/chordhelper/
  */
-public class MidiEditor extends JDialog implements DropTargetListener {
+public class MidiSequenceEditor extends JDialog implements DropTargetListener {
 	private static VirtualMidiDevice virtualMidiDevice = new AbstractVirtualMidiDevice() {
 		{
 			info = new MyInfo();
@@ -473,7 +473,7 @@ public class MidiEditor extends JDialog implements DropTargetListener {
 		 * シーケンスを削除するアクション
 		 */
 		Action deleteSequenceAction = getModel().new SelectedSequenceAction(
-			"Delete", MidiEditor.deleteIcon,
+			"Delete", MidiSequenceEditor.deleteIcon,
 			"Delete selected MIDI sequence - 選択した曲をプレイリストから削除"
 		) {
 			@Override
@@ -526,7 +526,7 @@ public class MidiEditor extends JDialog implements DropTargetListener {
 						// プレイリスト上でファイル名が入っていたら、それを初期選択
 						setSelectedFile(selectedFile = new File(filename));
 					}
-					int saveOption = showSaveDialog(MidiEditor.this);
+					int saveOption = showSaveDialog(MidiSequenceEditor.this);
 					if( saveOption != JFileChooser.APPROVE_OPTION ) {
 						// 保存ダイアログでキャンセルされた場合
 						return;
@@ -562,7 +562,7 @@ public class MidiEditor extends JDialog implements DropTargetListener {
 				}
 				@Override
 				public void actionPerformed(ActionEvent event) {
-					int openOption = showOpenDialog(MidiEditor.this);
+					int openOption = showOpenDialog(MidiSequenceEditor.this);
 					if(openOption == JFileChooser.APPROVE_OPTION) {
 						try  {
 							getModel().addSequence(getSelectedFile());
@@ -1207,10 +1207,10 @@ public class MidiEditor extends JDialog implements DropTargetListener {
 	}
 
 	/**
-	 * 新しい {@link MidiEditor} を構築します。
+	 * 新しい {@link MidiSequenceEditor} を構築します。
 	 * @param deviceModelList MIDIデバイスモデルリスト
 	 */
-	public MidiEditor(MidiSequencerModel sequencerModel) {
+	public MidiSequenceEditor(MidiSequencerModel sequencerModel) {
 		// テーブルモデルとテーブルビューの生成
 		sequenceListTable = new SequenceListTable(
 			new PlaylistTableModel(sequencerModel)

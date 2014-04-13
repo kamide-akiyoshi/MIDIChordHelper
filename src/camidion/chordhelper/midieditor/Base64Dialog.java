@@ -27,7 +27,7 @@ import camidion.chordhelper.ChordHelperApplet;
  */
 public class Base64Dialog extends JDialog {
 	private Base64TextArea base64TextArea = new Base64TextArea(8,56);
-	private MidiEditor midiEditor;
+	private MidiSequenceEditor midiEditor;
 	/**
 	 * Base64デコードアクション
 	 */
@@ -102,7 +102,7 @@ public class Base64Dialog extends JDialog {
 	 * Base64テキスト入力ダイアログを構築します。
 	 * @param midiEditor 親画面となるMIDIエディタ
 	 */
-	public Base64Dialog(MidiEditor midiEditor) {
+	public Base64Dialog(MidiSequenceEditor midiEditor) {
 		this.midiEditor = midiEditor;
 		setTitle("Base64-encoded MIDI sequence - " + ChordHelperApplet.VersionInfo.NAME);
 		try {
