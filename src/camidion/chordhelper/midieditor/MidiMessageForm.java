@@ -104,7 +104,7 @@ public class MidiMessageForm extends JPanel implements ActionListener {
 			{
 				for( int i = 0; i<=0x7F; i++ ) addElement(
 					String.format(
-						"0x%02X : %s", i, MIDISpec.instrument_names[i]
+						"0x%02X : %s", i, MIDISpec.instrumentNames[i]
 					)
 				);
 			}

@@ -17,8 +17,8 @@ public class MidiProgramFamilySelecter extends JComboBox<String> implements Acti
 		programSelecter = mps;
 		setMaximumRowCount(17);
 		addItem("Program:");
-		for( int i=0; i < MIDISpec.instrument_family_names.length; i++ ) {
-			addItem( (i*8) + "-" + (i*8+7) + ": " + MIDISpec.instrument_family_names[i] );
+		for( int i=0; i < MIDISpec.instrumentFamilyNames.length; i++ ) {
+			addItem( (i*8) + "-" + (i*8+7) + ": " + MIDISpec.instrumentFamilyNames[i] );
 		}
 		setSelectedIndex(0);
 		addActionListener(this);

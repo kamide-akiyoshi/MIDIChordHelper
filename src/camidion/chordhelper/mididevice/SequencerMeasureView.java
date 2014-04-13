@@ -9,8 +9,8 @@ import javax.swing.JPanel;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
+import camidion.chordhelper.midieditor.SequenceTickIndex;
 import camidion.chordhelper.midieditor.SequenceTrackListTableModel;
-import camidion.chordhelper.midieditor.TrackEventListTableModel.SequenceTickIndex;
 
 /**
  * 小節表示ビュー

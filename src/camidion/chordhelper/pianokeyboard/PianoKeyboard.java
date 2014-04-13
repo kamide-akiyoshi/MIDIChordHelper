@@ -38,6 +38,7 @@ import camidion.chordhelper.mididevice.AbstractVirtualMidiDevice;
 import camidion.chordhelper.mididevice.VirtualMidiDevice;
 import camidion.chordhelper.midieditor.DefaultMidiChannelComboBoxModel;
 import camidion.chordhelper.midieditor.MidiChannelButtonSelecter;
+import camidion.chordhelper.midieditor.MidiChannelComboBoxModel;
 import camidion.chordhelper.music.Chord;
 import camidion.chordhelper.music.Key;
 import camidion.chordhelper.music.MIDISpec;
@@ -54,11 +55,11 @@ public class PianoKeyboard extends JComponent {
 	/**
 	 * 最小オクターブ幅
 	 */
-	public static final int	MIN_OCTAVES = 3;
+	public static final int	MIN_OCTAVE_WIDTH = 3;
 	/**
 	 * 最大オクターブ幅（切り上げ）
 	 */
-	public static final int	MAX_OCTAVES = MIDISpec.MAX_NOTE_NO / 12 + 1;
+	public static final int	MAX_OCTAVE_WIDTH = MIDISpec.MAX_NOTE_NO / 12 + 1;
 	/**
 	 * 濃いピンク
 	 */
@@ -73,7 +74,7 @@ public class PianoKeyboard extends JComponent {
 	/** ダークモードならtrue */
 	boolean		isDark = false;
 
-	/** すべてのピアノキー */
+	/** 表示中のすべてのピアノキー */
 	private PianoKey[] keys;
 	/** 黒鍵 */
 	private PianoKey[] blackKeys;
@@ -94,7 +95,7 @@ public class PianoKeyboard extends JComponent {
 	/**
 	 * MIDIチャンネル選択コンボボックスモデル
 	 */
-	public DefaultMidiChannelComboBoxModel
+	public MidiChannelComboBoxModel
 		midiChComboboxModel = new DefaultMidiChannelComboBoxModel();
 
 	/**
@@ -261,12 +262,12 @@ public class PianoKeyboard extends JComponent {
 		{
 			info = new MyInfo();
 			// 受信してMIDIチャンネルの状態を管理する
-			setReceiver(
-				new AbstractMidiStatus() {{
+			setReceiver(new AbstractMidiStatus() {
+				{
 					for( int i=0; i<MIDISpec.MAX_CHANNELS; i++ )
 						add(new MidiChannelStatus(i));
-				}}
-			);
+				}
+			});
 		}
 	};
 
@@ -461,7 +462,7 @@ public class PianoKeyboard extends JComponent {
 		addKeyListener(mkl);
 		int octaves = getPerferredOctaves();
 		octaveSizeModel = new DefaultBoundedRangeModel(
-			octaves, 0, MIN_OCTAVES, MAX_OCTAVES
+			octaves, 0, MIN_OCTAVE_WIDTH, MAX_OCTAVE_WIDTH
 		) {{
 			addChangeListener(new ChangeListener() {
 				public void stateChanged(ChangeEvent e) {
@@ -471,7 +472,7 @@ public class PianoKeyboard extends JComponent {
 			});
 		}};
 		octaveRangeModel = new DefaultBoundedRangeModel(
-			(MAX_OCTAVES - octaves) / 2, octaves, 0, MAX_OCTAVES
+			(MAX_OCTAVE_WIDTH - octaves) / 2, octaves, 0, MAX_OCTAVE_WIDTH
 		) {{
 			addChangeListener(new ChangeListener() {
 				public void stateChanged(ChangeEvent e) {
@@ -789,11 +790,11 @@ public class PianoKeyboard extends JComponent {
 	public int getOctaves() { return octaveSizeModel.getValue(); }
 	private int getPerferredOctaves() {
 		int octaves = Math.round( (float)getWidth() / WIDTH_PER_OCTAVE );
-		if( octaves > MAX_OCTAVES ) {
-			octaves = MAX_OCTAVES;
+		if( octaves > MAX_OCTAVE_WIDTH ) {
+			octaves = MAX_OCTAVE_WIDTH;
 		}
-		else if( octaves < MIN_OCTAVES ) {
-			octaves = MIN_OCTAVES;
+		else if( octaves < MIN_OCTAVE_WIDTH ) {
+			octaves = MIN_OCTAVE_WIDTH;
 		}
 		return octaves;
 	}
@@ -817,7 +818,7 @@ public class PianoKeyboard extends JComponent {
 			whiteKeySize.height / 6
 		);
 		octaveRangeModel.setExtent( octaves );
-		octaveRangeModel.setValue( (MAX_OCTAVES - octaves) / 2 );
+		octaveRangeModel.setValue( (MAX_OCTAVE_WIDTH - octaves) / 2 );
 		WIDTH_PER_OCTAVE = keyboard_size.width / octaves;
 		//
 		// Construct piano-keys

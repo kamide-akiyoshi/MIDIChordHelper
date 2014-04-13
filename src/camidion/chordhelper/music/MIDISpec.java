@@ -1,4 +1,5 @@
 package camidion.chordhelper.music;
+import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -8,9 +9,10 @@ import javax.sound.midi.MidiEvent;
 import javax.sound.midi.MidiMessage;
 import javax.sound.midi.Sequence;
 import javax.sound.midi.ShortMessage;
+import javax.sound.midi.SysexMessage;
 import javax.sound.midi.Track;
 /**
- * MIDI仕様
+ * MIDI仕様（システムエクスクルーシブ含む）
  */
 public class MIDISpec {
 	public static final int MAX_CHANNELS = 16;
@@ -282,31 +284,36 @@ public class MIDISpec {
 	//
 	// Control Change / Channel Mode Message
 	//
-	public static String getControllerName( int controller_number ) {
-		if( controller_number < 0x00 ) {
+	/**
+	 * コントロールチェンジの名前を返します。
+	 * @param controllerNumber コントローラ番号
+	 * @return コントロールチェンジの名前
+	 */
+	public static String getControllerName( int controllerNumber ) {
+		if( controllerNumber < 0x00 ) {
 			return null;
 		}
-		else if( controller_number < 0x20 ) {
-			String s = controller_names_0[controller_number];
+		else if( controllerNumber < 0x20 ) {
+			String s = controllerNames0[controllerNumber];
 			if( s != null ) s += " (MSB)";
 			return s;
 		}
-		else if( controller_number < 0x40 ) {
-			String s = controller_names_0[controller_number - 0x20];
+		else if( controllerNumber < 0x40 ) {
+			String s = controllerNames0[controllerNumber - 0x20];
 			if( s != null ) s += " (LSB)";
 			return s;
 		}
-		else if( controller_number < 0x78 ) {
-			return controller_momentary_switch_names[controller_number - 0x40];
+		else if( controllerNumber < 0x78 ) {
+			return controllerMomentarySwitchNames[controllerNumber - 0x40];
 		}
-		else if( controller_number < 0x80 ) {
-			return controller_mode_message_names[controller_number - 0x78];
+		else if( controllerNumber < 0x80 ) {
+			return controllerModeMessageNames[controllerNumber - 0x78];
 		}
 		else {
 			return null;
 		}
 	}
-	private static final String controller_names_0[] = {
+	private static final String controllerNames0[] = {
 		//
 		// 0x00-0x0F (MSB)
 		"Bank Select", "Modulation Depth", "Breath Controller", null,
@@ -323,7 +330,7 @@ public class MIDISpec {
 		//
 		// 0x20-0x3F (LSB)
 	};
-	private static final String controller_momentary_switch_names[] = {
+	private static final String controllerMomentarySwitchNames[] = {
 		//
 		// 0x40-0x4F
 		"Damper Pedal (Sustain)", "Portamento",
@@ -359,7 +366,7 @@ public class MIDISpec {
 		null, null, null, null,
 		null, null, null, null
 	};
-	private static final String controller_mode_message_names[] = {
+	private static final String controllerModeMessageNames[] = {
 		// 0x78-0x7F
 		"All Sound OFF", "Reset All Controllers",
 		"Local Control", "All Notes OFF",
@@ -393,7 +400,7 @@ public class MIDISpec {
 	/**
 	 * General MIDI の楽器ファミリー名の配列
 	 */
-	public static final String instrument_family_names[] = {
+	public static final String instrumentFamilyNames[] = {
 
 		"Piano",
 		"Chrom.Percussion",
@@ -416,7 +423,7 @@ public class MIDISpec {
 	/**
 	 * General MIDI の楽器名（プログラムチェンジのプログラム名）の配列
 	 */
-	public static final String instrument_names[] = {
+	public static final String instrumentNames[] = {
 		"Acoustic Grand Piano",
 		"Bright Acoustic Piano",
 		"Electric Grand Piano",
@@ -642,4 +649,458 @@ public class MIDISpec {
 		"わ","うぃ","うぇ","を",
 		"ん","ん","ん","ん","ん",
 	};
+	/**
+	 * MIDIメッセージの内容を文字列で返します。
+	 * @param msg MIDIメッセージ
+	 * @param charset MIDIメタメッセージに含まれるテキストデータの文字コード
+	 * @return MIDIメッセージの内容を表す文字列
+	 */
+	public static String msgToString(MidiMessage msg, Charset charset) {
+		String str = "";
+		if( msg instanceof ShortMessage ) {
+			ShortMessage shortmsg = (ShortMessage)msg;
+			int status = msg.getStatus();
+			String statusName = getStatusName(status);
+			int data1 = shortmsg.getData1();
+			int data2 = shortmsg.getData2();
+			if( isChannelMessage(status) ) {
+				int channel = shortmsg.getChannel();
+				String channelPrefix = "Ch."+(channel+1) + ": ";
+				String statusPrefix = (
+					statusName == null ? String.format("status=0x%02X",status) : statusName
+				) + ": ";
+				int cmd = shortmsg.getCommand();
+				switch( cmd ) {
+				case ShortMessage.NOTE_OFF:
+				case ShortMessage.NOTE_ON:
+					str += channelPrefix + statusPrefix + data1;
+					str += ":[";
+					if( MIDISpec.isRhythmPart(channel) ) {
+						str += getPercussionName(data1);
+					}
+					else {
+						str += NoteSymbol.noteNoToSymbol(data1);
+					}
+					str +="] Velocity=" + data2;
+					break;
+				case ShortMessage.POLY_PRESSURE:
+					str += channelPrefix + statusPrefix + "Note=" + data1 + " Pressure=" + data2;
+					break;
+				case ShortMessage.PROGRAM_CHANGE:
+					str += channelPrefix + statusPrefix + data1 + ":[" + instrumentNames[data1] + "]";
+					if( data2 != 0 ) str += " data2=" + data2;
+					break;
+				case ShortMessage.CHANNEL_PRESSURE:
+					str += channelPrefix + statusPrefix + data1;
+					if( data2 != 0 ) str += " data2=" + data2;
+					break;
+				case ShortMessage.PITCH_BEND:
+				{
+					int val = ((data1 & 0x7F) | ((data2 & 0x7F) << 7));
+					str += channelPrefix + statusPrefix + ( (val-8192) * 100 / 8191) + "% (" + val + ")";
+				}
+				break;
+				case ShortMessage.CONTROL_CHANGE:
+				{
+					// Control / Mode message name
+					String ctrl_name = getControllerName(data1);
+					str += channelPrefix + (data1 < 0x78 ? "CtrlChg: " : "ModeMsg: ");
+					if( ctrl_name == null ) {
+						str += " No.=" + data1 + " Value=" + data2;
+						return str;
+					}
+					str += ctrl_name;
+					//
+					// Controller's value
+					switch( data1 ) {
+					case 0x40: case 0x41: case 0x42: case 0x43: case 0x45:
+						str += " " + ( data2==0x3F?"OFF":data2==0x40?"ON":data2 );
+						break;
+					case 0x44: // Legato Footswitch
+						str += " " + ( data2==0x3F?"Normal":data2==0x40?"Legato":data2 );
+						break;
+					case 0x7A: // Local Control
+						str += " " + ( data2==0x00?"OFF":data2==0x7F?"ON":data2 );
+						break;
+					default:
+						str += " " + data2;
+						break;
+					}
+				}
+				break;
+
+				default:
+					// Never reached here
+					break;
+				}
+			}
+			else { // System Message
+				str += (statusName == null ? ("status="+status) : statusName );
+				str += " (" + data1 + "," + data2 + ")";
+			}
+			return str;
+		}
+		else if( msg instanceof MetaMessage ) {
+			MetaMessage metamsg = (MetaMessage)msg;
+			byte[] msgdata = metamsg.getData();
+			int msgtype = metamsg.getType();
+			str += "Meta: ";
+			String meta_name = getMetaName(msgtype);
+			if( meta_name == null ) {
+				str += "Unknown MessageType="+msgtype + " Values=(";
+				for( byte b : msgdata ) str += String.format( " %02X", b );
+				str += " )";
+				return str;
+			}
+			// Add the message type name
+			str += meta_name;
+			//
+			// Add the text data
+			if( hasMetaText(msgtype) ) {
+				str +=" ["+(new String(msgdata,charset))+"]";
+				return str;
+			}
+			// Add the numeric data
+			switch(msgtype) {
+			case 0x00: // Sequence Number (for MIDI Format 2）
+				if( msgdata.length == 2 ) {
+					str += String.format(
+						": %04X",
+						((msgdata[0] & 0xFF) << 8) | (msgdata[1] & 0xFF)
+					);
+					break;
+				}
+				str += ": Size not 2 byte : data=(";
+				for( byte b : msgdata ) str += String.format( " %02X", b );
+				str += " )";
+				break;
+			case 0x20: // MIDI Ch.Prefix
+			case 0x21: // MIDI Output Port
+				if( msgdata.length == 1 ) {
+					str += String.format( ": %02X", msgdata[0] & 0xFF );
+					break;
+				}
+				str += ": Size not 1 byte : data=(";
+				for( byte b : msgdata ) str += String.format( " %02X", b );
+				str += " )";
+				break;
+			case 0x51: // Tempo
+				str += ": " + byteArrayToQpmTempo( msgdata ) + "[QPM] (";
+				for( byte b : msgdata ) str += String.format( " %02X", b );
+				str += " )";
+				break;
+			case 0x54: // SMPTE Offset
+				if( msgdata.length == 5 ) {
+					str += ": "
+						+ (msgdata[0] & 0xFF) + ":"
+						+ (msgdata[1] & 0xFF) + ":"
+						+ (msgdata[2] & 0xFF) + "."
+						+ (msgdata[3] & 0xFF) + "."
+						+ (msgdata[4] & 0xFF);
+					break;
+				}
+				str += ": Size not 5 byte : data=(";
+				for( byte b : msgdata ) str += String.format( " %02X", b );
+				str += " )";
+				break;
+			case 0x58: // Time Signature
+				if( msgdata.length == 4 ) {
+					str +=": " + msgdata[0] + "/" + (1 << msgdata[1]);
+					str +=", "+msgdata[2]+"[clk/beat], "+msgdata[3]+"[32nds/24clk]";
+					break;
+				}
+				str += ": Size not 4 byte : data=(";
+				for( byte b : msgdata ) str += String.format( " %02X", b );
+				str += " )";
+				break;
+			case 0x59: // Key Signature
+				if( msgdata.length == 2 ) {
+					Key key = new Key(msgdata);
+					str += ": " + key.signatureDescription();
+					str += " (" + key.toStringIn(SymbolLanguage.NAME) + ")";
+					break;
+				}
+				str += ": Size not 2 byte : data=(";
+				for( byte b : msgdata ) str += String.format( " %02X", b );
+				str += " )";
+				break;
+			case 0x7F: // Sequencer Specific Meta Event
+				str += " (";
+				for( byte b : msgdata ) str += String.format( " %02X", b );
+				str += " )";
+				break;
+			}
+			return str;
+		}
+		else if( msg instanceof SysexMessage ) {
+			SysexMessage sysexmsg = (SysexMessage)msg;
+			int status = sysexmsg.getStatus();
+			byte[] msgdata = sysexmsg.getData();
+			int dataBytePos = 1;
+			switch( status ) {
+			case SysexMessage.SYSTEM_EXCLUSIVE:
+				str += "SysEx: ";
+				break;
+			case SysexMessage.SPECIAL_SYSTEM_EXCLUSIVE:
+				str += "SysEx(Special): ";
+				break;
+			default:
+				str += "SysEx: Invalid (status="+status+") ";
+				break;
+			}
+			if( msgdata.length < 1 ) {
+				str += " Invalid data size: " + msgdata.length;
+				return str;
+			}
+			int manufacturerId = (int)(msgdata[0] & 0xFF);
+			int deviceId = (int)(msgdata[1] & 0xFF);
+			int modelId = (int)(msgdata[2] & 0xFF);
+			String manufacturerName = SYSEX_MANUFACTURER_NAMES.get(manufacturerId);
+			if( manufacturerName == null ) {
+				manufacturerName = String.format("[Manufacturer code %02X]", msgdata[0]);
+			}
+			str += manufacturerName + String.format(" (DevID=0x%02X)", deviceId);
+			switch( manufacturerId ) {
+			case 0x7E: // Non-Realtime Universal
+				dataBytePos++;
+				int sub_id_1 = modelId;
+				int sub_id_2 = (int)(msgdata[3] & 0xFF);
+				switch( sub_id_1 ) {
+				case 0x09: // General MIDI (GM)
+					switch( sub_id_2 ) {
+					case 0x01: str += " GM System ON"; return str;
+					case 0x02: str += " GM System OFF"; return str;
+					}
+					break;
+				default:
+					break;
+				}
+				break;
+				// case 0x7F: // Realtime Universal
+			case 0x41: // Roland
+				dataBytePos++;
+				switch( modelId ) {
+				case 0x42:
+					str += " [GS]"; dataBytePos++;
+					if( msgdata[3]==0x12 ) {
+						str += "DT1:"; dataBytePos++;
+						switch( msgdata[4] ) {
+						case 0x00:
+							if( msgdata[5]==0x00 ) {
+								if( msgdata[6]==0x7F ) {
+									if( msgdata[7]==0x00 ) {
+										str += " [88] System Mode Set (Mode 1: Single Module)"; return str;
+									}
+									else if( msgdata[7]==0x01 ) {
+										str += " [88] System Mode Set (Mode 2: Double Module)"; return str;
+									}
+								}
+							}
+							else if( msgdata[5]==0x01 ) {
+								int port = (msgdata[7] & 0xFF);
+								str += String.format(
+										" [88] Ch.Msg Rx Port: Block=0x%02X, Port=%s",
+										msgdata[6],
+										port==0?"A":port==1?"B":String.format("0x%02X",port)
+										);
+								return str;
+							}
+							break;
+						case 0x40:
+							if( msgdata[5]==0x00 ) {
+								switch( msgdata[6] ) {
+								case 0x00: str += " Master Tune: "; dataBytePos += 3; break;
+								case 0x04: str += " Master Volume: "; dataBytePos += 3; break;
+								case 0x05: str += " Master Key Shift: "; dataBytePos += 3; break;
+								case 0x06: str += " Master Pan: "; dataBytePos += 3; break;
+								case 0x7F:
+									switch( msgdata[7] ) {
+									case 0x00: str += " GS Reset"; return str;
+									case 0x7F: str += " Exit GS Mode"; return str;
+									}
+									break;
+								}
+							}
+							else if( msgdata[5]==0x01 ) {
+								switch( msgdata[6] ) {
+								// case 0x00: str += ""; break;
+								// case 0x10: str += ""; break;
+								case 0x30: str += " Reverb Macro: "; dataBytePos += 3; break;
+								case 0x31: str += " Reverb Character: "; dataBytePos += 3; break;
+								case 0x32: str += " Reverb Pre-LPF: "; dataBytePos += 3; break;
+								case 0x33: str += " Reverb Level: "; dataBytePos += 3; break;
+								case 0x34: str += " Reverb Time: "; dataBytePos += 3; break;
+								case 0x35: str += " Reverb Delay FB: "; dataBytePos += 3; break;
+								case 0x36: str += " Reverb Chorus Level: "; dataBytePos += 3; break;
+								case 0x37: str += " [88] Reverb Predelay Time: "; dataBytePos += 3; break;
+								case 0x38: str += " Chorus Macro: "; dataBytePos += 3; break;
+								case 0x39: str += " Chorus Pre-LPF: "; dataBytePos += 3; break;
+								case 0x3A: str += " Chorus Level: "; dataBytePos += 3; break;
+								case 0x3B: str += " Chorus FB: "; dataBytePos += 3; break;
+								case 0x3C: str += " Chorus Delay: "; dataBytePos += 3; break;
+								case 0x3D: str += " Chorus Rate: "; dataBytePos += 3; break;
+								case 0x3E: str += " Chorus Depth: "; dataBytePos += 3; break;
+								case 0x3F: str += " Chorus Send Level To Reverb: "; dataBytePos += 3; break;
+								case 0x40: str += " [88] Chorus Send Level To Delay: "; dataBytePos += 3; break;
+								case 0x50: str += " [88] Delay Macro: "; dataBytePos += 3; break;
+								case 0x51: str += " [88] Delay Pre-LPF: "; dataBytePos += 3; break;
+								case 0x52: str += " [88] Delay Time Center: "; dataBytePos += 3; break;
+								case 0x53: str += " [88] Delay Time Ratio Left: "; dataBytePos += 3; break;
+								case 0x54: str += " [88] Delay Time Ratio Right: "; dataBytePos += 3; break;
+								case 0x55: str += " [88] Delay Level Center: "; dataBytePos += 3; break;
+								case 0x56: str += " [88] Delay Level Left: "; dataBytePos += 3; break;
+								case 0x57: str += " [88] Delay Level Right: "; dataBytePos += 3; break;
+								case 0x58: str += " [88] Delay Level: "; dataBytePos += 3; break;
+								case 0x59: str += " [88] Delay FB: "; dataBytePos += 3; break;
+								case 0x5A: str += " [88] Delay Send Level To Reverb: "; dataBytePos += 3; break;
+								}
+							}
+							else if( msgdata[5]==0x02 ) {
+								switch( msgdata[6] ) {
+								case 0x00: str += " [88] EQ Low Freq: "; dataBytePos += 3; break;
+								case 0x01: str += " [88] EQ Low Gain: "; dataBytePos += 3; break;
+								case 0x02: str += " [88] EQ High Freq: "; dataBytePos += 3; break;
+								case 0x03: str += " [88] EQ High Gain: "; dataBytePos += 3; break;
+								}
+							}
+							else if( msgdata[5]==0x03 ) {
+								if( msgdata[6] == 0x00 ) {
+									str += " [Pro] EFX Type: "; dataBytePos += 3;
+								}
+								else if( msgdata[6] >= 0x03 && msgdata[6] <= 0x16 ) {
+									str += String.format(" [Pro] EFX Param %d", msgdata[6]-2 );
+									dataBytePos += 3;
+								}
+								else if( msgdata[6] == 0x17 ) {
+									str += " [Pro] EFX Send Level To Reverb: "; dataBytePos += 3;
+								}
+								else if( msgdata[6] == 0x18 ) {
+									str += " [Pro] EFX Send Level To Chorus: "; dataBytePos += 3;
+								}
+								else if( msgdata[6] == 0x19 ) {
+									str += " [Pro] EFX Send Level To Delay: "; dataBytePos += 3;
+								}
+								else if( msgdata[6] == 0x1B ) {
+									str += " [Pro] EFX Ctrl Src1: "; dataBytePos += 3;
+								}
+								else if( msgdata[6] == 0x1C ) {
+									str += " [Pro] EFX Ctrl Depth1: "; dataBytePos += 3;
+								}
+								else if( msgdata[6] == 0x1D ) {
+									str += " [Pro] EFX Ctrl Src2: "; dataBytePos += 3;
+								}
+								else if( msgdata[6] == 0x1E ) {
+									str += " [Pro] EFX Ctrl Depth2: "; dataBytePos += 3;
+								}
+								else if( msgdata[6] == 0x1F ) {
+									str += " [Pro] EFX Send EQ Switch: "; dataBytePos += 3;
+								}
+							}
+							else if( (msgdata[5] & 0xF0) == 0x10 ) {
+								int ch = (msgdata[5] & 0x0F);
+								if( ch <= 9 ) ch--; else if( ch == 0 ) ch = 9;
+								if( msgdata[6]==0x02 ) {
+									str += String.format(
+											" Rx Ch: Part=%d(0x%02X) Ch=0x%02X", (ch+1),  msgdata[5], msgdata[7]
+											);
+									return str;
+								}
+								else if( msgdata[6]==0x15 ) {
+									String map;
+									switch( msgdata[7] ) {
+									case 0: map = " NormalPart"; break;
+									case 1: map = " DrumMap1"; break;
+									case 2: map = " DrumMap2"; break;
+									default: map = String.format("0x%02X",msgdata[7]); break;
+									}
+									str += String.format(
+										" Rhythm Part: Ch=%d(0x%02X) Map=%s",
+										(ch+1), msgdata[5],
+										map
+									);
+									return str;
+								}
+							}
+							else if( (msgdata[5] & 0xF0) == 0x40 ) {
+								int ch = (msgdata[5] & 0x0F);
+								if( ch <= 9 ) ch--; else if( ch == 0 ) ch = 9;
+								int dt = (msgdata[7] & 0xFF);
+								if( msgdata[6]==0x20 ) {
+									str += String.format(
+										" [88] EQ: Ch=%d(0x%02X) %s",
+										(ch+1), msgdata[5],
+										dt==0 ? "OFF" : dt==1 ? "ON" : String.format("0x%02X",dt)
+									);
+								}
+								else if( msgdata[6]==0x22 ) {
+									str += String.format(
+										" [Pro] Part EFX Assign: Ch=%d(0x%02X) %s",
+										(ch+1), msgdata[5],
+										dt==0 ? "ByPass" : dt==1 ? "EFX" : String.format("0x%02X",dt)
+									);
+								}
+							}
+							break;
+						} // [4]
+					} // [3] [DT1]
+					break; // [GS]
+				case 0x45:
+					str += " [GS-LCD]"; dataBytePos++;
+					if( msgdata[3]==0x12 ) {
+						str += " [DT1]"; dataBytePos++;
+						if( msgdata[4]==0x10 && msgdata[5]==0x00 && msgdata[6]==0x00 ) {
+							dataBytePos += 3;
+							str += " Disp [" +(new String(
+								msgdata, dataBytePos, msgdata.length - dataBytePos - 2
+							))+ "]";
+						}
+					} // [3] [DT1]
+					break;
+				case 0x14: str += " [D-50]"; dataBytePos++; break;
+				case 0x16: str += " [MT-32]"; dataBytePos++; break;
+				} // [2] model_id
+				break;
+			case 0x43: // Yamaha
+				if( (deviceId & 0xF0) == 0x10 && modelId == 0x4C ) {
+					str += " [XG]Dev#="+(deviceId & 0x0F);
+					dataBytePos += 2;
+					if( msgdata[3]==0 && msgdata[4]==0 && msgdata[5]==0x7E && msgdata[6]==0 ) {
+						str += " System ON";
+						return str;
+					}
+
+				}
+				else if( deviceId == 0x79 && modelId == 9 ) {
+					str += " [eVocaloid]";
+					dataBytePos += 2;
+					if( msgdata[3]==0x11 && msgdata[4]==0x0A && msgdata[5]==0 ) {
+						String pronounce = MIDISpec.nsx39LyricElements[msgdata[6]];
+						str += " pronounce["+pronounce+"]";
+						return str;
+					}
+				}
+				break;
+			default:
+				break;
+			}
+			int i;
+			str += " data=(";
+			for( i = dataBytePos; i<msgdata.length-1; i++ ) {
+				str += String.format( " %02X", msgdata[i] );
+			}
+			if( i < msgdata.length && (int)(msgdata[i] & 0xFF) != 0xF7 ) {
+				str+=" [ Invalid EOX " + String.format( "%02X", msgdata[i] ) + " ]";
+			}
+			str += " )";
+			return str;
+		}
+		byte[] msg_data = msg.getMessage();
+		str += "(";
+		for( byte b : msg_data ) {
+			str += String.format( " %02X", b );
+		}
+		str += " )";
+		return str;
+	}
+	public static boolean isRhythmPart(int ch) { return (ch == 9); }
 }

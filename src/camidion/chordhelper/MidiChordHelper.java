@@ -30,7 +30,7 @@ import javax.swing.event.TableModelEvent;
 import javax.swing.event.TableModelListener;
 
 import camidion.chordhelper.mididevice.MidiSequencerModel;
-import camidion.chordhelper.midieditor.SequenceListTableModel;
+import camidion.chordhelper.midieditor.PlaylistTableModel;
 import camidion.chordhelper.midieditor.SequenceTrackListTableModel;
 
 /**
@@ -118,7 +118,7 @@ public class MidiChordHelper {
 			@Override
 			public void tableChanged(TableModelEvent e) {
 				int col = e.getColumn();
-				if( col == SequenceListTableModel.Column.FILENAME.ordinal() ) {
+				if( col == PlaylistTableModel.Column.FILENAME.ordinal() ) {
 					setFilenameToTitle();
 				}
 				if( col == TableModelEvent.ALL_COLUMNS ) {

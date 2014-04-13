@@ -131,7 +131,7 @@ public class ChordTextField extends JTextField implements MetaEventListener {
 	/**
 	 * 現在のコード
 	 */
-	Chord currentChord = null;
+	private Chord currentChord = null;
 	/**
 	 * コードを追加します。
 	 * @param chord コード

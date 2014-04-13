@@ -23,8 +23,8 @@ import javax.swing.event.ListDataEvent;
 import javax.swing.event.ListDataListener;
 
 import camidion.chordhelper.ButtonIcon;
+import camidion.chordhelper.midieditor.SequenceTickIndex;
 import camidion.chordhelper.midieditor.SequenceTrackListTableModel;
-import camidion.chordhelper.midieditor.TrackEventListTableModel.SequenceTickIndex;
 
 /**
  * MIDIシーケンサモデル

@@ -4,8 +4,6 @@ import javax.swing.SpinnerNumberModel;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
-import camidion.chordhelper.midieditor.TrackEventListTableModel.SequenceTickIndex;
-
 /**
  * tick位置入力モデル Mesausre:[xxxx] Beat:[xx] ExTick:[xxx]
  */
@@ -50,7 +48,8 @@ public class TickPositionModel implements ChangeListener {
 	}
 	public void setSequenceIndex(SequenceTickIndex sequenceTickIndex) {
 		this.sequenceTickIndex = sequenceTickIndex;
-		extraTickModel.setMaximum( 4 * sequenceTickIndex.getResolution() - 1 );
+		int resolution = sequenceTickIndex.getSourceSequence().getResolution();
+		extraTickModel.setMaximum( 4 * resolution - 1 );
 	}
 	public long getTickPosition() {
 		return tickModel.getNumber().longValue();

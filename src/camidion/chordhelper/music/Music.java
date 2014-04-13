@@ -1,10 +1,7 @@
 package camidion.chordhelper.music;
 
-// for ComboBoxModel implementation
-
-
 /**
- * 音楽理論・自動作曲アルゴリズムの Java 実装
+ * 音楽理論ユーティリティ
  *
  * Circle-Of-Fifth based music theory functions
  *
@@ -17,9 +14,10 @@ public class Music {
 	public static final int SEMITONES_PER_OCTAVE = 12;
 	/**
 	 * MIDIノート番号と、
-	 * メジャーキー基準の五度圏インデックス値との間で変換を行います。
-	 * <p>このメソッドで両方向の変換に対応しています。
-	 * 内部的には、元の値が奇数のときに6（１オクターブ12半音の半分）を足し、
+	 * メジャーキー基準の五度圏インデックス値との間の変換を行います。
+	 *
+	 * <p>双方向の変換に対応しています。
+	 * 内部的には、元の値が奇数のときに6（半オクターブ）を足し、
 	 * 偶数のときにそのまま返しているだけです。
 	 * 値は0～11であるとは限りません。その範囲に補正したい場合は
 	 *  {@link #mod12(int)} を併用します。
@@ -28,7 +26,7 @@ public class Music {
 	 * @param n 元の値
 	 * @return 変換結果
 	 */
-	public static int reverseCo5(int n) { // Swap C D E <-> Gb Ab Bb
+	public static int reverseCo5(int n) {
 		return (n & 1) == 0 ? n : n+6 ;
 	}
 	/**
@@ -46,55 +44,48 @@ public class Music {
 		return qn < 0 ? qn + 12 : qn ;
 	}
 	/**
-	 * 指定のMIDIノート番号に対応する、A=440Hzとした場合の音の周波数を返します。
-	 * @param noteNo MIDIノート番号
-	 * @return A=440Hzとした場合の音の周波数[Hz]
+	 * 指定されたMIDIノート番号の音の周波数を返します。
+	 * チューニングは A=440Hz とします。
+	 *
+	 * @param noteNumber MIDIノート番号
+	 * @return 音の周波数[Hz]
 	 */
-	public static double noteNoToFrequency(int noteNo) {
-		// Returns frequency when A=440Hz
-		return 55 * Math.pow( 2, (double)(noteNo - 33)/12 );
+	public static double noteNumberToFrequency(int noteNumber) {
+		return 55 * Math.pow( 2, (double)(noteNumber - 33)/12 );
 	}
 	/**
 	 * MIDIノート番号の示す音階が、
-	 * 指定された調（五度圏インデックス値）におけるスケール構成音に
-	 * 該当するか調べます。
+	 * 指定された調（五度圏インデックス値）におけるメジャースケールまたは
+	 * ナチュラルマイナースケールの構成音に該当するか調べます。
 	 *
-	 * <p>例えば、調の五度圏インデックス値を０にした場合（ハ長調またはイ短調）、
-	 * 白鍵のときにtrue、黒鍵のときにfalseを返すので、鍵盤の描画にも便利です。
+	 * <p>調の五度圏インデックス値に０（ハ長調またはイ短調）を指定すると、
+	 * 白鍵のときにtrue、黒鍵のときにfalseを返します。
 	 * </p>
 	 *
-	 * <p>キーは五度圏インデックス値しか指定しないので、
-	 * マイナーキーの場合は
-	 * 平行調のメジャーキーと同じスケール構成音をもつ
-	 * ナチュラルマイナースケールとして判断されます。
-	 * ハーモニックマイナー、メロディックマイナースケールについては、
-	 * 別途それを指定する手段がないと判別できないので対応していません。
-	 * </p>
-	 *
-	 * @param noteNo 調べたい音階のノート番号
-	 * @param keyCo5 キーの五度圏インデックス値
+	 * @param noteNumber 調べたい音階のノート番号
+	 * @param keyCo5 調の五度圏インデックス値
 	 * @return スケール構成音のときtrue、スケールを外れている場合false
 	 */
-	public static boolean isOnScale(int noteNo, int keyCo5) {
-		return mod12(reverseCo5(noteNo) - keyCo5 + 1) < 7 ;
+	public static boolean isOnScale(int noteNumber, int keyCo5) {
+		return mod12(reverseCo5(noteNumber) - keyCo5 + 1) < 7 ;
 	}
 	/**
 	 * 五度圏インデックス値で表された音階を、
 	 * 指定された半音数だけ移調した結果を返します。
 	 *
 	 * <p>移調する半音数が０の場合、指定の五度圏インデックス値をそのまま返します。
-	 * 例えば五度圏インデックス値が +7 の場合、-5 ではなく +7 を返します。
+	 * それ以外の場合、移調結果を -5 ～ 6 の範囲で返します。
 	 * </p>
 	 *
 	 * @param co5 五度圏インデックス値
 	 * @param chromaticOffset 移調する半音数
-	 * @return 移調結果（-5 ～ 6）
+	 * @return 移調結果
 	 */
 	public static int transposeCo5(int co5, int chromaticOffset) {
 		if( chromaticOffset == 0 ) return co5;
-		int transposed_co5 = mod12( co5 + reverseCo5(chromaticOffset) );
-		if( transposed_co5 > 6 ) transposed_co5 -= Music.SEMITONES_PER_OCTAVE;
-		return transposed_co5; // range: -5 to +6
+		int transposedCo5 = mod12( co5 + reverseCo5(chromaticOffset) );
+		if( transposedCo5 > 6 ) transposedCo5 -= Music.SEMITONES_PER_OCTAVE;
+		return transposedCo5;
 	}
 	/**
 	 * 指定の五度圏インデックス値の真裏にあたる値を返します。

@@ -10,12 +10,17 @@ import camidion.chordhelper.music.MIDISpec;
 public class DefaultMidiChannelComboBoxModel extends DefaultComboBoxModel<Integer>
 	implements MidiChannelComboBoxModel
 {
+	/**
+	 * MIDIチャンネル選択コンボボックスモデルを構築します。
+	 */
 	public DefaultMidiChannelComboBoxModel() {
 		for(int ch = 1; ch <= MIDISpec.MAX_CHANNELS ; ch++) addElement(ch);
 	}
+	@Override
 	public int getSelectedChannel() {
 		return getIndexOf(getSelectedItem());
 	}
+	@Override
 	public void setSelectedChannel(int channel) {
 		setSelectedItem(getElementAt(channel));
 	}

@@ -21,42 +21,44 @@ public class DrumTrackSpec extends AbstractNoteTrackSpec {
 		0, 0, 0, 0
 	};
 	public class PercussionComboBoxModel implements ComboBoxModel<String> {
-		private int note_no;
-		public PercussionComboBoxModel(int default_note_no) {
-			note_no = default_note_no;
+		private int noteNumber;
+		public PercussionComboBoxModel(int defaultNoteNumber) {
+			noteNumber = defaultNoteNumber;
 		}
-		// ComboBoxModel
+		public int getSelectedNoteNo() {
+			return noteNumber;
+		}
+		public void setSelectedNoteNo(int noteNumber) {
+			this.noteNumber = noteNumber;
+		}
+		@Override
 		public Object getSelectedItem() {
-			return note_no + ": " +
-				MIDISpec.PERCUSSION_NAMES[note_no - MIDISpec.MIN_PERCUSSION_NUMBER];
+			return noteNumber + ": " + MIDISpec.getPercussionName(noteNumber);
 		}
+		@Override
 		public void setSelectedItem(Object anItem) {
 			String name = (String)anItem;
 			int i = MIDISpec.MIN_PERCUSSION_NUMBER;
 			for( String pname : MIDISpec.PERCUSSION_NAMES ) {
 				if( name.equals(i + ": " + pname) ) {
-					note_no = i; return;
+					noteNumber = i; return;
 				}
 				i++;
 			}
 		}
-		// ListModel
+		@Override
 		public String getElementAt(int index) {
 			return (index + MIDISpec.MIN_PERCUSSION_NUMBER) + ": "
 					+ MIDISpec.PERCUSSION_NAMES[index];
 		}
+		@Override
 		public int getSize() {
 			return MIDISpec.PERCUSSION_NAMES.length;
 		}
+		@Override
 		public void addListDataListener(ListDataListener l) { }
+		@Override
 		public void removeListDataListener(ListDataListener l) { }
-		// Methods
-		public int getSelectedNoteNo() {
-			return note_no;
-		}
-		public void setSelectedNoteNo(int note_no) {
-			this.note_no = note_no;
-		}
 	}
 
 	public DrumTrackSpec(int ch, String name) {

@@ -62,10 +62,10 @@ import camidion.chordhelper.mididevice.SequencerTimeView;
 import camidion.chordhelper.mididevice.VirtualMidiDevice;
 import camidion.chordhelper.midieditor.Base64Dialog;
 import camidion.chordhelper.midieditor.KeySignatureLabel;
+import camidion.chordhelper.midieditor.SequenceTickIndex;
 import camidion.chordhelper.midieditor.SequenceTrackListTableModel;
 import camidion.chordhelper.midieditor.TempoSelecter;
 import camidion.chordhelper.midieditor.TimeSignatureSelecter;
-import camidion.chordhelper.midieditor.TrackEventListTableModel.SequenceTickIndex;
 import camidion.chordhelper.music.Chord;
 import camidion.chordhelper.music.Key;
 import camidion.chordhelper.music.Range;
@@ -284,7 +284,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public static class VersionInfo {
 		public static final String	NAME = "MIDI Chord Helper";
-		public static final String	VERSION = "Ver.20140413.1";
+		public static final String	VERSION = "Ver.20140413.2";
 		public static final String	COPYRIGHT = "Copyright (C) 2004-2014";
 		public static final String	AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String	URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";
@@ -559,13 +559,20 @@ public class ChordHelperApplet extends JApplet {
 						! (sequencer.isRunning() || sequencer.isRecording())
 					) {
 						MetaMessage msg;
-						msg = tickIndex.lastMetaMessageAt(SequenceTickIndex.TIME_SIGNATURE, tickPos);
+						msg = tickIndex.lastMetaMessageAt(
+							SequenceTickIndex.MetaMessageType.TIME_SIGNATURE, tickPos
+						);
 						timesigSelecter.setValue(msg==null ? null : msg.getData());
-						msg = tickIndex.lastMetaMessageAt(SequenceTickIndex.TEMPO, tickPos);
+						msg = tickIndex.lastMetaMessageAt(
+							SequenceTickIndex.MetaMessageType.TEMPO, tickPos
+						);
 						tempoSelecter.setTempo(msg==null ? null : msg.getData());
-						msg = tickIndex.lastMetaMessageAt(SequenceTickIndex.KEY_SIGNATURE, tickPos);
-						if( msg == null )
+						msg = tickIndex.lastMetaMessageAt(
+							SequenceTickIndex.MetaMessageType.KEY_SIGNATURE, tickPos
+						);
+						if( msg == null ) {
 							keysigLabel.clear();
+						}
 						else {
 							Key key = new Key(msg.getData());
 							keysigLabel.setKeySignature(key);
@@ -799,7 +806,7 @@ public class ChordHelperApplet extends JApplet {
 		if( playChord == null ) {
 			// もう鳴らさないので、歌詞表示に通知して終了
 			if( lyricDisplay != null )
-				lyricDisplay.currentChord = null;
+				lyricDisplay.appendChord(null);
 			return;
 		}
 		// あの楽器っぽい表示

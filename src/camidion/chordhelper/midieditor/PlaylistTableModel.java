@@ -37,7 +37,7 @@ import camidion.chordhelper.music.ChordProgression;
 /**
  * プレイリスト（MIDIシーケンスリスト）のテーブルデータモデル
  */
-public class SequenceListTableModel extends AbstractTableModel {
+public class PlaylistTableModel extends AbstractTableModel {
 	/**
 	 * MIDIシーケンサモデル
 	 */
@@ -62,7 +62,7 @@ public class SequenceListTableModel extends AbstractTableModel {
 	 * 新しいプレイリストのテーブルモデルを構築します。
 	 * @param sequencerModel MIDIシーケンサーモデル
 	 */
-	public SequenceListTableModel(MidiSequencerModel sequencerModel) {
+	public PlaylistTableModel(MidiSequencerModel sequencerModel) {
 		this.sequencerModel = sequencerModel;
 		//
 		// 秒位置を監視
@@ -361,12 +361,12 @@ public class SequenceListTableModel extends AbstractTableModel {
 	private SecondPosition secondPosition;
 	@Override
 	public Object getValueAt(int row, int column) {
-		SequenceListTableModel.Column c = Column.values()[column];
+		PlaylistTableModel.Column c = Column.values()[column];
 		return c == Column.NUMBER ? row : c.getValueOf(sequenceList.get(row));
 	}
 	@Override
 	public void setValueAt(Object val, int row, int column) {
-		SequenceListTableModel.Column c = Column.values()[column];
+		PlaylistTableModel.Column c = Column.values()[column];
 		switch(c) {
 		case FILENAME:
 			// ファイル名の変更

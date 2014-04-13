@@ -1,7 +1,8 @@
 package camidion.chordhelper.music;
 
 import java.awt.Color;
-import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Vector;
 
 import javax.swing.JLabel;
@@ -23,91 +24,95 @@ public class Chord implements Cloneable {
 		Color.green
 	};
 	/**
-	 * ルート音の半音差（ないのと同じ）
+	 * 音程差の半音オフセットのインデックス
 	 */
-	public static final int ROOT = 0;
+	public static enum OffsetIndex {
+		THIRD,
+		FIFTH,
+		SEVENTH,
+		NINTH,
+		ELEVENTH,
+		THIRTEENTH
+	}
 	/**
-	 * 長２度の半音差
+	 * 音程差
 	 */
-	public static final int SUS2 = 2;
-	/**
-	 * 短３度または増２度の半音差
-	 */
-	public static final int MINOR = 3;
-	/**
-	 * 長３度の半音差
-	 */
-	public static final int MAJOR = 4;
-	/**
-	 * 完全４度の半音差
-	 */
-	public static final int SUS4 = 5;	//
-	/**
-	 * 減５度または増４度の半音差（トライトーン ＝ 三全音 ＝ 半オクターブ）
-	 */
-	public static final int FLAT5 = 6;
-	/**
-	 * 完全５度の半音差
-	 */
-	public static final int PARFECT5 = 7;
-	/**
-	 * 増５度または短６度の半音差
-	 */
-	public static final int SHARP5 = 8;
-	/**
-	 * 長６度または減７度の半音差
-	 */
-	public static final int SIXTH = 9;
-	/**
-	 * 短７度の半音差
-	 */
-	public static final int SEVENTH = 10;
-	/**
-	 * 長７度の半音差
-	 */
-	public static final int MAJOR_SEVENTH = 11;
-	/**
-	 * 短９度（短２度の１オクターブ上）の半音差
-	 */
-	public static final int FLAT9 = 13;
-	/**
-	 * 長９度（長２度の１オクターブ上）の半音差
-	 */
-	public static final int NINTH = 14;
-	/**
-	 * 増９度（増２度の１オクターブ上）の半音差
-	 */
-	public static final int SHARP9 = 15;
-	/**
-	 * 完全１１度（完全４度の１オクターブ上）の半音差
-	 */
-	public static final int ELEVENTH = 17;
-	/**
-	 * 増１１度（増４度の１オクターブ上）の半音差
-	 */
-	public static final int SHARP11 = 18;
-	/**
-	 * 短１３度（短６度の１オクターブ上）の半音差
-	 */
-	public static final int FLAT13 = 20;
-	/**
-	 * 長１３度（長６度の１オクターブ上）の半音差
-	 */
-	public static final int THIRTEENTH = 21;
-	//
-	// index
-	public static final int THIRD_OFFSET	= 0;	// ３度
-	public static final int FIFTH_OFFSET	= 1;	// ５度
-	public static final int SEVENTH_OFFSET	= 2;	// ７度
-	public static final int NINTH_OFFSET	= 3;	// ９度
-	public static final int ELEVENTH_OFFSET	= 4;	// １１度
-	public static final int THIRTEENTH_OFFSET	= 5;	// １３度
+	public static enum Interval {
+
+		/** 長２度（major 2nd / sus2） */
+		SUS2(2, OffsetIndex.THIRD),
+		/** 短３度または増２度 */
+		MINOR(3, OffsetIndex.THIRD),
+		/** 長３度 */
+		MAJOR(4, OffsetIndex.THIRD),
+		/** 完全４度（parfect 4th / sus4） */
+		SUS4(5, OffsetIndex.THIRD),
+
+		/** 減５度または増４度（トライトーン ＝ 三全音 ＝ 半オクターブ） */
+		FLAT5(6, OffsetIndex.FIFTH),
+		/** 完全５度 */
+		PARFECT5(7, OffsetIndex.FIFTH),
+		/** 増５度または短６度 */
+		SHARP5(8, OffsetIndex.FIFTH),
+
+		/** 長６度または減７度 */
+		SIXTH(9, OffsetIndex.SEVENTH),
+		/** 短７度 */
+		SEVENTH(10, OffsetIndex.SEVENTH),
+		/** 長７度 */
+		MAJOR_SEVENTH(11, OffsetIndex.SEVENTH),
+
+		/** 短９度（短２度の１オクターブ上） */
+		FLAT9(13, OffsetIndex.NINTH),
+		/** 長９度（長２度の１オクターブ上） */
+		NINTH(14, OffsetIndex.NINTH),
+		/** 増９度（増２度の１オクターブ上） */
+		SHARP9(15, OffsetIndex.NINTH),
+
+		/** 完全１１度（完全４度の１オクターブ上） */
+		ELEVENTH(17, OffsetIndex.ELEVENTH),
+		/** 増１１度（増４度の１オクターブ上） */
+		SHARP11(18, OffsetIndex.ELEVENTH),
+
+		/** 短１３度（短６度の１オクターブ上） */
+		FLAT13(20, OffsetIndex.THIRTEENTH),
+		/** 長１３度（長６度の１オクターブ上） */
+		THIRTEENTH(21, OffsetIndex.THIRTEENTH);
+
+		private Interval(int offset, OffsetIndex offsetIndex) {
+			this.offset = offset;
+			this.offsetIndex = offsetIndex;
+		}
+		private OffsetIndex offsetIndex;
+		private int offset;
+		/**
+		 * 半音差を返します。
+		 * @return 半音差
+		 */
+		public int getChromaticOffset() { return offset; }
+		/**
+		 * 対応するインデックスを返します。
+		 * @return 対応するインデックス
+		 */
+		public OffsetIndex getChromaticOffsetIndex() {
+			return offsetIndex;
+		}
+	}
 	/**
 	 * デフォルトの半音値（メジャーコード固定）
 	 */
-	public static int DEFAULT_OFFSETS[] = {
-		MAJOR, PARFECT5, ROOT, ROOT, ROOT, ROOT,
-	};
+	public static Map<OffsetIndex, Interval>
+		DEFAULT_OFFSETS = new HashMap<OffsetIndex, Interval>() {
+			{
+				Interval itv;
+				itv = Interval.MAJOR; put(itv.getChromaticOffsetIndex(), itv);
+				itv = Interval.PARFECT5; put(itv.getChromaticOffsetIndex(), itv);
+			}
+		};
+	/**
+	 * 現在有効な構成音の音程（ルート音を除く）
+	 */
+	public Map<OffsetIndex, Interval> offsets = new HashMap<>(DEFAULT_OFFSETS);
 	/**
 	 * このコードのルート音
 	 */
@@ -116,11 +121,7 @@ public class Chord implements Cloneable {
 	 * このコードのベース音（ルート音と異なる場合は分数コードの分母）
 	 */
 	private NoteSymbol bassNoteSymbol;
-	/**
-	 * 現在の半音値
-	 */
-	public int offsets[] =
-		Arrays.copyOf(DEFAULT_OFFSETS, DEFAULT_OFFSETS.length);
+
 	/**
 	 * コード C major を構築します。
 	 */
@@ -144,9 +145,9 @@ public class Chord implements Cloneable {
 	 */
 	public Chord(Key key) {
 		int keyCo5 = key.toCo5();
-		if( key.majorMinor() == MINOR ) {
+		if( key.majorMinor() == Key.MINOR ) {
 			keyCo5 += 3;
-			setMinorThird();
+			set(Interval.MINOR);
 		}
 		setRoot(new NoteSymbol(keyCo5));
 		setBass(new NoteSymbol(keyCo5));
@@ -164,7 +165,7 @@ public class Chord implements Cloneable {
 	@Override
 	public Chord clone() {
 		Chord newChord = new Chord(rootNoteSymbol);
-		newChord.offsets = Arrays.copyOf( offsets, offsets.length );
+		newChord.offsets = new HashMap<>(offsets);
 		newChord.setBass(bassNoteSymbol);
 		return newChord;
 	}
@@ -186,34 +187,20 @@ public class Chord implements Cloneable {
 		this.bassNoteSymbol = rootNoteSymbol;
 		return this;
 	}
-	// コードの種類を設定します。
-	//
-	public void setMajorThird() { offsets[THIRD_OFFSET] = MAJOR; }
-	public void setMinorThird() { offsets[THIRD_OFFSET] = MINOR; }
-	public void setSus4() { offsets[THIRD_OFFSET] = SUS4; }
-	public void setSus2() { offsets[THIRD_OFFSET] = SUS2; }
-	//
-	public void setParfectFifth() { offsets[FIFTH_OFFSET] = PARFECT5; }
-	public void setFlattedFifth() { offsets[FIFTH_OFFSET] = FLAT5; }
-	public void setSharpedFifth() { offsets[FIFTH_OFFSET] = SHARP5; }
-	//
-	public void clearSeventh() { offsets[SEVENTH_OFFSET] = ROOT; }
-	public void setMajorSeventh() { offsets[SEVENTH_OFFSET] = MAJOR_SEVENTH; }
-	public void setSeventh() { offsets[SEVENTH_OFFSET] = SEVENTH; }
-	public void setSixth() { offsets[SEVENTH_OFFSET] = SIXTH; }
-	//
-	public void clearNinth() { offsets[NINTH_OFFSET] = ROOT; }
-	public void setNinth() { offsets[NINTH_OFFSET] = NINTH; }
-	public void setSharpedNinth() { offsets[NINTH_OFFSET] = SHARP9; }
-	public void setFlattedNinth() { offsets[NINTH_OFFSET] = FLAT9; }
-	//
-	public void clearEleventh() { offsets[ELEVENTH_OFFSET] = ROOT; }
-	public void setEleventh() { offsets[ELEVENTH_OFFSET] = ELEVENTH; }
-	public void setSharpedEleventh() { offsets[ELEVENTH_OFFSET] = SHARP11; }
-	//
-	public void clearThirteenth() { offsets[THIRTEENTH_OFFSET] = ROOT; }
-	public void setThirteenth() { offsets[THIRTEENTH_OFFSET] = THIRTEENTH; }
-	public void setFlattedThirteenth() { offsets[THIRTEENTH_OFFSET] = FLAT13; }
+	/**
+	 * コードの種類を設定します。
+	 * @param itv 設定する音程
+	 */
+	public void set(Interval itv) {
+		offsets.put(itv.getChromaticOffsetIndex(), itv);
+	}
+	/**
+	 * コードに設定した音程をクリアします。
+	 * @param index 半音差インデックス
+	 */
+	public void clear(OffsetIndex index) {
+		offsets.remove(index);
+	}
 	//
 	// コードネームの文字列が示すコードに置き換えます。
 	public Chord setChordSymbol(String chord_symbol) {
@@ -238,54 +225,69 @@ public class Chord implements Cloneable {
 			suffixParen = suffixParts[1];
 			suffix = suffixParts[0];
 		}
+		Interval itv;
 		//
 		// +5 -5 aug dim の判定
-		offsets[FIFTH_OFFSET] = (
-			suffix.matches( ".*(\\+5|aug|#5).*" ) ? SHARP5 :
-			suffix.matches( ".*(-5|dim|b5).*" ) ? FLAT5 :
-			PARFECT5
+		set(
+			suffix.matches(".*(\\+5|aug|#5).*") ? Interval.SHARP5 :
+			suffix.matches(".*(-5|dim|b5).*") ? Interval.FLAT5 :
+			Interval.PARFECT5
 		);
+		//
 		// 6 7 M7 の判定
-		offsets[SEVENTH_OFFSET] = (
-			suffix.matches( ".*(M7|maj7|M9|maj9).*" ) ? MAJOR_SEVENTH :
-			suffix.matches( ".*(6|dim[79]).*" ) ? SIXTH :
-			suffix.matches( ".*7.*" ) ? SEVENTH :
-			ROOT
-		);
+		itv = suffix.matches(".*(M7|maj7|M9|maj9).*") ? Interval.MAJOR_SEVENTH :
+			suffix.matches(".*(6|dim[79]).*") ? Interval.SIXTH :
+			suffix.matches(".*7.*") ? Interval.SEVENTH :
+			null;
+		if(itv==null)
+			clear(OffsetIndex.SEVENTH);
+		else
+			set(itv);
+		//
 		// マイナーの判定。maj7 と間違えないように比較
-		offsets[THIRD_OFFSET] = (
-			(suffix.matches( ".*m.*" ) && ! suffix.matches(".*ma.*") ) ? MINOR :
-			suffix.matches( ".*sus4.*" ) ? SUS4 :
-			MAJOR
+		set(
+			(suffix.matches(".*m.*") && ! suffix.matches(".*ma.*") ) ? Interval.MINOR :
+			suffix.matches(".*sus4.*") ? Interval.SUS4 :
+			Interval.MAJOR
 		);
+		//
 		// 9th の判定
-		if( suffix.matches( ".*9.*" ) ) {
-			offsets[NINTH_OFFSET] = NINTH;
+		if( suffix.matches(".*9.*") ) {
+			set(Interval.NINTH);
 			if( ! suffix.matches( ".*(add9|6|M9|maj9|dim9).*") ) {
-				offsets[SEVENTH_OFFSET] = SEVENTH;
+				set(Interval.SEVENTH);
 			}
 		}
 		else {
-			offsets[NINTH_OFFSET] =
-			offsets[ELEVENTH_OFFSET] =
-			offsets[THIRTEENTH_OFFSET] = ROOT;
+			offsets.remove(OffsetIndex.NINTH);
+			offsets.remove(OffsetIndex.ELEVENTH);
+			offsets.remove(OffsetIndex.THIRTEENTH);
 			//
 			// () の中を , で分ける
 			String parts_in_paren[] = suffixParen.split(",");
 			for( String p : parts_in_paren ) {
-				if( p.matches("(\\+9|#9)") ) offsets[NINTH_OFFSET] = SHARP9;
-				else if( p.matches("(-9|b9)") ) offsets[NINTH_OFFSET] = FLAT9;
-				else if( p.matches("9") ) offsets[NINTH_OFFSET] = NINTH;
+				if( p.matches("(\\+9|#9)") )
+					offsets.put(OffsetIndex.NINTH, Interval.SHARP9);
+				else if( p.matches("(-9|b9)") )
+					offsets.put(OffsetIndex.NINTH, Interval.FLAT9);
+				else if( p.matches("9") )
+					offsets.put(OffsetIndex.NINTH, Interval.NINTH);
 
-				if( p.matches("(\\+11|#11)") ) offsets[ELEVENTH_OFFSET] = SHARP11;
-				else if( p.matches("11") ) offsets[ELEVENTH_OFFSET] = ELEVENTH;
+				if( p.matches("(\\+11|#11)") )
+					offsets.put(OffsetIndex.ELEVENTH, Interval.SHARP11);
+				else if( p.matches("11") )
+					offsets.put(OffsetIndex.ELEVENTH, Interval.ELEVENTH);
 
-				if( p.matches("(-13|b13)") ) offsets[THIRTEENTH_OFFSET] = FLAT13;
-				else if( p.matches("13") ) offsets[THIRTEENTH_OFFSET] = THIRTEENTH;
+				if( p.matches("(-13|b13)") )
+					offsets.put(OffsetIndex.THIRTEENTH, Interval.FLAT13);
+				else if( p.matches("13") )
+					offsets.put(OffsetIndex.THIRTEENTH, Interval.THIRTEENTH);
 
 				// -5 や +5 が () の中にあっても解釈できるようにする
-				if( p.matches("(-5|b5)") ) offsets[FIFTH_OFFSET] = FLAT5;
-				else if( p.matches("(\\+5|#5)") ) offsets[FIFTH_OFFSET] = SHARP5;
+				if( p.matches("(-5|b5)") )
+					offsets.put(OffsetIndex.FIFTH, Interval.FLAT5);
+				else if( p.matches("(\\+5|#5)") )
+					offsets.put(OffsetIndex.FIFTH, Interval.SHARP5);
 			}
 		}
 		return this;
@@ -300,34 +302,22 @@ public class Chord implements Cloneable {
 	 * @return ベース音
 	 */
 	public NoteSymbol bassNoteSymbol() { return bassNoteSymbol; }
-	//
-	// コードの種類を調べます。
-	public boolean isMajor() { return offsets[THIRD_OFFSET] == MAJOR; }
-	public boolean isMinor() { return offsets[THIRD_OFFSET] == MINOR; }
-	public boolean isSus4() { return offsets[THIRD_OFFSET] == SUS4; }
-	public boolean isSus2() { return offsets[THIRD_OFFSET] == SUS2; }
-	//
-	public boolean hasParfectFifth() { return offsets[FIFTH_OFFSET] == PARFECT5; }
-	public boolean hasFlattedFifth() { return offsets[FIFTH_OFFSET] == FLAT5; }
-	public boolean hasSharpedFifth() { return offsets[FIFTH_OFFSET] == SHARP5; }
-	//
-	public boolean hasNoSeventh() { return offsets[SEVENTH_OFFSET] == ROOT; }
-	public boolean hasSeventh() { return offsets[SEVENTH_OFFSET] == SEVENTH; }
-	public boolean hasMajorSeventh() { return offsets[SEVENTH_OFFSET] == MAJOR_SEVENTH; }
-	public boolean hasSixth() { return offsets[SEVENTH_OFFSET] == SIXTH; }
-	//
-	public boolean hasNoNinth() { return offsets[NINTH_OFFSET] == ROOT; }
-	public boolean hasNinth() { return offsets[NINTH_OFFSET] == NINTH; }
-	public boolean hasFlattedNinth() { return offsets[NINTH_OFFSET] == FLAT9; }
-	public boolean hasSharpedNinth() { return offsets[NINTH_OFFSET] == SHARP9; }
-	//
-	public boolean hasNoEleventh() { return offsets[ELEVENTH_OFFSET] == ROOT; }
-	public boolean hasEleventh() { return offsets[ELEVENTH_OFFSET] == ELEVENTH; }
-	public boolean hasSharpedEleventh() { return offsets[ELEVENTH_OFFSET] == SHARP11; }
-	//
-	public boolean hasNoThirteenth() { return offsets[THIRTEENTH_OFFSET] == ROOT; }
-	public boolean hasThirteenth() { return offsets[THIRTEENTH_OFFSET] == THIRTEENTH; }
-	public boolean hasFlattedThirteenth() { return offsets[THIRTEENTH_OFFSET] == FLAT13; }
+	/**
+	 * 指定した音程が設定されているか調べます。
+	 * @param itv 音程
+	 * @return 指定した音程が設定されていたらtrue
+	 */
+	public boolean isSet(Interval itv) {
+		return offsets.get(itv.getChromaticOffsetIndex()) == itv;
+	}
+	/**
+	 * 指定したインデックスに音程が設定されているか調べます。
+	 * @param index インデックス
+	 * @return 指定したインデックスに音程が設定されていたらtrue
+	 */
+	public boolean isSet(OffsetIndex index) {
+		return offsets.containsKey(index);
+	}
 	/**
 	 * コードが等しいかどうかを判定します。
 	 * @return 等しければtrue
@@ -342,7 +332,7 @@ public class Chord implements Cloneable {
 				return false;
 			if( ! bassNoteSymbol.equals(another.bassNoteSymbol) )
 				return false;
-			return Arrays.equals(offsets, another.offsets);
+			return offsets.equals(another.offsets);
 		}
 		return false;
 	}
@@ -364,17 +354,15 @@ public class Chord implements Cloneable {
 			return false;
 		if( ! bassNoteSymbol.equalsEnharmonically(another.bassNoteSymbol) )
 			return false;
-		return Arrays.equals(offsets, another.offsets);
+		return offsets.equals(another.offsets);
 	}
 	/**
-	 * コード構成音の数を返します（ベース音は含まれません）。
+	 * コード構成音の数を返します
+	 * （ルート音は含まれますが、ベース音は含まれません）。
+	 *
 	 * @return コード構成音の数
 	 */
-	public int numberOfNotes() {
-		int n=1;
-		for( int offset : offsets ) if( offset != ROOT ) n++;
-		return n;
-	}
+	public int numberOfNotes() { return offsets.size() + 1; }
 	/**
 	 * 指定された位置にあるノート番号を返します。
 	 * @param index 位置（０をルート音とした構成音の順序）
@@ -384,31 +372,32 @@ public class Chord implements Cloneable {
 		int rootnote = rootNoteSymbol.toNoteNumber();
 		if( index == 0 )
 			return rootnote;
+		Interval itv;
 		int i=0;
-		for( int offset : offsets )
-			if( offset != ROOT && ++i == index )
-				return rootnote + offset;
+		for( OffsetIndex offsetIndex : OffsetIndex.values() )
+			if( (itv = offsets.get(offsetIndex)) != null && ++i == index )
+				return rootnote + itv.getChromaticOffset();
 		return -1;
 	}
-	// コード構成音を格納したノート番号の配列を返します。
-	//（ベース音は含まれません）
-	// 音域が指定された場合、その音域に合わせたノート番号を返します。
-	//
-	public int[] toNoteArray() {
-		return toNoteArray( (Range)null, (Key)null );
-	}
-	public int[] toNoteArray(Range range) {
-		return toNoteArray( range, (Key)null );
-	}
+	/**
+	 * コード構成音を格納したノート番号の配列を返します。
+	 * （ベース音は含まれません）
+	 * 音域が指定された場合、その音域に合わせたノート番号を返します。
+	 * @param range 音域（null可）
+	 * @param key キー（null可）
+	 * @return ノート番号の配列
+	 */
 	public int[] toNoteArray(Range range, Key key) {
 		int rootnote = rootNoteSymbol.toNoteNumber();
 		int ia[] = new int[numberOfNotes()];
 		int i;
 		ia[i=0] = rootnote;
-		for( int offset : offsets )
-			if( offset != ROOT )
-				ia[++i] = rootnote + offset;
-		if( range != null ) range.invertNotesOf( ia, key );
+		Interval itv;
+		for( OffsetIndex offsetIndex : OffsetIndex.values() )
+			if( (itv = offsets.get(offsetIndex)) != null )
+				ia[++i] = rootnote + itv.getChromaticOffset();
+		if( range != null )
+			range.invertNotesOf(ia, key);
 		return ia;
 	}
 	/**
@@ -420,34 +409,45 @@ public class Chord implements Cloneable {
 	 * @return 構成音のインデックス値
 	 */
 	public int indexOf(int noteNumber) {
-		int relative_note = noteNumber - rootNoteSymbol.toNoteNumber();
-		if( Music.mod12(relative_note) == 0 ) return 0;
+		int relativeNote = noteNumber - rootNoteSymbol.toNoteNumber();
+		if( Music.mod12(relativeNote) == 0 ) return 0;
+		Interval itv;
 		int i=0;
-		for( int offset : offsets ) if( offset != ROOT ) {
-			i++;
-			if( Music.mod12(relative_note - offset) == 0 )
-				return i;
+		for( OffsetIndex offsetIndex : OffsetIndex.values() ) {
+			if( (itv = offsets.get(offsetIndex)) != null ) {
+				i++;
+				if( Music.mod12(relativeNote - itv.getChromaticOffset()) == 0 )
+					return i;
+			}
 		}
 		return -1;
 	}
-	// 構成音がそのキーのスケールを外れていないか調べます。
-	public boolean isOnScaleInKey( Key key ) {
-		return isOnScaleInKey( key.toCo5() );
+	/**
+	 * 指定したキーのスケールを外れた構成音がないか調べます。
+	 * @param key 調べるキー
+	 * @return スケールを外れている構成音がなければtrue
+	 */
+	public boolean isOnScaleInKey(Key key) {
+		return isOnScaleInKey(key.toCo5());
 	}
-	public boolean isOnScaleInKey( int key_co5 ) {
+	private boolean isOnScaleInKey(int keyCo5) {
 		int rootnote = rootNoteSymbol.toNoteNumber();
-		if( ! Music.isOnScale( rootnote, key_co5 ) )
+		if( ! Music.isOnScale(rootnote, keyCo5) )
 			return false;
-		for( int offset : offsets )
-			if( offset != ROOT && ! Music.isOnScale( rootnote + offset, key_co5 ) )
+		Interval itv;
+		for( OffsetIndex offsetIndex : OffsetIndex.values() ) {
+			if( (itv = offsets.get(offsetIndex)) == null )
+				continue;
+			if( ! Music.isOnScale(rootnote + itv.getChromaticOffset(), keyCo5) )
 				return false;
+		}
 		return true;
 	}
-	//
-	// コードを移調します。
-	// 移調幅は chromatic_offset で半音単位に指定します。
-	// 移調幅が０の場合、自分自身をそのまま返します。
-	//
+	/**
+	 * コードを移調します。
+	 * @param chromatic_offset 移調幅（半音単位）
+	 * @return 移調した新しいコード（移調幅が０の場合は自分自身）
+	 */
 	public Chord transpose(int chromatic_offset) {
 		return transpose(chromatic_offset, 0);
 	}
@@ -477,6 +477,7 @@ public class Chord implements Cloneable {
 	 * この和音の文字列表現としてコード名を返します。
 	 * @return この和音のコード名
 	 */
+	@Override
 	public String toString() {
 		String chordSymbol = rootNoteSymbol + symbolSuffix();
 		if( ! rootNoteSymbol.equals(bassNoteSymbol) ) {
@@ -536,37 +537,52 @@ public class Chord implements Cloneable {
 	 * @return コードネームの音名を除いた部分
 	 */
 	public String symbolSuffix() {
-		String suffix = ( ( offsets[THIRD_OFFSET] == MINOR ) ? "m" : "" );
-		switch( offsets[SEVENTH_OFFSET] ) {
-		case SIXTH:         suffix += "6";  break;
-		case SEVENTH:       suffix += "7";  break;
-		case MAJOR_SEVENTH: suffix += "M7"; break;
+		String suffix = (
+			offsets.get(OffsetIndex.THIRD) == Interval.MINOR ? "m" : ""
+		);
+		Interval itv;
+		if( (itv = offsets.get(OffsetIndex.SEVENTH)) != null ) {
+			switch(itv) {
+			case SIXTH:         suffix += "6";  break;
+			case SEVENTH:       suffix += "7";  break;
+			case MAJOR_SEVENTH: suffix += "M7"; break;
+			default: break;
+			}
 		}
-		switch( offsets[THIRD_OFFSET] ) {
+		switch( offsets.get(OffsetIndex.THIRD) ) {
 		case SUS4: suffix += "sus4"; break;
 		case SUS2: suffix += "sus2"; break;
 		default: break;
 		}
-		switch( offsets[FIFTH_OFFSET] ) {
+		switch( offsets.get(OffsetIndex.FIFTH) ) {
 		case FLAT5:  suffix += "-5"; break;
 		case SHARP5: suffix += "+5"; break;
 		default: break;
 		}
 		Vector<String> paren = new Vector<String>();
-		switch( offsets[NINTH_OFFSET] ) {
-		case NINTH:  paren.add("9"); break;
-		case FLAT9:  paren.add("-9"); break;
-		case SHARP9: paren.add("+9"); break;
+		if( (itv = offsets.get(OffsetIndex.NINTH)) != null ) {
+			switch(itv) {
+			case NINTH:  paren.add("9"); break;
+			case FLAT9:  paren.add("-9"); break;
+			case SHARP9: paren.add("+9"); break;
+			default: break;
+			}
 		}
-		switch( offsets[ELEVENTH_OFFSET] ) {
-		case ELEVENTH: paren.add("11"); break;
-		case SHARP11:  paren.add("+11"); break;
+		if( (itv = offsets.get(OffsetIndex.ELEVENTH)) != null ) {
+			switch(itv) {
+			case ELEVENTH: paren.add("11"); break;
+			case SHARP11:  paren.add("+11"); break;
+			default: break;
+			}
 		}
-		switch( offsets[THIRTEENTH_OFFSET] ) {
-		case THIRTEENTH: paren.add("13"); break;
-		case FLAT13:     paren.add("-13"); break;
+		if( (itv = offsets.get(OffsetIndex.THIRTEENTH)) != null ) {
+			switch(itv) {
+			case THIRTEENTH: paren.add("13"); break;
+			case FLAT13:     paren.add("-13"); break;
+			default: break;
+			}
 		}
-		if( paren.size() > 0 ) {
+		if( ! paren.isEmpty() ) {
 			boolean is_first = true;
 			suffix += "(";
 			for( String p : paren ) {
@@ -594,37 +610,51 @@ public class Chord implements Cloneable {
 	 */
 	public String nameSuffix() {
 		String suffix = "";
-		if( offsets[THIRD_OFFSET] == MINOR ) suffix += " minor";
-		switch( offsets[SEVENTH_OFFSET] ) {
-		case SIXTH:         suffix += " 6th"; break;
-		case SEVENTH:       suffix += " 7th"; break;
-		case MAJOR_SEVENTH: suffix += " major 7th"; break;
+		if( offsets.get(OffsetIndex.THIRD) == Interval.MINOR )
+			suffix += " minor";
+		Interval itv;
+		if( (itv = offsets.get(OffsetIndex.SEVENTH)) != null ) {
+			switch(itv) {
+			case SIXTH:         suffix += " 6th"; break;
+			case SEVENTH:       suffix += " 7th"; break;
+			case MAJOR_SEVENTH: suffix += " major 7th"; break;
+			default: break;
+			}
 		}
-		switch( offsets[THIRD_OFFSET] ) {
+		switch( offsets.get(OffsetIndex.THIRD) ) {
 		case SUS4: suffix += " suspended 4th"; break;
 		case SUS2: suffix += " suspended 2nd"; break;
 		default: break;
 		}
-		switch( offsets[FIFTH_OFFSET] ) {
+		switch( offsets.get(OffsetIndex.FIFTH) ) {
 		case FLAT5 : suffix += " flatted 5th"; break;
 		case SHARP5: suffix += " sharped 5th"; break;
 		default: break;
 		}
 		Vector<String> paren = new Vector<String>();
-		switch( offsets[NINTH_OFFSET] ) {
-		case NINTH:  paren.add("9th"); break;
-		case FLAT9:  paren.add("flatted 9th"); break;
-		case SHARP9: paren.add("sharped 9th"); break;
+		if( (itv = offsets.get(OffsetIndex.NINTH)) != null ) {
+			switch(itv) {
+			case NINTH:  paren.add("9th"); break;
+			case FLAT9:  paren.add("flatted 9th"); break;
+			case SHARP9: paren.add("sharped 9th"); break;
+			default: break;
+			}
 		}
-		switch( offsets[ELEVENTH_OFFSET] ) {
-		case ELEVENTH: paren.add("11th"); break;
-		case SHARP11:  paren.add("sharped 11th"); break;
+		if( (itv = offsets.get(OffsetIndex.ELEVENTH)) != null ) {
+			switch(itv) {
+			case ELEVENTH: paren.add("11th"); break;
+			case SHARP11:  paren.add("sharped 11th"); break;
+			default: break;
+			}
 		}
-		switch( offsets[THIRTEENTH_OFFSET] ) {
-		case THIRTEENTH: paren.add("13th"); break;
-		case FLAT13:     paren.add("flatted 13th"); break;
+		if( (itv = offsets.get(OffsetIndex.THIRTEENTH)) != null ) {
+			switch(itv) {
+			case THIRTEENTH: paren.add("13th"); break;
+			case FLAT13:     paren.add("flatted 13th"); break;
+			default: break;
+			}
 		}
-		if( paren.size() > 0 ) {
+		if( ! paren.isEmpty() ) {
 			boolean is_first = true;
 			suffix += "(additional ";
 			for( String p : paren ) {

@@ -4,6 +4,9 @@ import javax.sound.midi.MidiChannel;
 
 import camidion.chordhelper.music.MIDISpec;
 
+/**
+ * MIDIチャンネルの状態を管理するクラスです。
+ */
 public abstract class AbstractMidiChannelStatus implements MidiChannel {
 	protected int channel;
 	protected int program = 0;
@@ -13,7 +16,7 @@ public abstract class AbstractMidiChannelStatus implements MidiChannel {
 
 	protected static final int DATA_NONE = 0;
 	protected static final int DATA_FOR_RPN = 1;
-	protected final int DATA_FOR_NRPN = 2;
+	protected static final int DATA_FOR_NRPN = 2;
 	protected int dataFor = DATA_NONE;
 
 	public AbstractMidiChannelStatus(int channel) {
@@ -22,27 +25,27 @@ public abstract class AbstractMidiChannelStatus implements MidiChannel {
 	}
 	public int getChannel() { return channel; }
 	public boolean isRhythmPart() { return isRhythmPart; }
-	public void setRhythmPart(boolean is_rhythm_part) {
-		this.isRhythmPart = is_rhythm_part;
+	public void setRhythmPart(boolean isRhythmPart) {
+		this.isRhythmPart = isRhythmPart;
 	}
 	public void resetRhythmPart() {
 		isRhythmPart = (channel == 9);
 	}
 	public void resetAllValues() { resetAllValues(false); }
-	public void resetAllValues(boolean is_GS) {
+	public void resetAllValues(boolean isGS) {
 		for( int i=0; i<controllerValues.length; i++ )
 			controllerValues[i] = 0;
-		if( is_GS ) resetRhythmPart();
+		if( isGS ) resetRhythmPart();
 		resetAllControllers();
 		controllerValues[10] = 0x40; // Set pan to center
 	}
 	public void fireRpnChanged() {}
-	protected void changeRPNData( int data_diff ) {
+	protected void changeRPNData( int dataDiff ) {
 		int dataMsb = controllerValues[0x06];
 		int dataLsb = controllerValues[0x26];
-		if( data_diff != 0 ) {
+		if( dataDiff != 0 ) {
 			// Data increment or decrement
-			dataLsb += data_diff;
+			dataLsb += dataDiff;
 			if( dataLsb >= 100 ) {
 				dataLsb = 0;
 				controllerValues[0x26] = ++dataMsb;

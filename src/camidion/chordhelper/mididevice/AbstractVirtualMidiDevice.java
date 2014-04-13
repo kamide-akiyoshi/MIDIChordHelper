@@ -3,10 +3,12 @@ package camidion.chordhelper.mididevice;
 import java.util.List;
 import java.util.Vector;
 
+import javax.sound.midi.InvalidMidiDataException;
 import javax.sound.midi.MidiChannel;
 import javax.sound.midi.MidiMessage;
 import javax.sound.midi.MidiUnavailableException;
 import javax.sound.midi.Receiver;
+import javax.sound.midi.ShortMessage;
 import javax.sound.midi.Transmitter;
 
 import camidion.chordhelper.music.MIDISpec;
@@ -16,43 +18,34 @@ import camidion.chordhelper.music.MIDISpec;
  */
 public abstract class AbstractVirtualMidiDevice implements VirtualMidiDevice {
 	/**
-	 * この仮想デバイスのMIDIチャンネルの配列（MIDIメッセージ送信用）
-	 */
-	protected MidiChannelMessageSender[]
-		channels = new MidiChannelMessageSender[MIDISpec.MAX_CHANNELS];
-	/**
 	 * 仮想MIDIデバイスを構築します。
 	 */
 	protected AbstractVirtualMidiDevice() {
+		channels = new VirtualDeviceMidiChannel[MIDISpec.MAX_CHANNELS];
 		for( int i=0; i<channels.length; i++ )
-			channels[i] = new MidiChannelMessageSender(this,i);
+			channels[i] = new VirtualDeviceMidiChannel(i);
 	}
+	protected MidiChannel[] channels;
 	@Override
 	public MidiChannel[] getChannels() { return channels; }
-	/**
-	 * MIDIデバイスを開いているときtrue
-	 */
-	protected boolean isOpen = false;
+	@Override
+	public long getMicrosecondPosition() {
+		return (microsecondOrigin == -1 ? -1: System.nanoTime()/1000 - microsecondOrigin);
+	}
 	/**
 	 * 先頭のマイクロ秒位置（-1 で不定）
 	 */
 	protected long microsecondOrigin = -1;
 	@Override
 	public boolean isOpen() { return isOpen; }
-	@Override
-	public long getMicrosecondPosition() {
-		return (microsecondOrigin == -1 ? -1: System.nanoTime()/1000 - microsecondOrigin);
-	}
+	protected boolean isOpen = false;
 	@Override
 	public void open() {
 		isOpen = true;
 		microsecondOrigin = System.nanoTime()/1000;
 	}
 	@Override
-	public void close() {
-		txList.clear();
-		isOpen = false;
-	}
+	public void close() { txList.clear(); isOpen = false; }
 	/**
 	 * レシーバのリスト
 	 */
@@ -75,10 +68,8 @@ public abstract class AbstractVirtualMidiDevice implements VirtualMidiDevice {
 		return rxList.isEmpty() ? null : rxList.get(0);
 	}
 	protected void setReceiver(Receiver rx) {
-		if( maxReceivers == 0 )
-			return;
-		if( ! rxList.isEmpty() )
-			rxList.clear();
+		if( maxReceivers == 0 ) return;
+		if( ! rxList.isEmpty() ) rxList.clear();
 		rxList.add(rx);
 	}
 	/**
@@ -105,8 +96,11 @@ public abstract class AbstractVirtualMidiDevice implements VirtualMidiDevice {
 		}
 		Transmitter new_tx = new Transmitter() {
 			private Receiver rx = null;
+			@Override
 			public void close() { txList.remove(this); }
+			@Override
 			public Receiver getReceiver() { return rx; }
+			@Override
 			public void setReceiver(Receiver rx) { this.rx = rx; }
 		};
 		txList.add(new_tx);
@@ -119,5 +113,107 @@ public abstract class AbstractVirtualMidiDevice implements VirtualMidiDevice {
 			Receiver rx = tx.getReceiver();
 			if(rx != null) rx.send(msg, timestamp);
 		}
+	}
+	/**
+	 * チャンネルの実装
+	 */
+	private class VirtualDeviceMidiChannel implements MidiChannel {
+		/**
+		 * MIDIチャンネルインデックス（チャンネル 1 のとき 0）
+		 */
+		private int channel;
+		/**
+		 * 指定の仮想MIDIデバイスの指定のMIDIチャンネルの
+		 * メッセージを送信するためのインスタンスを構築します。
+		 * @param vmd 仮想MIDIデバイス
+		 * @param channel MIDIチャンネルインデックス（チャンネル 1 のとき 0）
+		 */
+		public VirtualDeviceMidiChannel(int channel) {
+			this.channel = channel;
+		}
+		private void sendShortMessage(int command, int data1, int data2) {
+			try {
+				sendMidiMessage(new ShortMessage(command, channel, data1, data2));
+			} catch (InvalidMidiDataException e) {
+				e.printStackTrace();
+			}
+		}
+		@Override
+		public void noteOff(int noteNumber) {
+			noteOff(noteNumber, 64);
+		}
+		@Override
+		public void noteOff(int noteNumber, int velocity) {
+			sendShortMessage(ShortMessage.NOTE_OFF, noteNumber, velocity);
+		}
+		@Override
+		public void noteOn(int noteNumber, int velocity) {
+			sendShortMessage(ShortMessage.NOTE_ON, noteNumber, velocity);
+		}
+		@Override
+		public void setPolyPressure(int noteNumber, int pressure) {
+			sendShortMessage(ShortMessage.POLY_PRESSURE, noteNumber, pressure);
+		}
+		@Override
+		public int getPolyPressure(int noteNumber) { return 0x40; }
+		@Override
+		public void controlChange(int controller, int value) {
+			sendShortMessage(ShortMessage.CONTROL_CHANGE, controller, value);
+		}
+		@Override
+		public int getController(int controller) { return 0x40; }
+		@Override
+		public void programChange(int program) {
+			sendShortMessage(ShortMessage.PROGRAM_CHANGE, program, 0);
+		}
+		@Override
+		public void programChange(int bank, int program) {
+			controlChange(0x00, ((bank>>7) & 0x7F));
+			controlChange(0x20, (bank & 0x7F));
+			programChange(program);
+		}
+		@Override
+		public int getProgram() { return 0; }
+		@Override
+		public void setChannelPressure(int pressure) {
+			sendShortMessage(ShortMessage.CHANNEL_PRESSURE, pressure, 0);
+		}
+		@Override
+		public int getChannelPressure() { return 0x40; }
+		@Override
+		public void setPitchBend(int bend) {
+			// NOTE: Pitch Bend data byte order is Little Endian
+			sendShortMessage(ShortMessage.PITCH_BEND, (bend & 0x7F), ((bend>>7) & 0x7F));
+		}
+		@Override
+		public int getPitchBend() { return MIDISpec.PITCH_BEND_NONE; }
+		@Override
+		public void allSoundOff() { controlChange(0x78, 0); }
+		@Override
+		public void resetAllControllers() { controlChange(0x79, 0); }
+		@Override
+		public boolean localControl(boolean on) {
+			controlChange(0x7A, on?0x7F:0x00);
+			return false;
+		}
+		@Override
+		public void allNotesOff() { controlChange( 0x7B, 0 ); }
+		@Override
+		public void setOmni(boolean on) { controlChange(on?0x7D:0x7C, 0);
+		}
+		@Override
+		public boolean getOmni() { return false; }
+		@Override
+		public void setMono(boolean on) {}
+		@Override
+		public boolean getMono() { return false; }
+		@Override
+		public void setMute(boolean mute) {}
+		@Override
+		public boolean getMute() { return false; }
+		@Override
+		public void setSolo(boolean soloState) {}
+		@Override
+		public boolean getSolo() { return false; }
 	}
 }

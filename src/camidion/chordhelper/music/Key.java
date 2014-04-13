@@ -84,7 +84,7 @@ public class Key implements Cloneable {
 	 * @param chord コード（和音）
 	 */
 	public Key(Chord chord) {
-		boolean isMinor = chord.isMinor();
+		boolean isMinor = chord.isSet(Chord.Interval.MINOR);
 		setKey(chord.rootNoteSymbol().toCo5(isMinor), isMinor);
 	}
 	@Override

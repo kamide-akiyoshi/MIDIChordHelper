@@ -104,7 +104,7 @@ public class ChordDisplayLabel extends JLabel implements MouseListener {
 		}
 		else {
 			String ns = NoteSymbol.noteNoToSymbol(noteNumber);
-			double f = Music.noteNoToFrequency(noteNumber);
+			double f = Music.noteNumberToFrequency(noteNumber);
 			setText("Note: "+ns+"  -  MIDI note No."+noteNumber+" : "+Math.round(f)+"Hz");
 		}
 	}

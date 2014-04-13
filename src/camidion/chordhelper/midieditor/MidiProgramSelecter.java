@@ -22,8 +22,8 @@ public class MidiProgramSelecter extends JComboBox<String> {
 		removeAllItems();
 		if( family < 0 ) {
 			setMaximumRowCount(16);
-			for( int i=0; i < MIDISpec.instrument_names.length; i++ ) {
-				addItem(i+": " + MIDISpec.instrument_names[i]);
+			for( int i=0; i < MIDISpec.instrumentNames.length; i++ ) {
+				addItem(i+": " + MIDISpec.instrumentNames[i]);
 			}
 			setSelectedIndex(program_no);
 		}
@@ -31,7 +31,7 @@ public class MidiProgramSelecter extends JComboBox<String> {
 			setMaximumRowCount(8);
 			for( int i=0; i < 8; i++ ) {
 				program_no = i + family * 8;
-				addItem( program_no + ": " + MIDISpec.instrument_names[program_no] );
+				addItem( program_no + ": " + MIDISpec.instrumentNames[program_no] );
 			}
 			setSelectedIndex(0);
 		}

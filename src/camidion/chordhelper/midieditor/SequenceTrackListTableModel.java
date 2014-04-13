@@ -16,7 +16,6 @@ import javax.swing.DefaultListSelectionModel;
 import javax.swing.ListSelectionModel;
 import javax.swing.table.AbstractTableModel;
 
-import camidion.chordhelper.midieditor.TrackEventListTableModel.SequenceTickIndex;
 import camidion.chordhelper.music.MIDISpec;
 
 /**
@@ -60,7 +59,7 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 	/**
 	 * 親のプレイリスト
 	 */
-	SequenceListTableModel sequenceListTableModel;
+	PlaylistTableModel sequenceListTableModel;
 	/**
 	 * ラップされたMIDIシーケンス
 	 */
@@ -96,7 +95,7 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 	 * @param filename ファイル名
 	 */
 	public SequenceTrackListTableModel(
-		SequenceListTableModel sequenceListTableModel,
+		PlaylistTableModel sequenceListTableModel,
 		Sequence sequence,
 		String filename
 	) {

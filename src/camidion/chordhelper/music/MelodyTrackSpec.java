@@ -86,7 +86,7 @@ public class MelodyTrackSpec extends AbstractNoteTrackSpec {
 				) {
 					// そのtick地点のコードを調べる
 					Chord chord = measure.chordStrokeAt(tick).chord;
-					int notes[] = chord.toNoteArray(range);
+					int notes[] = chord.toNoteArray(range, null);
 					//
 					// 各音階ごとに繰り返し
 					if( Math.random() < 0.9 ) {
