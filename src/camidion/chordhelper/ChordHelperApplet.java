@@ -284,7 +284,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public static class VersionInfo {
 		public static final String	NAME = "MIDI Chord Helper";
-		public static final String	VERSION = "Ver.20140413.3";
+		public static final String	VERSION = "Ver.20140417.1";
 		public static final String	COPYRIGHT = "Copyright (C) 2004-2014";
 		public static final String	AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String	URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";

@@ -1074,8 +1074,14 @@ public class MIDISpec {
 					str += " [eVocaloid]";
 					dataBytePos += 2;
 					if( msgdata[3]==0x11 && msgdata[4]==0x0A && msgdata[5]==0 ) {
-						String pronounce = MIDISpec.nsx39LyricElements[msgdata[6]];
-						str += " pronounce["+pronounce+"]";
+						StringBuilder p = new StringBuilder();
+						for( int i=6; i<msgdata.length; i++ ) {
+							int b = (msgdata[i] & 0xFF);
+							if( b == 0xF7 ) break;
+							String s = b<0 ? "?": MIDISpec.nsx39LyricElements[b];
+							p.append(s);
+						}
+						str += " pronounce["+p+"]";
 						return str;
 					}
 				}
