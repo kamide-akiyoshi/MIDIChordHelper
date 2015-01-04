@@ -1078,7 +1078,10 @@ public class MIDISpec {
 						for( int i=6; i<msgdata.length; i++ ) {
 							int b = (msgdata[i] & 0xFF);
 							if( b == 0xF7 ) break;
-							String s = b<0 ? "?": MIDISpec.nsx39LyricElements[b];
+							String s = (
+								b < 0 || b >= MIDISpec.nsx39LyricElements.length ?
+								"?": MIDISpec.nsx39LyricElements[b]
+							);
 							p.append(s);
 						}
 						str += " pronounce["+p+"]";
