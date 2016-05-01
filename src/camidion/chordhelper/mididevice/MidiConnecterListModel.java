@@ -17,6 +17,29 @@ public class MidiConnecterListModel extends AbstractListModel<AutoCloseable> {
 	protected MidiDevice device;
 	private List<MidiConnecterListModel> modelList;
 	/**
+	 * 実体のない新規Transmitterを表すインターフェース
+	 */
+	public interface NewTransmitter extends Transmitter {
+		/**
+		 * 収容先のリストモデルを返します。
+		 *
+		 * @return 収容先のリストモデル
+		 */
+		public MidiConnecterListModel getMidiConnecterListModel();
+	};
+	public NewTransmitter newTransmitter = new NewTransmitter() {
+		@Override
+		public MidiConnecterListModel getMidiConnecterListModel() {
+			return MidiConnecterListModel.this;
+		}
+		@Override
+		public void setReceiver(Receiver receiver) { }
+		@Override
+		public Receiver getReceiver() { return null; }
+		@Override
+		public void close() { }
+	};
+	/**
 	 * 指定のMIDIデバイスに属する
 	 *  {@link Transmitter}/{@link Receiver} のリストモデルを構築します。
 	 *
@@ -48,13 +71,15 @@ public class MidiConnecterListModel extends AbstractListModel<AutoCloseable> {
 		if( index < rxSize ) return rxList.get(index);
 		index -= rxSize;
 		List<Transmitter> txList = device.getTransmitters();
-		return index < txList.size() ? txList.get(index) : null;
+		int txSize = txList.size();
+		if( index < txSize ) return txList.get(index);
+		if( txSize != 0 && index == txSize ) return newTransmitter;
+		return null;
 	}
 	@Override
 	public int getSize() {
-		return
-			device.getReceivers().size() +
-			device.getTransmitters().size();
+		int txSize = device.getTransmitters().size();
+		return device.getReceivers().size() + (txSize == 0 ? 0 : txSize + 1);
 	}
 	/**
 	 * 指定の要素がこのリストモデルで最初に見つかった位置を返します。
@@ -110,16 +135,16 @@ public class MidiConnecterListModel extends AbstractListModel<AutoCloseable> {
 	}
 	/**
 	 * 引数で指定されたトランスミッタを、最初のレシーバに接続します。
-	 * <p>接続先のレシーバがない場合は無視されます。
-	 * </p>
 	 * @param tx トランスミッタ
+	 * @return 接続されたレシーバ（見つからなかった場合はnull）
 	 */
-	public void ConnectToReceiver(Transmitter tx) {
+	public Receiver ConnectToReceiver(Transmitter tx) {
 		List<Receiver> receivers = device.getReceivers();
-		if( receivers.size() == 0 )
-			return;
-		tx.setReceiver(receivers.get(0));
+		if( receivers.isEmpty() ) return null;
+		Receiver rx = receivers.get(0);
+		tx.setReceiver(rx);
 		fireContentsChanged(this,0,getSize());
+		return rx;
 	}
 	/**
 	 * 未接続のトランスミッタを、
@@ -127,28 +152,22 @@ public class MidiConnecterListModel extends AbstractListModel<AutoCloseable> {
 	 * @param anotherModel 接続先レシーバを持つリストモデル
 	 */
 	public void connectToReceiverOf(MidiConnecterListModel anotherModel) {
-		if( ! txSupported() )
-			return;
-		if( anotherModel == null || ! anotherModel.rxSupported() )
+		if( ! txSupported() || anotherModel == null || ! anotherModel.rxSupported() )
 			return;
 		List<Receiver> rxList = anotherModel.device.getReceivers();
-		if( rxList.isEmpty() )
-			return;
-		getUnconnectedTransmitter().setReceiver(rxList.get(0));
+		if( rxList.isEmpty() ) return;
+		getTransmitter().setReceiver(rxList.get(0));
 	}
 	/**
 	 * レシーバに未接続の最初のトランスミッタを返します。
+	 * ない場合は {@link MidiDevice#getTransmitter} で新たに取得して返します。
+	 *
 	 * @return 未接続のトランスミッタ
 	 */
-	public Transmitter getUnconnectedTransmitter() {
-		if( ! txSupported() ) {
-			return null;
-		}
+	public Transmitter getTransmitter() {
+		if( ! txSupported() ) return null;
 		List<Transmitter> txList = device.getTransmitters();
-		for( Transmitter tx : txList ) {
-			if( tx.getReceiver() == null )
-				return tx;
-		}
+		for( Transmitter tx : txList ) if( tx.getReceiver() == null ) return tx;
 		Transmitter tx;
 		try {
 			tx = device.getTransmitter();
@@ -166,10 +185,9 @@ public class MidiConnecterListModel extends AbstractListModel<AutoCloseable> {
 	 * @param txToClose 閉じたいトランスミッタ
 	 */
 	public void closeTransmitter(Transmitter txToClose) {
-		if( device.getTransmitters().contains(txToClose) ) {
-			txToClose.close();
-			fireIntervalRemoved(this,0,getSize());
-		}
+		if( ! device.getTransmitters().contains(txToClose) ) return;
+		txToClose.close();
+		fireIntervalRemoved(this,0,getSize());
 	}
 	/**
 	 * 対象MIDIデバイスを開きます。
@@ -177,9 +195,7 @@ public class MidiConnecterListModel extends AbstractListModel<AutoCloseable> {
 	 */
 	public void openDevice() throws MidiUnavailableException {
 		device.open();
-		if( rxSupported() && device.getReceivers().size() == 0 ) {
-			device.getReceiver();
-		}
+		if( rxSupported() && device.getReceivers().isEmpty() ) device.getReceiver();
 	}
 	/**
 	 * 対象MIDIデバイスを閉じます。
@@ -192,15 +208,12 @@ public class MidiConnecterListModel extends AbstractListModel<AutoCloseable> {
 		if( rxSupported() ) {
 			Receiver rx = device.getReceivers().get(0);
 			for( MidiConnecterListModel m : modelList ) {
-				if( m == this || ! m.txSupported() )
-					continue;
+				if( m == this || ! m.txSupported() ) continue;
 				for( int i=0; i<m.getSize(); i++ ) {
 					AutoCloseable ac = m.getElementAt(i);
-					if( ! (ac instanceof Transmitter) )
-						continue;
+					if( ! (ac instanceof Transmitter) ) continue;
 					Transmitter tx = ((Transmitter)ac);
-					if( tx.getReceiver() == rx )
-						m.closeTransmitter(tx);
+					if( tx.getReceiver() == rx ) m.closeTransmitter(tx);
 				}
 			}
 		}
@@ -220,8 +233,7 @@ public class MidiConnecterListModel extends AbstractListModel<AutoCloseable> {
 	 * </p>
 	 */
 	public void resetMicrosecondPosition() {
-		if( ! txSupported() || device instanceof Sequencer )
-			return;
+		if( ! txSupported() || device instanceof Sequencer ) return;
 		//
 		// デバイスを閉じる前に接続相手の情報を保存
 		List<Transmitter> txList = device.getTransmitters();
@@ -236,8 +248,7 @@ public class MidiConnecterListModel extends AbstractListModel<AutoCloseable> {
 			rx = device.getReceivers().get(0);
 			peerTxList = new Vector<Transmitter>();
 			for( MidiConnecterListModel m : modelList ) {
-				if( m == this || ! m.txSupported() )
-					continue;
+				if( m == this || ! m.txSupported() ) continue;
 				for( int i=0; i<m.getSize(); i++ ) {
 					Object obj = m.getElementAt(i);
 					if( ! (obj instanceof Transmitter) )
@@ -257,15 +268,13 @@ public class MidiConnecterListModel extends AbstractListModel<AutoCloseable> {
 		}
 		// 元通りに接続し直す
 		for( Receiver peerRx : peerRxList ) {
-			Transmitter tx = getUnconnectedTransmitter();
+			Transmitter tx = getTransmitter();
 			if( tx == null ) continue;
 			tx.setReceiver(peerRx);
 		}
 		if( peerTxList != null ) {
 			rx = device.getReceivers().get(0);
-			for( Transmitter peerTx : peerTxList ) {
-				peerTx.setReceiver(rx);
-			}
+			for( Transmitter peerTx : peerTxList ) peerTx.setReceiver(rx);
 		}
 	}
 }

@@ -44,9 +44,9 @@ public class MidiConnecterListView extends JList<AutoCloseable>
 			boolean cellHasFocus
 		) {
 			String text;
-			if( value instanceof Transmitter ) text = "Tx";
-			else if( value instanceof Receiver ) text = "Rx";
-			else text = (value==null ? null : value.toString());
+			if( value instanceof Receiver ) text = "Rx";
+			else if( value == null || value instanceof Transmitter ) text = null;
+			else text = value.toString();
 			setText(text);
 			setIcon(MIDI_CONNECTER_ICON);
 			if (isSelected) {
@@ -119,16 +119,28 @@ public class MidiConnecterListView extends JList<AutoCloseable>
 		event.acceptDrop(DnDConstants.ACTION_COPY_OR_MOVE);
 		try {
 			int maskedBits = event.getDropAction() & DnDConstants.ACTION_COPY_OR_MOVE;
-			if( maskedBits != 0 ) {
-				Transferable t = event.getTransferable();
-				Object data = t.getTransferData(transmitterFlavor);
-				if( data instanceof Transmitter ) {
-					getModel().ConnectToReceiver((Transmitter)data);
-					event.dropComplete(true);
-					return;
-				}
+			if( maskedBits == 0 || ! getModel().rxSupported() ) {
+				event.dropComplete(false);
+				return;
 			}
-			event.dropComplete(false);
+			Transferable t = event.getTransferable();
+			Object data = t.getTransferData(transmitterFlavor);
+			Transmitter newTransmitter = null;
+			if( data instanceof MidiConnecterListModel.NewTransmitter ) {
+				newTransmitter = ((MidiConnecterListModel.NewTransmitter)data).getMidiConnecterListModel().getTransmitter();
+			}
+			else if( data instanceof Transmitter ) {
+				newTransmitter = (Transmitter)data;
+			}
+			else {
+				event.dropComplete(false);
+				return;
+			}
+			if( getModel().ConnectToReceiver(newTransmitter) == null ) {
+				newTransmitter.close();
+				event.dropComplete(false);
+			}
+			event.dropComplete(true);
 		}
 		catch (Exception ex) {
 			ex.printStackTrace();
@@ -140,8 +152,7 @@ public class MidiConnecterListView extends JList<AutoCloseable>
 		return (MidiConnecterListModel)super.getModel();
 	}
 	/**
-	 * 選択されているトランスミッタを閉じます。
-	 * レシーバが選択されていた場合は無視されます。
+	 * 選択項目がトランスミッタの実体であれば、それを閉じます。
 	 */
 	public void closeSelectedTransmitter() {
 		AutoCloseable ac = getSelectedValue();

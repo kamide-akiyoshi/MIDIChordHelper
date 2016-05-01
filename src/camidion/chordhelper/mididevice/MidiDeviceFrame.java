@@ -65,15 +65,6 @@ public class MidiDeviceFrame extends JInternalFrame {
 		add(new JScrollPane(listView));
 		add(new JPanel() {{
 			if( listView.getModel().txSupported() ) {
-				add(new JButton("New Tx") {{
-					setMargin(ZERO_INSETS);
-					addActionListener(new ActionListener() {
-						@Override
-						public void actionPerformed(ActionEvent event) {
-							listView.getModel().getUnconnectedTransmitter();
-						}
-					});
-				}});
 				add(new JButton("Close Tx") {{
 					setMargin(ZERO_INSETS);
 					addActionListener(new ActionListener() {
