@@ -7,6 +7,10 @@ import java.awt.dnd.DnDConstants;
 import java.awt.dnd.DragGestureEvent;
 import java.awt.dnd.DragGestureListener;
 import java.awt.dnd.DragSource;
+import java.awt.dnd.DragSourceDragEvent;
+import java.awt.dnd.DragSourceDropEvent;
+import java.awt.dnd.DragSourceEvent;
+import java.awt.dnd.DragSourceListener;
 import java.awt.dnd.DropTarget;
 import java.awt.dnd.DropTargetDragEvent;
 import java.awt.dnd.DropTargetDropEvent;
@@ -31,7 +35,7 @@ import camidion.chordhelper.ButtonIcon;
  * </p>
  */
 public class MidiConnecterListView extends JList<AutoCloseable>
-	implements Transferable, DragGestureListener, DropTargetListener
+	implements DragGestureListener, DragSourceListener, Transferable, DropTargetListener
 {
 	public static final Icon MIDI_CONNECTER_ICON =
 		new ButtonIcon(ButtonIcon.MIDI_CONNECTOR_ICON);
@@ -45,7 +49,8 @@ public class MidiConnecterListView extends JList<AutoCloseable>
 		) {
 			String text;
 			if( value instanceof Receiver ) text = "Rx";
-			else if( value == null || value instanceof Transmitter ) text = null;
+			else if( value instanceof Transmitter ) text = "Tx";
+			else if( value == null ) text = null;
 			else text = value.toString();
 			setText(text);
 			setIcon(MIDI_CONNECTER_ICON);
@@ -77,32 +82,49 @@ public class MidiConnecterListView extends JList<AutoCloseable>
         );
 		new DropTarget( this, DnDConstants.ACTION_COPY_OR_MOVE, this, true );
 	}
+
+	@Override
+	public void dragGestureRecognized(DragGestureEvent dge) {
+		if( (dge.getDragAction() & DnDConstants.ACTION_COPY_OR_MOVE) == 0 ) return;
+		AutoCloseable e = getModel().getElementAt(locationToIndex(dge.getDragOrigin()));
+		if( e instanceof Transmitter ) {
+			if( e instanceof MidiConnecterListModel.NewTransmitter ) {
+				transferringTx = getModel().getTransmitter();
+			}
+			else {
+				transferringTx = (Transmitter)e;
+			}
+			dge.startDrag(DragSource.DefaultLinkDrop, this, this);
+		}
+	}
+
+	@Override
+	public void dragEnter(DragSourceDragEvent dsde) {}
+	@Override
+	public void dragOver(DragSourceDragEvent dsde) {}
+	@Override
+	public void dropActionChanged(DragSourceDragEvent dsde) {}
+	@Override
+	public void dragExit(DragSourceEvent dse) {}
+	@Override
+	public void dragDropEnd(DragSourceDropEvent dsde) {
+		if( ! dsde.getDropSuccess() ) getModel().closeTransmitter(transferringTx);
+		transferringTx = null;
+	}
+
+	private Transmitter transferringTx = null;
 	private static final DataFlavor transmitterFlavor =
 		new DataFlavor(Transmitter.class, "Transmitter");
 	private static final DataFlavor transmitterFlavors[] = {transmitterFlavor};
 	@Override
-	public Object getTransferData(DataFlavor flavor) {
-		return getModel().getElementAt(getSelectedIndex());
-	}
+	public Object getTransferData(DataFlavor flavor) { return transferringTx; }
 	@Override
-	public DataFlavor[] getTransferDataFlavors() {
-		return transmitterFlavors;
-	}
+	public DataFlavor[] getTransferDataFlavors() { return transmitterFlavors; }
 	@Override
 	public boolean isDataFlavorSupported(DataFlavor flavor) {
 		return flavor.equals(transmitterFlavor);
 	}
-	@Override
-	public void dragGestureRecognized(DragGestureEvent dge) {
-		int action = dge.getDragAction();
-		if( (action & DnDConstants.ACTION_COPY_OR_MOVE) == 0 )
-			return;
-		int index = locationToIndex(dge.getDragOrigin());
-		AutoCloseable data = getModel().getElementAt(index);
-		if( data instanceof Transmitter ) {
-			dge.startDrag(DragSource.DefaultLinkDrop, this, null);
-		}
-	}
+
 	@Override
 	public void dragEnter(DropTargetDragEvent event) {
 		if( event.isDataFlavorSupported(transmitterFlavor) )
@@ -123,22 +145,15 @@ public class MidiConnecterListView extends JList<AutoCloseable>
 				event.dropComplete(false);
 				return;
 			}
-			Transferable t = event.getTransferable();
-			Object data = t.getTransferData(transmitterFlavor);
-			Transmitter newTransmitter = null;
-			if( data instanceof MidiConnecterListModel.NewTransmitter ) {
-				newTransmitter = ((MidiConnecterListModel.NewTransmitter)data).getMidiConnecterListModel().getTransmitter();
-			}
-			else if( data instanceof Transmitter ) {
-				newTransmitter = (Transmitter)data;
-			}
-			else {
+			AutoCloseable destination = getModel().getElementAt(locationToIndex(event.getLocation()));
+			if( ! (destination instanceof Receiver) ) {
 				event.dropComplete(false);
 				return;
 			}
-			if( getModel().ConnectToReceiver(newTransmitter) == null ) {
-				newTransmitter.close();
+			Transmitter sourceTx = (Transmitter)event.getTransferable().getTransferData(transmitterFlavor);
+			if( getModel().ConnectToReceiver(sourceTx, (Receiver)destination) == null ) {
 				event.dropComplete(false);
+				return;
 			}
 			event.dropComplete(true);
 		}

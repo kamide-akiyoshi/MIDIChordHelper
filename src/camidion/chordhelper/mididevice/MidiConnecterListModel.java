@@ -19,19 +19,8 @@ public class MidiConnecterListModel extends AbstractListModel<AutoCloseable> {
 	/**
 	 * 実体のない新規Transmitterを表すインターフェース
 	 */
-	public interface NewTransmitter extends Transmitter {
-		/**
-		 * 収容先のリストモデルを返します。
-		 *
-		 * @return 収容先のリストモデル
-		 */
-		public MidiConnecterListModel getMidiConnecterListModel();
-	};
+	public interface NewTransmitter extends Transmitter {};
 	public NewTransmitter newTransmitter = new NewTransmitter() {
-		@Override
-		public MidiConnecterListModel getMidiConnecterListModel() {
-			return MidiConnecterListModel.this;
-		}
 		@Override
 		public void setReceiver(Receiver receiver) { }
 		@Override
@@ -134,14 +123,13 @@ public class MidiConnecterListModel extends AbstractListModel<AutoCloseable> {
 		}
 	}
 	/**
-	 * 引数で指定されたトランスミッタを、最初のレシーバに接続します。
+	 * 引数で指定されたトランスミッタをレシーバを接続します。
 	 * @param tx トランスミッタ
-	 * @return 接続されたレシーバ（見つからなかった場合はnull）
+	 * @param rx レシーバ
+	 * @return 接続されたレシーバ（このリストにないレシーバが指定された場合はnull）
 	 */
-	public Receiver ConnectToReceiver(Transmitter tx) {
-		List<Receiver> receivers = device.getReceivers();
-		if( receivers.isEmpty() ) return null;
-		Receiver rx = receivers.get(0);
+	public Receiver ConnectToReceiver(Transmitter tx, Receiver rx) {
+		if( ! device.getReceivers().contains(rx) ) return null;
 		tx.setReceiver(rx);
 		fireContentsChanged(this,0,getSize());
 		return rx;

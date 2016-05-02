@@ -1,13 +1,11 @@
 package camidion.chordhelper.mididevice;
 
-import java.awt.Insets;
 import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
 import javax.sound.midi.MidiDevice;
 import javax.swing.BoxLayout;
-import javax.swing.JButton;
 import javax.swing.JInternalFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -20,7 +18,6 @@ import javax.swing.event.InternalFrameEvent;
  * MIDIデバイスフレームビュー
  */
 public class MidiDeviceFrame extends JInternalFrame {
-	private static Insets ZERO_INSETS = new Insets(0,0,0,0);
 	/**
 	 * デバイスの仮想MIDI端子リストビュー
 	 */
@@ -64,17 +61,6 @@ public class MidiDeviceFrame extends JInternalFrame {
 		setLayout(new BoxLayout(getContentPane(), BoxLayout.Y_AXIS));
 		add(new JScrollPane(listView));
 		add(new JPanel() {{
-			if( listView.getModel().txSupported() ) {
-				add(new JButton("Close Tx") {{
-					setMargin(ZERO_INSETS);
-					addActionListener(new ActionListener() {
-						@Override
-						public void actionPerformed(ActionEvent event) {
-							listView.closeSelectedTransmitter();
-						}
-					});
-				}});
-			}
 			add(new JLabel() {{
 				timer = new Timer(50, new ActionListener() {
 					private long sec = -2;
@@ -94,7 +80,6 @@ public class MidiDeviceFrame extends JInternalFrame {
 				});
 			}});
 		}});
-		setSize(250,100);
 	}
 	/**
 	 * 指定されたインデックスが示す仮想MIDI端子リストの要素のセル範囲を返します。
