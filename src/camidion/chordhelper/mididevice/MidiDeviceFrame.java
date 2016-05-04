@@ -1,6 +1,5 @@
 package camidion.chordhelper.mididevice;
 
-import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
@@ -29,8 +28,9 @@ public class MidiDeviceFrame extends JInternalFrame {
 	/**
 	 * MIDIデバイスのモデルからフレームビューを構築します。
 	 * @param model MIDIデバイスのTransmitter/Receiverリストモデル
+	 * @param cablePane MIDIケーブル描画面
 	 */
-	public MidiDeviceFrame(MidiConnecterListModel model) {
+	public MidiDeviceFrame(MidiConnecterListModel model, MidiCablePane cablePane) {
 		super( null, true, true, false, false );
 		//
 		// タイトルの設定
@@ -42,19 +42,19 @@ public class MidiDeviceFrame extends JInternalFrame {
 			title = (model.rxSupported()?"[OUT] ":"[No I/O] ")+title;
 		}
 		setTitle(title);
-		listView = new MidiConnecterListView(model);
+		listView = new MidiConnecterListView(model, cablePane);
 		setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
 		addInternalFrameListener(
 			new InternalFrameAdapter() {
 				public void internalFrameOpened(InternalFrameEvent e) {
-					if( ! listView.getModel().getMidiDevice().isOpen() )
-						setVisible(false);
+					boolean isOpen = listView.getModel().getMidiDevice().isOpen();
+					if( ! isOpen ) setVisible(isOpen);
 				}
 				public void internalFrameClosing(InternalFrameEvent e) {
 					MidiConnecterListModel m = listView.getModel();
 					m.closeDevice();
-					if( ! m.getMidiDevice().isOpen() )
-						setVisible(false);
+					boolean isOpen = m.getMidiDevice().isOpen();
+					if( isVisible() != isOpen ) setVisible(isOpen);
 				}
 			}
 		);
@@ -80,30 +80,5 @@ public class MidiDeviceFrame extends JInternalFrame {
 				});
 			}});
 		}});
-	}
-	/**
-	 * 指定されたインデックスが示す仮想MIDI端子リストの要素のセル範囲を返します。
-	 *
-	 * @param index リスト要素のインデックス
-	 * @return セル範囲の矩形
-	 */
-	public Rectangle getListCellBounds(int index) {
-		Rectangle rect = listView.getCellBounds(index,index);
-		if( rect == null )
-			return null;
-		rect.translate(
-			getRootPane().getX() + getContentPane().getX(),
-			getRootPane().getY() + getContentPane().getY()
-		);
-		return rect;
-	}
-	/**
-	 * 仮想MIDI端子リストの指定された要素のセル範囲を返します。
-	 *
-	 * @param transciver 要素となるMIDI端子（Transmitter または Receiver）
-	 * @return セル範囲の矩形
-	 */
-	public Rectangle getListCellBounds(AutoCloseable transciver) {
-		return getListCellBounds(listView.getModel().indexOf(transciver));
 	}
 }

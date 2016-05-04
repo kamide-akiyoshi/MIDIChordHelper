@@ -18,23 +18,56 @@ import javax.swing.event.TreeSelectionListener;
 /**
  * MIDIデバイスダイアログ (View)
  */
-public class MidiDeviceDialog extends JDialog
-	implements ActionListener, TreeSelectionListener
+public class MidiDeviceDialog extends JDialog implements ActionListener
 {
+	private MidiDeviceTreeView deviceTree;
 	private JEditorPane deviceInfoPane;
-	private MidiDesktopPane desktopPane;
-	private MidiDeviceTree deviceTree;
+	private MidiOpenedDevicesView desktopPane;
+	@Override
+	public void actionPerformed(ActionEvent event) { setVisible(true); }
+
 	public MidiDeviceDialog(List<MidiConnecterListModel> deviceModelList) {
 		setTitle("MIDI device connection");
 		setBounds( 300, 300, 800, 500 );
-		deviceTree = new MidiDeviceTree(new MidiDeviceTreeModel(deviceModelList));
-		deviceTree.addTreeSelectionListener(this);
-		deviceInfoPane = new JEditorPane("text/html","<html></html>") {
-			{
-				setEditable(false);
-			}
-		};
-		desktopPane = new MidiDesktopPane(deviceTree);
+		deviceTree = new MidiDeviceTreeView(new MidiDeviceTreeModel(deviceModelList)) {{
+			addTreeSelectionListener(new TreeSelectionListener() {
+				@Override
+				public void valueChanged(TreeSelectionEvent e) {
+					Object lastSelected = deviceTree.getLastSelectedPathComponent();
+					String html = "<html><head></head><body>";
+					if( lastSelected instanceof MidiConnecterListModel ) {
+						MidiConnecterListModel deviceModel = (MidiConnecterListModel)lastSelected;
+						MidiDevice.Info info = deviceModel.getMidiDevice().getDeviceInfo();
+						html += "<b>"+deviceModel+"</b><br/>"
+							+ "<table border=\"1\"><tbody>"
+							+ "<tr><th>Version</th><td>"+info.getVersion()+"</td></tr>"
+							+ "<tr><th>Description</th><td>"+info.getDescription()+"</td></tr>"
+							+ "<tr><th>Vendor</th><td>"+info.getVendor()+"</td></tr>"
+							+ "</tbody></table>";
+						MidiDeviceFrame deviceFrame = desktopPane.getMidiDeviceFrameOf(deviceModel);
+						if( deviceFrame != null ) {
+							try {
+								deviceFrame.setSelected(true);
+							} catch( PropertyVetoException ex ) {
+								ex.printStackTrace();
+							}
+						}
+					}
+					else if( lastSelected instanceof MidiDeviceInOutType ) {
+						MidiDeviceInOutType ioType = (MidiDeviceInOutType)lastSelected;
+						html += "<b>"+ioType+"</b><br/>";
+						html += ioType.getDescription()+"<br/>";
+					}
+					else if( lastSelected != null ) {
+						html += lastSelected.toString();
+					}
+					html += "</body></html>";
+					deviceInfoPane.setText(html);
+				}
+			});
+		}};
+		deviceInfoPane = new JEditorPane("text/html","<html></html>") {{ setEditable(false); }};
+		desktopPane = new MidiOpenedDevicesView(deviceTree);
 		add(new JSplitPane(
 			JSplitPane.HORIZONTAL_SPLIT,
 			new JSplitPane(
@@ -50,51 +83,11 @@ public class MidiDeviceDialog extends JDialog
 			setDividerLocation(250);
 		}});
 		addWindowListener(new WindowAdapter() {
+			private void setTimer(boolean flag) { desktopPane.setAllDeviceTimestampTimers(flag); }
 			@Override
-			public void windowClosing(WindowEvent e) {
-				desktopPane.setAllDeviceTimestampTimers(false);
-			}
+			public void windowClosing(WindowEvent e) { setTimer(false); }
 			@Override
-			public void windowActivated(WindowEvent e) {
-				desktopPane.setAllDeviceTimestampTimers(true);
-			}
+			public void windowActivated(WindowEvent e) { setTimer(true); }
 		});
-	}
-	@Override
-	public void actionPerformed(ActionEvent event) {
-		setVisible(true);
-	}
-	@Override
-	public void valueChanged(TreeSelectionEvent e) {
-		Object lastSelected = deviceTree.getLastSelectedPathComponent();
-		String html = "<html><head></head><body>";
-		if( lastSelected instanceof MidiConnecterListModel ) {
-			MidiConnecterListModel deviceModel = (MidiConnecterListModel)lastSelected;
-			MidiDevice.Info info = deviceModel.getMidiDevice().getDeviceInfo();
-			html += "<b>"+deviceModel+"</b><br/>"
-				+ "<table border=\"1\"><tbody>"
-				+ "<tr><th>Version</th><td>"+info.getVersion()+"</td></tr>"
-				+ "<tr><th>Description</th><td>"+info.getDescription()+"</td></tr>"
-				+ "<tr><th>Vendor</th><td>"+info.getVendor()+"</td></tr>"
-				+ "</tbody></table>";
-			MidiDeviceFrame frame = desktopPane.getFrameOf(deviceModel);
-			if( frame != null ) {
-				try {
-					frame.setSelected(true);
-				} catch( PropertyVetoException ex ) {
-					ex.printStackTrace();
-				}
-			}
-		}
-		else if( lastSelected instanceof MidiDeviceInOutType ) {
-			MidiDeviceInOutType ioType = (MidiDeviceInOutType)lastSelected;
-			html += "<b>"+ioType+"</b><br/>";
-			html += ioType.getDescription()+"<br/>";
-		}
-		else if( lastSelected != null ) {
-			html += lastSelected.toString();
-		}
-		html += "</body></html>";
-		deviceInfoPane.setText(html);
 	}
 }

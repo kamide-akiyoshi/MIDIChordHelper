@@ -29,11 +29,10 @@ public class MidiConnecterListModel extends AbstractListModel<AutoCloseable> {
 		public void close() { }
 	};
 	/**
-	 * 指定のMIDIデバイスに属する
-	 *  {@link Transmitter}/{@link Receiver} のリストモデルを構築します。
+	 * 指定のMIDIデバイスに属する {@link Transmitter}/{@link Receiver} のリストモデルを構築します。
 	 *
 	 * @param device 対象MIDIデバイス
-	 * @param modelList リストモデルのリスト
+	 * @param modelList リストモデルを格納している親リスト
 	 */
 	public MidiConnecterListModel(MidiDevice device, List<MidiConnecterListModel> modelList) {
 		this.device = device;
