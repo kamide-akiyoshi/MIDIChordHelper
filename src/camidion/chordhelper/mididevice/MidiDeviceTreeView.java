@@ -33,7 +33,9 @@ public class MidiDeviceTreeView extends JTree
 	private Transferable draggingObject = new Transferable() {
 		private DataFlavor flavors[] = {TREE_MODEL_FLAVOR};
 		@Override
-		public Object getTransferData(DataFlavor flavor) { return getLastSelectedPathComponent(); }
+		public Object getTransferData(DataFlavor flavor) {
+			return getLastSelectedPathComponent();
+		}
 		@Override
 		public DataFlavor[] getTransferDataFlavors() { return flavors; }
 		@Override
@@ -51,9 +53,8 @@ public class MidiDeviceTreeView extends JTree
 			this, DnDConstants.ACTION_COPY_OR_MOVE, new DragGestureListener() {
 				@Override
 				public void dragGestureRecognized(DragGestureEvent dge) {
-					if( (dge.getDragAction() & DnDConstants.ACTION_COPY_OR_MOVE) != 0 ) {
-						dge.startDrag(DragSource.DefaultMoveDrop, draggingObject, null);
-					}
+					if( (dge.getDragAction() & DnDConstants.ACTION_COPY_OR_MOVE) == 0 ) return;
+					dge.startDrag(DragSource.DefaultMoveDrop, draggingObject, null);
 				}
 			}
 		);

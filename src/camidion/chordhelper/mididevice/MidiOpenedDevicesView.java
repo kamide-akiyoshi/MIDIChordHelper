@@ -87,7 +87,7 @@ public class MidiOpenedDevicesView extends JDesktopPane {
 	};
 	public MidiOpenedDevicesView(MidiDeviceTreeView deviceTree) {
 		add(cablePane, JLayeredPane.PALETTE_LAYER);
-		int frameIndex = 0;
+		int openedFrameIndex = 0;
 		MidiDeviceTreeModel treeModel = (MidiDeviceTreeModel)deviceTree.getModel();
 		for( MidiConnecterListModel deviceModel : treeModel.deviceModelList ) {
 			deviceModel.addListDataListener(cablePane.midiConnecterListDataListener);
@@ -98,9 +98,9 @@ public class MidiOpenedDevicesView extends JDesktopPane {
 			frame.addInternalFrameListener(deviceTree.midiDeviceFrameListener);
 			add(frame);
 			if( deviceModel.getMidiDevice().isOpen() ) {
-				frame.setBounds( 10+(frameIndex%2)*260, 10+frameIndex*55, 250, 100 );
+				frame.setBounds( 10+(openedFrameIndex%2)*260, 10+openedFrameIndex*55, 250, 100 );
 				frame.setVisible(true);
-				frameIndex++;
+				openedFrameIndex++;
 			}
 		}
 		addComponentListener(new ComponentAdapter() {
@@ -120,7 +120,7 @@ public class MidiOpenedDevicesView extends JDesktopPane {
 		for( JInternalFrame frame : frames ) {
 			if( ! (frame instanceof MidiDeviceFrame) ) continue;
 			MidiDeviceFrame deviceFrame = (MidiDeviceFrame)frame;
-			if( deviceFrame.listView.getModel() == deviceModel ) return deviceFrame;
+			if( deviceModel.equals(deviceFrame.listView.getModel()) ) return deviceFrame;
 		}
 		return null;
 	}

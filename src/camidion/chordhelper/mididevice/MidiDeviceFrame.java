@@ -46,15 +46,10 @@ public class MidiDeviceFrame extends JInternalFrame {
 		setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
 		addInternalFrameListener(
 			new InternalFrameAdapter() {
-				public void internalFrameOpened(InternalFrameEvent e) {
-					boolean isOpen = listView.getModel().getMidiDevice().isOpen();
-					if( ! isOpen ) setVisible(isOpen);
-				}
 				public void internalFrameClosing(InternalFrameEvent e) {
 					MidiConnecterListModel m = listView.getModel();
 					m.closeDevice();
-					boolean isOpen = m.getMidiDevice().isOpen();
-					if( isVisible() != isOpen ) setVisible(isOpen);
+					setVisible(m.getMidiDevice().isOpen());
 				}
 			}
 		);

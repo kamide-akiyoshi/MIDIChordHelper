@@ -20,14 +20,7 @@ public class MidiConnecterListModel extends AbstractListModel<AutoCloseable> {
 	 * 実体のない新規Transmitterを表すインターフェース
 	 */
 	public interface NewTransmitter extends Transmitter {};
-	public NewTransmitter newTransmitter = new NewTransmitter() {
-		@Override
-		public void setReceiver(Receiver receiver) { }
-		@Override
-		public Receiver getReceiver() { return null; }
-		@Override
-		public void close() { }
-	};
+	public NewTransmitter newTransmitter;
 	/**
 	 * 指定のMIDIデバイスに属する {@link Transmitter}/{@link Receiver} のリストモデルを構築します。
 	 *
@@ -37,6 +30,16 @@ public class MidiConnecterListModel extends AbstractListModel<AutoCloseable> {
 	public MidiConnecterListModel(MidiDevice device, List<MidiConnecterListModel> modelList) {
 		this.device = device;
 		this.modelList = modelList;
+		if( txSupported() ) {
+			newTransmitter = new NewTransmitter() {
+				@Override
+				public void setReceiver(Receiver receiver) { }
+				@Override
+				public Receiver getReceiver() { return null; }
+				@Override
+				public void close() { }
+			};
+		}
 	}
 	/**
 	 * 対象MIDIデバイスを返します。
@@ -61,13 +64,13 @@ public class MidiConnecterListModel extends AbstractListModel<AutoCloseable> {
 		List<Transmitter> txList = device.getTransmitters();
 		int txSize = txList.size();
 		if( index < txSize ) return txList.get(index);
-		if( txSize != 0 && index == txSize ) return newTransmitter;
+		if( index == txSize ) return newTransmitter;
 		return null;
 	}
 	@Override
 	public int getSize() {
-		int txSize = device.getTransmitters().size();
-		return device.getReceivers().size() + (txSize == 0 ? 0 : txSize + 1);
+		int txSize = txSupported() ? device.getTransmitters().size() + 1 : 0;
+		return device.getReceivers().size() + txSize;
 	}
 	/**
 	 * 指定の要素がこのリストモデルで最初に見つかった位置を返します。

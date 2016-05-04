@@ -154,9 +154,12 @@ public class MidiConnecterListView extends JList<AutoCloseable> {
 						event.dropComplete(false);
 						return;
 					}
-					Transferable draggedObject = event.getTransferable();
-					Transmitter sourceTx = (Transmitter)draggedObject.getTransferData(transmitterFlavor);
-					if( getModel().ConnectToReceiver(sourceTx, (Receiver)destination) == null ) {
+					Object source = event.getTransferable().getTransferData(transmitterFlavor);
+					if( ! (source instanceof Transmitter) ) {
+						event.dropComplete(false);
+						return;
+					}
+					if( getModel().ConnectToReceiver((Transmitter)source, (Receiver)destination) == null ) {
 						event.dropComplete(false);
 						return;
 					}

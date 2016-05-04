@@ -71,8 +71,9 @@ public class MidiCablePane extends JComponent {
 			JInternalFrame frame = e.getInternalFrame();
 			if( ! (frame instanceof MidiDeviceFrame) ) return;
 			MidiConnecterListModel devModel = ((MidiDeviceFrame)frame).listView.getModel();
-			if( ! devModel.rxSupported() ) return;
-			colorMap.remove(devModel.getMidiDevice().getReceivers().get(0));
+			if( devModel.rxSupported() ) {
+				colorMap.remove(devModel.getMidiDevice().getReceivers().get(0));
+			}
 			repaint();
 		}
 	};
