@@ -1,6 +1,5 @@
 package camidion.chordhelper.mididevice;
 
-import java.awt.Point;
 import java.awt.dnd.DnDConstants;
 import java.awt.dnd.DropTarget;
 import java.awt.dnd.DropTargetAdapter;
@@ -20,7 +19,9 @@ import javax.swing.Timer;
  * 開いている MIDI デバイスを置くためのデスクトップビュー
  */
 public class MidiOpenedDevicesView extends JDesktopPane {
+
 	private MidiCablePane cablePane = new MidiCablePane(this);
+
 	private DropTargetAdapter dropTargetListener = new DropTargetAdapter() {
 		@Override
 		public void dragEnter(DropTargetDragEvent dtde) {
@@ -32,59 +33,60 @@ public class MidiOpenedDevicesView extends JDesktopPane {
 		public void drop(DropTargetDropEvent dtde) {
 			dtde.acceptDrop(DnDConstants.ACTION_COPY_OR_MOVE);
 			try {
-				int action = dtde.getDropAction() ;
-				if( (action & DnDConstants.ACTION_COPY_OR_MOVE) != 0 ) {
-					Object data = dtde.getTransferable().getTransferData(MidiDeviceTreeView.TREE_MODEL_FLAVOR);
-					if( data instanceof MidiConnecterListModel ) {
-						MidiConnecterListModel deviceModel = (MidiConnecterListModel)data;
-						try {
-							deviceModel.openDevice();
-						} catch( MidiUnavailableException e ) {
-							//
-							// デバイスを開くのに失敗した場合
-							//
-							//   例えば、「Microsort MIDI マッパー」と
-							//   「Microsoft GS Wavetable SW Synth」を
-							//   同時に開こうとするとここに来る。
-							//
-							String title = "Cannot open MIDI device";
-							String message = "MIDIデバイス "+deviceModel+" はすでに使用中です。\n"
-								+"他のデバイスが連動して開いていないか確認してください。\n\n"
-								+ e.getMessage();
-							dtde.dropComplete(false);
-							JOptionPane.showMessageDialog(null, message, title, JOptionPane.ERROR_MESSAGE);
-							return;
-						}
-						if( ! deviceModel.getMidiDevice().isOpen() ) {
-							// 例外が出なかったにも関わらずデバイスが開かれていない場合
-							String title = "Cannot open MIDI device";
-							String message = "MIDIデバイス "+deviceModel+" はすでに使用中です。\n"
-								+"他のデバイスが連動して開いていないか確認してください。";
-							dtde.dropComplete(false);
-							JOptionPane.showMessageDialog(null, message, title, JOptionPane.ERROR_MESSAGE);
-							return;
-						}
-						dtde.dropComplete(true);
-						//
-						// デバイスが正常に開かれたことを確認できたら
-						// ドロップした場所へフレームを配置して可視化する。
-						//
-						MidiDeviceFrame deviceFrame = getMidiDeviceFrameOf(deviceModel);
-						if( deviceFrame == null ) return;
-						Point loc = dtde.getLocation();
-						loc.translate( -deviceFrame.getWidth()/2, 0 );
-						deviceFrame.setLocation(loc);
-						deviceFrame.setVisible(true);
-						return;
-					}
+				int maskedBits = dtde.getDropAction() & DnDConstants.ACTION_COPY_OR_MOVE;
+				if( maskedBits == 0 ) {
+					dtde.dropComplete(false);
+					return;
 				}
+				Object data = dtde.getTransferable().getTransferData(MidiDeviceTreeView.TREE_MODEL_FLAVOR);
+				if( ! (data instanceof MidiConnecterListModel) ) {
+					dtde.dropComplete(false);
+					return;
+				}
+				MidiConnecterListModel deviceModel = (MidiConnecterListModel)data;
+				try {
+					deviceModel.openDevice();
+				} catch( MidiUnavailableException e ) {
+					//
+					// デバイスを開くのに失敗した場合
+					//
+					//   例えば、「Microsort MIDI マッパー」と
+					//   「Microsoft GS Wavetable SW Synth」を
+					//   同時に開こうとするとここに来る。
+					//
+					String title = "Cannot open MIDI device";
+					String message = "MIDIデバイス "+deviceModel+" はすでに使用中です。\n"
+						+"他のデバイスが連動して開いていないか確認してください。\n\n"
+						+ e.getMessage();
+					dtde.dropComplete(false);
+					JOptionPane.showMessageDialog(null, message, title, JOptionPane.ERROR_MESSAGE);
+					return;
+				}
+				if( ! deviceModel.getMidiDevice().isOpen() ) {
+					// 例外が出なかったにも関わらずデバイスが開かれていない場合
+					String title = "Cannot open MIDI device";
+					String message = "MIDIデバイス "+deviceModel+" はすでに使用中です。\n"
+						+"他のデバイスが連動して開いていないか確認してください。";
+					dtde.dropComplete(false);
+					JOptionPane.showMessageDialog(null, message, title, JOptionPane.ERROR_MESSAGE);
+					return;
+				}
+				dtde.dropComplete(true);
+				//
+				// デバイスが正常に開かれたことを確認できたら
+				// ドロップした場所へフレームを配置して可視化する。
+				//
+				MidiDeviceFrame deviceFrame = getMidiDeviceFrameOf(deviceModel);
+				deviceFrame.setLocation(dtde.getLocation());
+				deviceFrame.setVisible(true);
 			}
 			catch (Exception ex) {
 				ex.printStackTrace();
+				dtde.dropComplete(false);
 			}
-			dtde.dropComplete(false);
 		}
 	};
+
 	public MidiOpenedDevicesView(MidiDeviceTreeView deviceTree) {
 		add(cablePane, JLayeredPane.PALETTE_LAYER);
 		int openedFrameIndex = 0;
@@ -92,16 +94,16 @@ public class MidiOpenedDevicesView extends JDesktopPane {
 		for( MidiConnecterListModel deviceModel : treeModel.deviceModelList ) {
 			deviceModel.addListDataListener(cablePane.midiConnecterListDataListener);
 			MidiDeviceFrame frame = new MidiDeviceFrame(deviceModel, cablePane) {{
+				setSize(250, 100);
 				addInternalFrameListener(cablePane.midiDeviceFrameListener);
 				addComponentListener(cablePane.midiDeviceFrameComponentListener);
 			}};
 			frame.addInternalFrameListener(deviceTree.midiDeviceFrameListener);
 			add(frame);
-			if( deviceModel.getMidiDevice().isOpen() ) {
-				frame.setBounds( 10+(openedFrameIndex%2)*260, 10+openedFrameIndex*55, 250, 100 );
-				frame.setVisible(true);
-				openedFrameIndex++;
-			}
+			if( ! deviceModel.getMidiDevice().isOpen() ) continue;
+			frame.setLocation( 10+(openedFrameIndex%2)*260, 10+openedFrameIndex*55 );
+			frame.setVisible(true);
+			openedFrameIndex++;
 		}
 		addComponentListener(new ComponentAdapter() {
 			@Override
@@ -109,6 +111,7 @@ public class MidiOpenedDevicesView extends JDesktopPane {
 		});
 		new DropTarget( this, DnDConstants.ACTION_COPY_OR_MOVE, dropTargetListener, true );
 	}
+
 	/**
 	 * 指定されたMIDIデバイスモデルに対するMIDIデバイスフレームを返します。
 	 *
@@ -120,10 +123,13 @@ public class MidiOpenedDevicesView extends JDesktopPane {
 		for( JInternalFrame frame : frames ) {
 			if( ! (frame instanceof MidiDeviceFrame) ) continue;
 			MidiDeviceFrame deviceFrame = (MidiDeviceFrame)frame;
-			if( deviceModel.equals(deviceFrame.listView.getModel()) ) return deviceFrame;
+			if( deviceModel.equals(deviceFrame.getMidiConnecterListView().getModel()) ) {
+				return deviceFrame;
+			}
 		}
 		return null;
 	}
+
 	private boolean isTimerStarted;
 	/**
 	 * タイムスタンプを更新するタイマーを開始または停止します。
@@ -135,7 +141,7 @@ public class MidiOpenedDevicesView extends JDesktopPane {
 		JInternalFrame[] frames = getAllFramesInLayer(JLayeredPane.DEFAULT_LAYER);
 		for( JInternalFrame frame : frames ) {
 			if( ! (frame instanceof MidiDeviceFrame) ) continue;
-			Timer timer = ((MidiDeviceFrame)frame).timer;
+			Timer timer = ((MidiDeviceFrame)frame).getTimer();
 			if( toStart ) timer.start(); else timer.stop();
 		}
 	}

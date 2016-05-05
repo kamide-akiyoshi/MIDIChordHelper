@@ -67,8 +67,7 @@ public class MidiDeviceTreeView extends JTree
 				if(leaf) {
 					setIcon(MidiConnecterListView.MIDI_CONNECTER_ICON);
 					setDisabledIcon(MidiConnecterListView.MIDI_CONNECTER_ICON);
-					MidiConnecterListModel listModel = (MidiConnecterListModel)value;
-					setEnabled( ! listModel.getMidiDevice().isOpen() );
+					setEnabled( ! ((MidiConnecterListModel)value).getMidiDevice().isOpen() );
 				}
 				return this;
 			}

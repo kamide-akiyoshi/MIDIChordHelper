@@ -70,7 +70,8 @@ public class MidiCablePane extends JComponent {
 		public void internalFrameClosing(InternalFrameEvent e) {
 			JInternalFrame frame = e.getInternalFrame();
 			if( ! (frame instanceof MidiDeviceFrame) ) return;
-			MidiConnecterListModel devModel = ((MidiDeviceFrame)frame).listView.getModel();
+			MidiDeviceFrame devFrame = (MidiDeviceFrame)frame;
+			MidiConnecterListModel devModel = devFrame.getMidiConnecterListView().getModel();
 			if( devModel.rxSupported() ) {
 				colorMap.remove(devModel.getMidiDevice().getReceivers().get(0));
 			}
@@ -118,7 +119,7 @@ public class MidiCablePane extends JComponent {
 		for( JInternalFrame frame : frames ) {
 			if( ! (frame instanceof MidiDeviceFrame) ) continue;
 			MidiDeviceFrame txDeviceFrame = (MidiDeviceFrame)frame;
-			MidiConnecterListView txView = txDeviceFrame.listView;
+			MidiConnecterListView txView = txDeviceFrame.getMidiConnecterListView();
 			Transmitter draggingTx = txView.getDraggingTransmitter();
 			List<Transmitter> txList = txView.getModel().getMidiDevice().getTransmitters();
 			for( Transmitter tx : txList ) {
@@ -150,7 +151,8 @@ public class MidiCablePane extends JComponent {
 				for( JInternalFrame anotherFrame : frames ) {
 					if( ! (anotherFrame instanceof MidiDeviceFrame) ) continue;
 					MidiDeviceFrame rxDeviceFrame = (MidiDeviceFrame)anotherFrame;
-					if( (rxRect = rxDeviceFrame.listView.getCellBounds(rx)) == null ) continue;
+					rxRect = rxDeviceFrame.getMidiConnecterListView().getCellBounds(rx);
+					if( rxRect == null ) continue;
 					rxRect.translate(
 						rxDeviceFrame.getRootPane().getX() +
 						rxDeviceFrame.getContentPane().getX() + rxDeviceFrame.getX(),

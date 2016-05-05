@@ -17,14 +17,21 @@ import javax.swing.event.InternalFrameEvent;
  * MIDIデバイスフレームビュー
  */
 public class MidiDeviceFrame extends JInternalFrame {
+
+	private MidiConnecterListView listView;
 	/**
-	 * デバイスの仮想MIDI端子リストビュー
+	 * このデバイスフレームに貼り付けられた仮想MIDI端子リストビューを取得します。
+	 * @return 仮想MIDI端子リストビュー
 	 */
-	MidiConnecterListView listView;
+	public MidiConnecterListView getMidiConnecterListView() { return listView; }
+
+	private Timer timer;
 	/**
-	 * デバイスのタイムスタンプを更新するタイマー
+	 * このデバイスフレームのタイムスタンプ表示更新用タイマーを取得します。
+	 * @return タイムスタンプ表示更新用タイマー
 	 */
-	Timer timer;
+	public Timer getTimer() { return timer; }
+
 	/**
 	 * MIDIデバイスのモデルからフレームビューを構築します。
 	 * @param model MIDIデバイスのTransmitter/Receiverリストモデル
@@ -32,27 +39,17 @@ public class MidiDeviceFrame extends JInternalFrame {
 	 */
 	public MidiDeviceFrame(MidiConnecterListModel model, MidiCablePane cablePane) {
 		super( null, true, true, false, false );
-		//
-		// タイトルの設定
-		String title = model.toString();
-		if( model.txSupported() ) {
-			title = (model.rxSupported()?"[I/O] ":"[IN] ")+title;
-		}
-		else {
-			title = (model.rxSupported()?"[OUT] ":"[No I/O] ")+title;
-		}
-		setTitle(title);
 		listView = new MidiConnecterListView(model, cablePane);
+		setTitle("[" + model.getMidiDeviceInOutType().getShortName() + "] " + model);
 		setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
-		addInternalFrameListener(
-			new InternalFrameAdapter() {
-				public void internalFrameClosing(InternalFrameEvent e) {
-					MidiConnecterListModel m = listView.getModel();
-					m.closeDevice();
-					setVisible(m.getMidiDevice().isOpen());
-				}
+		addInternalFrameListener(new InternalFrameAdapter() {
+			@Override
+			public void internalFrameClosing(InternalFrameEvent e) {
+				MidiConnecterListModel m = listView.getModel();
+				m.closeDevice();
+				setVisible(m.getMidiDevice().isOpen());
 			}
-		);
+		});
 		setLayout(new BoxLayout(getContentPane(), BoxLayout.Y_AXIS));
 		add(new JScrollPane(listView));
 		add(new JPanel() {{
@@ -65,12 +62,8 @@ public class MidiDeviceFrame extends JInternalFrame {
 						long usec = dev.getMicrosecondPosition();
 						long sec = (usec == -1 ? -1 : usec/1000000);
 						if( sec == this.sec ) return;
-						String text;
-						if( (this.sec = sec) == -1 )
-							text = "No TimeStamp";
-						else
-							text = String.format("TimeStamp: %02d:%02d", sec/60, sec%60);
-						setText(text);
+						this.sec = sec;
+						setText(sec == -1?"No TimeStamp":String.format("TimeStamp: %02d:%02d",sec/60,sec%60));
 					}
 				});
 			}});

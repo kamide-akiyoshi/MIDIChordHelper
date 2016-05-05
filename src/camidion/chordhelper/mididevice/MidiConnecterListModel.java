@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Vector;
 
 import javax.sound.midi.MidiDevice;
+import javax.sound.midi.MidiEvent;
 import javax.sound.midi.MidiUnavailableException;
 import javax.sound.midi.Receiver;
 import javax.sound.midi.Sequencer;
@@ -45,16 +46,12 @@ public class MidiConnecterListModel extends AbstractListModel<AutoCloseable> {
 	 * 対象MIDIデバイスを返します。
 	 * @return 対象MIDIデバイス
 	 */
-	public MidiDevice getMidiDevice() {
-		return device;
-	}
+	public MidiDevice getMidiDevice() { return device; }
 	/**
 	 * 対象MIDIデバイスの名前を返します。
 	 */
 	@Override
-	public String toString() {
-		return device.getDeviceInfo().toString();
-	}
+	public String toString() { return device.getDeviceInfo().toString(); }
 	@Override
 	public AutoCloseable getElementAt(int index) {
 		List<Receiver> rxList = device.getReceivers();
@@ -79,36 +76,33 @@ public class MidiConnecterListModel extends AbstractListModel<AutoCloseable> {
 	 * @return 位置のインデックス（先頭が 0、見つからないとき -1）
 	 */
 	public int indexOf(AutoCloseable element) {
+		int index;
 		List<Receiver> rxList = device.getReceivers();
-		int index = rxList.indexOf(element);
-		if( index < 0 ) {
-			List<Transmitter> txList = device.getTransmitters();
-			if( (index = txList.indexOf(element)) >= 0 )
-				index += rxList.size();
-		}
-		return index;
+		if( (index = rxList.indexOf(element)) >= 0 ) return index;
+		List<Transmitter> txList = device.getTransmitters();
+		if( (index = txList.indexOf(element)) >= 0 ) return rxList.size() + index;
+		if( element.equals(newTransmitter) ) return rxList.size() + txList.size();
+		return -1;
 	}
 	/**
 	 * このリストが {@link Transmitter} をサポートしているか調べます。
 	 * @return {@link Transmitter} をサポートしていたら true
 	 */
-	public boolean txSupported() {
-		return device.getMaxTransmitters() != 0;
-	}
+	public boolean txSupported() { return device.getMaxTransmitters() != 0; }
 	/**
 	 * このリストが {@link Receiver} をサポートしているか調べます。
 	 * @return {@link Receiver} をサポートしていたら true
 	 */
-	public boolean rxSupported() {
-		return device.getMaxReceivers() != 0;
-	}
+	public boolean rxSupported() { return device.getMaxReceivers() != 0; }
 	/**
 	 * このリストのMIDIデバイスの入出力タイプを返します。
-	 * <p>レシーバからMIDI信号を受けて外部へ出力できるデバイスの場合は MIDI_OUT、
-	 * 外部からMIDI信号を入力してトランスミッタからレシーバへ転送できるデバイスの場合は MIDI_IN、
-	 * 両方できるデバイスの場合は MIDI_IN_OUT を返します。
-	 * </p>
 	 * @return このリストのMIDIデバイスの入出力タイプ
+	 * <ul>
+	 * <li>MIDI_OUT: {@link Receiver}から受けた{@link MidiEvent}を音源や画面に出力するデバイス</li>
+	 * <li>MIDI_IN: キーボードやシーケンサから入力した{@link MidiEvent}を{@link Transmitter}から{@link Receiver}へ転送するデバイス</li>
+	 * <li>MIDI_IN_OUT: 上記両方の機能をサポートしたデバイス</li>
+	 * <li>MIDI_NONE: 上記両方ともサポートしていないデバイス</li>
+	 * </ul>
 	 */
 	public MidiDeviceInOutType getMidiDeviceInOutType() {
 		if( rxSupported() ) {
@@ -121,7 +115,7 @@ public class MidiConnecterListModel extends AbstractListModel<AutoCloseable> {
 			if( txSupported() )
 				return MidiDeviceInOutType.MIDI_IN;
 			else
-				return null;
+				return MidiDeviceInOutType.MIDI_NONE;
 		}
 	}
 	/**
@@ -142,11 +136,10 @@ public class MidiConnecterListModel extends AbstractListModel<AutoCloseable> {
 	 * @param anotherModel 接続先レシーバを持つリストモデル
 	 */
 	public void connectToReceiverOf(MidiConnecterListModel anotherModel) {
-		if( ! txSupported() || anotherModel == null || ! anotherModel.rxSupported() )
-			return;
+		if( ! txSupported() || anotherModel == null || ! anotherModel.rxSupported() ) return;
 		List<Receiver> rxList = anotherModel.device.getReceivers();
 		if( rxList.isEmpty() ) return;
-		getTransmitter().setReceiver(rxList.get(0));
+		openTransmitter().setReceiver(rxList.get(0));
 	}
 	/**
 	 * レシーバに未接続の最初のトランスミッタを返します。
@@ -154,7 +147,7 @@ public class MidiConnecterListModel extends AbstractListModel<AutoCloseable> {
 	 *
 	 * @return 未接続のトランスミッタ
 	 */
-	public Transmitter getTransmitter() {
+	public Transmitter openTransmitter() {
 		if( ! txSupported() ) return null;
 		List<Transmitter> txList = device.getTransmitters();
 		for( Transmitter tx : txList ) if( tx.getReceiver() == null ) return tx;
@@ -170,8 +163,7 @@ public class MidiConnecterListModel extends AbstractListModel<AutoCloseable> {
 	}
 	/**
 	 * 指定のトランスミッタを閉じます。
-	 * <p>このリストモデルにないトランスミッタが指定された場合、無視されます。
-	 * </p>
+	 * このリストモデルにないトランスミッタが指定された場合、無視されます。
 	 * @param txToClose 閉じたいトランスミッタ
 	 */
 	public void closeTransmitter(Transmitter txToClose) {
@@ -189,10 +181,8 @@ public class MidiConnecterListModel extends AbstractListModel<AutoCloseable> {
 	}
 	/**
 	 * 対象MIDIデバイスを閉じます。
-	 *
-	 * <p>対象MIDIデバイスの Receiver を設定している
-	 *  {@link Transmitter} があればすべて閉じます。
-	 * </p>
+	 * 対象MIDIデバイスの{@link Receiver}を設定した他デバイスの{@link Transmitter}があれば、
+	 * それも閉じます。
 	 */
 	public void closeDevice() {
 		if( rxSupported() ) {
@@ -241,11 +231,9 @@ public class MidiConnecterListModel extends AbstractListModel<AutoCloseable> {
 				if( m == this || ! m.txSupported() ) continue;
 				for( int i=0; i<m.getSize(); i++ ) {
 					Object obj = m.getElementAt(i);
-					if( ! (obj instanceof Transmitter) )
-						continue;
+					if( ! (obj instanceof Transmitter) ) continue;
 					Transmitter tx = ((Transmitter)obj);
-					if( tx.getReceiver() == rx )
-						peerTxList.add(tx);
+					if( tx.getReceiver() == rx ) peerTxList.add(tx);
 				}
 			}
 		}
@@ -258,9 +246,8 @@ public class MidiConnecterListModel extends AbstractListModel<AutoCloseable> {
 		}
 		// 元通りに接続し直す
 		for( Receiver peerRx : peerRxList ) {
-			Transmitter tx = getTransmitter();
-			if( tx == null ) continue;
-			tx.setReceiver(peerRx);
+			Transmitter tx = openTransmitter();
+			if( tx != null ) tx.setReceiver(peerRx);
 		}
 		if( peerTxList != null ) {
 			rx = device.getReceivers().get(0);

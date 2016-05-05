@@ -122,7 +122,7 @@ public class MidiConnecterListView extends JList<AutoCloseable> {
 					AutoCloseable transceiver = getModel().getElementAt(locationToIndex(dragStartPoint));
 					if( transceiver instanceof Transmitter ) {
 						if( transceiver instanceof MidiConnecterListModel.NewTransmitter ) {
-							draggingObject.tx = getModel().getTransmitter();
+							draggingObject.tx = getModel().openTransmitter();
 						}
 						else {
 							draggingObject.tx = (Transmitter)transceiver;

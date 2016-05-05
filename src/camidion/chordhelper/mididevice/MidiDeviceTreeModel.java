@@ -20,15 +20,12 @@ public class MidiDeviceTreeModel implements TreeModel {
 	public Object getRoot() { return "MIDI devices"; }
 	@Override
 	public Object getChild(Object parent, int index) {
-		if( parent == getRoot() ) {
-			return MidiDeviceInOutType.values()[index];
-		}
+		if( parent == getRoot() ) return MidiDeviceInOutType.values()[index + 1];
 		if( parent instanceof MidiDeviceInOutType ) {
 			MidiDeviceInOutType ioType = (MidiDeviceInOutType)parent;
 			for( MidiConnecterListModel deviceModel : deviceModelList )
 				if( deviceModel.getMidiDeviceInOutType() == ioType ) {
-					if( index == 0 )
-						return deviceModel;
+					if( index == 0 ) return deviceModel;
 					index--;
 				}
 		}
@@ -36,15 +33,12 @@ public class MidiDeviceTreeModel implements TreeModel {
 	}
 	@Override
 	public int getChildCount(Object parent) {
-		if( parent == getRoot() ) {
-			return MidiDeviceInOutType.values().length;
-		}
+		if( parent == getRoot() ) return MidiDeviceInOutType.values().length - 1;
 		int childCount = 0;
 		if( parent instanceof MidiDeviceInOutType ) {
 			MidiDeviceInOutType ioType = (MidiDeviceInOutType)parent;
 			for( MidiConnecterListModel deviceModel : deviceModelList )
-				if( deviceModel.getMidiDeviceInOutType() == ioType )
-					childCount++;
+				if( deviceModel.getMidiDeviceInOutType() == ioType ) childCount++;
 		}
 		return childCount;
 	}
@@ -53,7 +47,7 @@ public class MidiDeviceTreeModel implements TreeModel {
 		if( parent == getRoot() ) {
 			if( child instanceof MidiDeviceInOutType ) {
 				MidiDeviceInOutType ioType = (MidiDeviceInOutType)child;
-				return ioType.ordinal();
+				return ioType.ordinal() - 1;
 			}
 		}
 		if( parent instanceof MidiDeviceInOutType ) {
@@ -61,8 +55,7 @@ public class MidiDeviceTreeModel implements TreeModel {
 			int index = 0;
 			for( MidiConnecterListModel deviceModel : deviceModelList ) {
 				if( deviceModel.getMidiDeviceInOutType() == ioType ) {
-					if( deviceModel == child )
-						return index;
+					if( deviceModel == child ) return index;
 					index++;
 				}
 			}
@@ -70,9 +63,7 @@ public class MidiDeviceTreeModel implements TreeModel {
 		return -1;
 	}
 	@Override
-	public boolean isLeaf(Object node) {
-		return node instanceof MidiConnecterListModel;
-	}
+	public boolean isLeaf(Object node) { return node instanceof MidiConnecterListModel; }
 	@Override
 	public void valueForPathChanged(TreePath path, Object newValue) {}
 	//
