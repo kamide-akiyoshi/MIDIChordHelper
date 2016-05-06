@@ -12,8 +12,6 @@ import javax.swing.JInternalFrame;
 import javax.swing.JLabel;
 import javax.swing.JScrollPane;
 import javax.swing.Timer;
-import javax.swing.event.InternalFrameAdapter;
-import javax.swing.event.InternalFrameEvent;
 
 /**
  * MIDIデバイスフレームビュー
@@ -48,14 +46,6 @@ public class MidiDeviceFrame extends JInternalFrame {
 		addComponentListener(cablePane.midiDeviceFrameComponentListener);
 		setTitle("[" + model.getMidiDeviceInOutType().getShortName() + "] " + model);
 		setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
-		addInternalFrameListener(new InternalFrameAdapter() {
-			@Override
-			public void internalFrameClosing(InternalFrameEvent e) {
-				MidiConnecterListModel m = listView.getModel();
-				m.closeDevice();
-				setVisible(m.getMidiDevice().isOpen());
-			}
-		});
 		add(new JLabel("--:--") {{
 			timer = new Timer(50, new ActionListener() {
 				private long sec = -2;

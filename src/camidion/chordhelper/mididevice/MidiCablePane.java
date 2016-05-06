@@ -12,6 +12,7 @@ import java.awt.dnd.DragSourceMotionListener;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.ComponentListener;
+import java.util.Arrays;
 import java.util.Hashtable;
 import java.util.List;
 
@@ -71,8 +72,11 @@ public class MidiCablePane extends JComponent {
 			JInternalFrame frame = e.getInternalFrame();
 			if( ! (frame instanceof MidiDeviceFrame) ) return;
 			MidiDeviceFrame f = (MidiDeviceFrame)frame;
-			List<Receiver> rxList = f.getMidiConnecterListView().getModel().getMidiDevice().getReceivers();
+			MidiConnecterListModel m = f.getMidiConnecterListView().getModel();
+			List<Receiver> rxList = m.getMidiDevice().getReceivers();
 			for( Receiver rx : rxList ) colorMap.remove(rx);
+			m.closeDevice();
+			frame.setVisible(m.getMidiDevice().isOpen());
 			repaint();
 		}
 	};
@@ -98,23 +102,28 @@ public class MidiCablePane extends JComponent {
 
 	private static final Stroke CABLE_STROKE = new BasicStroke(
 			3, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
-	private static final Color[] CABLE_COLORS = {
+	private static final List<Color> CABLE_COLORS = Arrays.asList(
 		new Color(255, 0, 0,144),
 		new Color(0, 255, 0,144),
 		new Color(0, 0, 255,144),
 		new Color(191,191,0,144),
 		new Color(0,191,191,144),
-		new Color(191,0,191,144),
-	};
+		new Color(191,0,191,144)
+	);
 	private static final Color ADDING_CABLE_COLOR = new Color(0, 0, 0, 144);
 	private static final Color REMOVING_CABLE_COLOR = new Color(128, 128, 128, 144);
-	private int nextColorIndex = 0;
 	private Hashtable<Receiver,Color> colorMap = new Hashtable<>();
 	private Color colorOf(Receiver rx) {
 		Color color = colorMap.get(rx);
 		if( color == null ) {
-			colorMap.put(rx, color=CABLE_COLORS[nextColorIndex++]);
-			if( nextColorIndex >= CABLE_COLORS.length ) nextColorIndex = 0;
+			for( Color c : CABLE_COLORS ) {
+				if( ! colorMap.containsValue(c) ) {
+					colorMap.put(rx, c);
+					return c;
+				}
+			}
+			color = CABLE_COLORS.get((int)( Math.random() * CABLE_COLORS.size() ));
+			colorMap.put(rx, color);
 		}
 		return color;
 	}
