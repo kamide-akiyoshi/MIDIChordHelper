@@ -13,9 +13,14 @@ import camidion.chordhelper.ChordHelperApplet;
 import camidion.chordhelper.midieditor.MidiSequenceEditor;
 
 /**
- * MIDIデバイスモデルリスト
+ * すべてのMIDIデバイスモデル {@link MidiConnecterListModel} を収容するリストです。
+ * {@link MidiDeviceTreeModel} もこのリストを参照します。
  */
 public class MidiDeviceModelList extends Vector<MidiConnecterListModel> {
+	/**
+	 * ツリー表示のルートに使用するタイトル
+	 */
+	public static final String TITLE = "MIDI devices";
 	/**
 	 * MIDIエディタ
 	 */

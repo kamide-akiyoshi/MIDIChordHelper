@@ -1,7 +1,6 @@
 package camidion.chordhelper.mididevice;
 
 import java.awt.Component;
-import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
@@ -16,6 +15,8 @@ import java.awt.dnd.DropTarget;
 import java.awt.dnd.DropTargetAdapter;
 import java.awt.dnd.DropTargetDragEvent;
 import java.awt.dnd.DropTargetDropEvent;
+import java.util.Arrays;
+import java.util.List;
 
 import javax.sound.midi.Receiver;
 import javax.sound.midi.Transmitter;
@@ -35,6 +36,7 @@ import camidion.chordhelper.ButtonIcon;
  * </p>
  */
 public class MidiConnecterListView extends JList<AutoCloseable> {
+
 	public static final Icon MIDI_CONNECTER_ICON = new ButtonIcon(ButtonIcon.MIDI_CONNECTOR_ICON);
 	/**
 	 * リストに登録されている仮想MIDI端子の描画ツール
@@ -66,39 +68,43 @@ public class MidiConnecterListView extends JList<AutoCloseable> {
 	}
 
 	private static final DataFlavor transmitterFlavor = new DataFlavor(Transmitter.class, "Transmitter");
+	private static final DataFlavor receiverFlavor = new DataFlavor(Receiver.class, "Receiver");
 	/**
 	 * ドラッグ対象を表すクラス
 	 */
 	private static class DraggingObject implements Transferable {
-		private static final DataFlavor flavors[] = {transmitterFlavor};
-		private Transmitter tx;
+		private static final List<DataFlavor> flavors = Arrays.asList(transmitterFlavor, receiverFlavor);
+		private AutoCloseable trx;
 		@Override
-		public Object getTransferData(DataFlavor flavor) { return tx; }
-		@Override
-		public DataFlavor[] getTransferDataFlavors() { return flavors; }
-		@Override
-		public boolean isDataFlavorSupported(DataFlavor flavor) {
-			return flavor.equals(transmitterFlavor);
+		public Object getTransferData(DataFlavor flavor) {
+			return flavor.getRepresentationClass().isInstance(trx) ? trx : null;
 		}
+		@Override
+		public DataFlavor[] getTransferDataFlavors() { return (DataFlavor[]) flavors.toArray(); }
+		@Override
+		public boolean isDataFlavorSupported(DataFlavor flavor) { return flavors.contains(flavor); }
 	};
 	private static DraggingObject draggingObject = new DraggingObject();
 
 	/**
-	 * 現在ドラッグされているトランスミッタを返します。
-	 * @return 現在ドラッグされているトランスミッタ（ドラッグ中でなければnull）
+	 * 現在ドラッグされている{@link Transmitter}または{@link Receiver}を返します。
+	 * @return 現在ドラッグされている{@link Transmitter}または{@link Receiver}
+	 * （ドラッグ中でなければnull）
 	 */
-	public Transmitter getDraggingTransmitter() { return draggingObject.tx; }
+	public AutoCloseable getDraggingTransceiver() { return draggingObject.trx; }
 
 	private MidiCablePane cablePane;
+
 	private DragSourceListener dragSourceListener = new DragSourceAdapter() {
 		@Override
 		public void dragDropEnd(DragSourceDropEvent dsde) {
-			if( ! dsde.getDropSuccess() ) getModel().closeTransmitter(getDraggingTransmitter());
-			draggingObject.tx = null;
+			if( draggingObject.trx instanceof Transmitter && ! dsde.getDropSuccess() ) {
+				getModel().closeTransmitter((Transmitter)draggingObject.trx);
+			}
+			draggingObject.trx = null;
 			cablePane.dragDropEnd();
 		}
 	};
-
 	/**
 	 * 仮想MIDI端子リストビューを生成します。
 	 * @param model このビューから参照されるデータモデル
@@ -118,57 +124,62 @@ public class MidiConnecterListView extends JList<AutoCloseable> {
 				@Override
 				public void dragGestureRecognized(DragGestureEvent dge) {
 					if( (dge.getDragAction() & DnDConstants.ACTION_COPY_OR_MOVE) == 0 ) return;
-					Point dragStartPoint = dge.getDragOrigin();
-					AutoCloseable transceiver = getModel().getElementAt(locationToIndex(dragStartPoint));
-					if( transceiver instanceof Transmitter ) {
-						if( transceiver instanceof MidiConnecterListModel.NewTransmitter ) {
-							draggingObject.tx = getModel().openTransmitter();
-						}
-						else {
-							draggingObject.tx = (Transmitter)transceiver;
-						}
-						dge.startDrag(DragSource.DefaultLinkDrop, draggingObject, dragSourceListener);
+					MidiConnecterListModel m = getModel();
+					AutoCloseable source = m.getElementAt(locationToIndex(dge.getDragOrigin()));
+					if( source instanceof MidiConnecterListModel.NewTransmitter ) {
+						draggingObject.trx = m.openTransmitter();
+					} else if( source instanceof Transmitter || source instanceof Receiver ) {
+						draggingObject.trx = source;
+					} else {
+						return;
 					}
+					dge.startDrag(DragSource.DefaultLinkDrop, draggingObject, dragSourceListener);
 				}
 			}
 		);
 		dragSource.addDragSourceMotionListener(cablePane.midiConnecterMotionListener);
-		DropTargetAdapter dta= new DropTargetAdapter() {
+		DropTargetAdapter dta = new DropTargetAdapter() {
 			@Override
 			public void dragEnter(DropTargetDragEvent event) {
-				if( event.isDataFlavorSupported(transmitterFlavor) )
+				if( event.isDataFlavorSupported(transmitterFlavor) || event.isDataFlavorSupported(receiverFlavor) ) {
 					event.acceptDrag(DnDConstants.ACTION_COPY_OR_MOVE);
+				}
 			}
 			@Override
 			public void drop(DropTargetDropEvent event) {
 				event.acceptDrop(DnDConstants.ACTION_COPY_OR_MOVE);
 				try {
 					int maskedBits = event.getDropAction() & DnDConstants.ACTION_COPY_OR_MOVE;
-					if( maskedBits == 0 || ! getModel().rxSupported() ) {
+					if( maskedBits == 0 ) {
 						event.dropComplete(false);
 						return;
 					}
-					int index = locationToIndex(event.getLocation());
-					AutoCloseable destination = getModel().getElementAt(index);
-					if( ! (destination instanceof Receiver) ) {
-						event.dropComplete(false);
-						return;
+					MidiConnecterListModel m = getModel();
+					AutoCloseable destination = m.getElementAt(locationToIndex(event.getLocation()));
+					Transferable t = event.getTransferable();
+					Object source;
+					if( (source = t.getTransferData(transmitterFlavor)) != null ) {
+						if( destination instanceof Receiver ) {
+							((Transmitter)source).setReceiver((Receiver)destination);
+							event.dropComplete(true);
+							return;
+						}
+					} else if( (source = t.getTransferData(receiverFlavor)) != null ) {
+						if( destination instanceof Transmitter ) {
+							Transmitter tx = (Transmitter)destination;
+							if( tx instanceof MidiConnecterListModel.NewTransmitter ) {
+								tx = m.openTransmitter();
+							}
+							tx.setReceiver((Receiver)source);
+							event.dropComplete(true);
+							return;
+						}
 					}
-					Object source = event.getTransferable().getTransferData(transmitterFlavor);
-					if( ! (source instanceof Transmitter) ) {
-						event.dropComplete(false);
-						return;
-					}
-					if( getModel().ConnectToReceiver((Transmitter)source, (Receiver)destination) == null ) {
-						event.dropComplete(false);
-						return;
-					}
-					event.dropComplete(true);
 				}
 				catch (Exception ex) {
 					ex.printStackTrace();
-					event.dropComplete(false);
 				}
+				event.dropComplete(false);
 			}
 		};
 		new DropTarget( this, DnDConstants.ACTION_COPY_OR_MOVE, dta, true );
@@ -176,15 +187,13 @@ public class MidiConnecterListView extends JList<AutoCloseable> {
 	@Override
 	public MidiConnecterListModel getModel() { return (MidiConnecterListModel)super.getModel(); }
 	/**
-	 * 指定されたMIDI端子（Transmitter または Receiver）が仮想MIDI端子リスト上にあれば、
-	 * そのセル範囲の矩形を返します。
-	 *
-	 * @param transceiver MIDI端子
-	 * @return セル範囲の矩形（ない場合はnull）
+	 * 引数で指定された{@link Transmitter}または{@link Receiver}のセル範囲を示す、
+	 * リストの座標系内の境界の矩形を返します。対応するセルがない場合はnullを返します。
+	 * @param transceiver {@link Transmitter}または{@link Receiver}
+	 * @return セル範囲を示す境界の矩形、またはnull
 	 */
 	public Rectangle getCellBounds(AutoCloseable transceiver) {
 		int index = getModel().indexOf(transceiver);
-		Rectangle rect = getCellBounds(index,index);
-		return rect == null ? null : rect;
+		return getCellBounds(index,index);
 	}
 }

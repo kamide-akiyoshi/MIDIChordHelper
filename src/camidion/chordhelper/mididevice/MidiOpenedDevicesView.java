@@ -7,6 +7,7 @@ import java.awt.dnd.DropTargetDragEvent;
 import java.awt.dnd.DropTargetDropEvent;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
+import java.beans.PropertyVetoException;
 
 import javax.sound.midi.MidiUnavailableException;
 import javax.swing.JDesktopPane;
@@ -14,14 +15,50 @@ import javax.swing.JInternalFrame;
 import javax.swing.JLayeredPane;
 import javax.swing.JOptionPane;
 import javax.swing.Timer;
+import javax.swing.event.TreeSelectionEvent;
+import javax.swing.event.TreeSelectionListener;
 
 /**
  * 開いている MIDI デバイスを置くためのデスクトップビュー
  */
 public class MidiOpenedDevicesView extends JDesktopPane {
 
-	private MidiCablePane cablePane = new MidiCablePane(this);
+	/**
+	 * ツリー上で選択状態が変わったとき、
+	 * このデスクトップ上のフレームの選択状態に反映するためのリスナー
+	 */
+	private TreeSelectionListener treeSelectionListener = new TreeSelectionListener() {
+		@Override
+		public void valueChanged(TreeSelectionEvent e) {
+			Object lastSelected = e.getNewLeadSelectionPath().getLastPathComponent();
+			if( lastSelected instanceof MidiConnecterListModel ) {
+				MidiConnecterListModel deviceModel = (MidiConnecterListModel)lastSelected;
+				if( deviceModel.getMidiDevice().isOpen() ) {
+					// 開いているMIDIデバイスがツリー上で選択されたら
+					// このデスクトップでも選択する
+					try {
+						getMidiDeviceFrameOf(deviceModel).setSelected(true);
+					} catch( PropertyVetoException ex ) {
+						ex.printStackTrace();
+					}
+					return;
+				}
+			}
+			// 閉じているMIDIデバイス、またはMIDIデバイス以外のノードがツリー上で選択されたら
+			// このデスクトップ上のMIDIデバイスフレームをすべて非選択にする
+			MidiDeviceFrame selectedDeviceFrame = getSelectedMidiDeviceFrame();
+			if( selectedDeviceFrame == null ) return;
+			try {
+				selectedDeviceFrame.setSelected(false);
+			} catch( PropertyVetoException ex ) {
+				ex.printStackTrace();
+			}
+		}
+	};
 
+	/**
+	 * ツリー表示からこのデスクトップにドロップされたMIDIデバイスモデルに対応するフレームを表示するためのリスナー
+	 */
 	private DropTargetAdapter dropTargetListener = new DropTargetAdapter() {
 		@Override
 		public void dragEnter(DropTargetDragEvent dtde) {
@@ -87,24 +124,25 @@ public class MidiOpenedDevicesView extends JDesktopPane {
 		}
 	};
 
+	private MidiCablePane cablePane = new MidiCablePane(this);
+
 	public MidiOpenedDevicesView(MidiDeviceTreeView deviceTree) {
+		deviceTree.addTreeSelectionListener(treeSelectionListener);
 		add(cablePane, JLayeredPane.PALETTE_LAYER);
 		int openedFrameIndex = 0;
 		MidiDeviceTreeModel treeModel = (MidiDeviceTreeModel)deviceTree.getModel();
 		for( MidiConnecterListModel deviceModel : treeModel.deviceModelList ) {
 			deviceModel.addListDataListener(cablePane.midiConnecterListDataListener);
-			MidiDeviceFrame frame = new MidiDeviceFrame(deviceModel, cablePane) {{
-				setSize(250, 100);
-				addInternalFrameListener(cablePane.midiDeviceFrameListener);
-				addComponentListener(cablePane.midiDeviceFrameComponentListener);
-			}};
+			MidiDeviceFrame frame = new MidiDeviceFrame(deviceModel, cablePane);
+			frame.setSize(250, 90);
 			frame.addInternalFrameListener(deviceTree.midiDeviceFrameListener);
 			add(frame);
 			if( ! deviceModel.getMidiDevice().isOpen() ) continue;
-			frame.setLocation( 10+(openedFrameIndex%2)*260, 10+openedFrameIndex*55 );
+			frame.setLocation( 10+(openedFrameIndex%2)*260, 10+openedFrameIndex*50 );
 			frame.setVisible(true);
 			openedFrameIndex++;
 		}
+		// このデスクトップがリサイズされたらケーブル面もリサイズする
 		addComponentListener(new ComponentAdapter() {
 			@Override
 			public void componentResized(ComponentEvent e) { cablePane.setSize(getSize()); }
@@ -128,6 +166,16 @@ public class MidiOpenedDevicesView extends JDesktopPane {
 			}
 		}
 		return null;
+	}
+
+	/**
+	 * このビュー上にある現在アクティブな{@link MidiDeviceFrame}を返します。
+	 * アクティブな{@link MidiDeviceFrame}がない場合は null を返します。
+	 * @return 現在アクティブな{@link MidiDeviceFrame}、または null
+	 */
+	public MidiDeviceFrame getSelectedMidiDeviceFrame() {
+		JInternalFrame frame = getSelectedFrame();
+		return frame instanceof MidiDeviceFrame ? (MidiDeviceFrame)frame : null;
 	}
 
 	private boolean isTimerStarted;

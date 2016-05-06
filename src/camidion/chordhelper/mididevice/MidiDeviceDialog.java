@@ -4,8 +4,6 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.beans.PropertyVetoException;
-import java.util.List;
 
 import javax.sound.midi.MidiDevice;
 import javax.swing.JDialog;
@@ -18,23 +16,20 @@ import javax.swing.event.TreeSelectionListener;
 /**
  * MIDIデバイスダイアログ (View)
  */
-public class MidiDeviceDialog extends JDialog implements ActionListener
-{
-	private MidiDeviceTreeView deviceTree;
+public class MidiDeviceDialog extends JDialog implements ActionListener {
 	private JEditorPane deviceInfoPane;
 	private MidiOpenedDevicesView desktopPane;
 	@Override
 	public void actionPerformed(ActionEvent event) { setVisible(true); }
-
-	public MidiDeviceDialog(List<MidiConnecterListModel> deviceModelList) {
+	public MidiDeviceDialog(MidiDeviceModelList deviceModelList) {
 		setTitle("MIDI device connection");
 		setBounds( 300, 300, 800, 500 );
-		deviceTree = new MidiDeviceTreeView(new MidiDeviceTreeModel(deviceModelList)) {{
+		MidiDeviceTreeView deviceTree = new MidiDeviceTreeView(new MidiDeviceTreeModel(deviceModelList)) {{
 			addTreeSelectionListener(new TreeSelectionListener() {
 				@Override
 				public void valueChanged(TreeSelectionEvent e) {
-					Object lastSelected = deviceTree.getLastSelectedPathComponent();
 					String html = "<html><head></head><body>";
+					Object lastSelected = e.getNewLeadSelectionPath().getLastPathComponent();
 					if( lastSelected instanceof MidiConnecterListModel ) {
 						MidiConnecterListModel deviceModel = (MidiConnecterListModel)lastSelected;
 						MidiDevice.Info info = deviceModel.getMidiDevice().getDeviceInfo();
@@ -44,14 +39,6 @@ public class MidiDeviceDialog extends JDialog implements ActionListener
 							+ "<tr><th>Description</th><td>"+info.getDescription()+"</td></tr>"
 							+ "<tr><th>Vendor</th><td>"+info.getVendor()+"</td></tr>"
 							+ "</tbody></table>";
-						MidiDeviceFrame deviceFrame = desktopPane.getMidiDeviceFrameOf(deviceModel);
-						if( deviceFrame != null ) {
-							try {
-								deviceFrame.setSelected(true);
-							} catch( PropertyVetoException ex ) {
-								ex.printStackTrace();
-							}
-						}
 					}
 					else if( lastSelected instanceof MidiDeviceInOutType ) {
 						MidiDeviceInOutType ioType = (MidiDeviceInOutType)lastSelected;

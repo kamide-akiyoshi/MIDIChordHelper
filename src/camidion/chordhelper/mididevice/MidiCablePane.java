@@ -15,10 +15,10 @@ import java.awt.event.ComponentListener;
 import java.util.Hashtable;
 import java.util.List;
 
+import javax.sound.midi.MidiDevice;
 import javax.sound.midi.Receiver;
 import javax.sound.midi.Transmitter;
 import javax.swing.JComponent;
-import javax.swing.JDesktopPane;
 import javax.swing.JInternalFrame;
 import javax.swing.JLayeredPane;
 import javax.swing.event.InternalFrameAdapter;
@@ -46,11 +46,11 @@ public class MidiCablePane extends JComponent {
 		}
 	};
 	/**
-	 * ドラッグ＆ドロップの終了時にこのメソッドを呼び出します。
+	 * ドラッグ＆ドロップの終了時に必要な再描画を行います。
 	 */
 	public void dragDropEnd() { draggingPoint = null; repaint(); }
 	/**
-	 * {@link MidiDeviceFrame} の移動や変形を監視して再描画するためのリスナー
+	 * {@link MidiDeviceFrame} が移動または変形したときにケーブルを再描画するためのリスナー
 	 */
 	public final ComponentListener midiDeviceFrameComponentListener = new ComponentAdapter() {
 		@Override
@@ -59,7 +59,7 @@ public class MidiCablePane extends JComponent {
 		public void componentResized(ComponentEvent e) { repaint(); }
 	};
 	/**
-	 * {@link MidiDeviceFrame} が閉じたタイミングで再描画するためのリスナー
+	 * {@link MidiDeviceFrame} が閉じたときにケーブルを再描画するためのリスナー
 	 */
 	public final InternalFrameListener midiDeviceFrameListener = new InternalFrameAdapter() {
 		@Override
@@ -70,17 +70,15 @@ public class MidiCablePane extends JComponent {
 		public void internalFrameClosing(InternalFrameEvent e) {
 			JInternalFrame frame = e.getInternalFrame();
 			if( ! (frame instanceof MidiDeviceFrame) ) return;
-			MidiDeviceFrame devFrame = (MidiDeviceFrame)frame;
-			MidiConnecterListModel devModel = devFrame.getMidiConnecterListView().getModel();
-			if( devModel.rxSupported() ) {
-				colorMap.remove(devModel.getMidiDevice().getReceivers().get(0));
-			}
+			MidiDeviceFrame f = (MidiDeviceFrame)frame;
+			List<Receiver> rxList = f.getMidiConnecterListView().getModel().getMidiDevice().getReceivers();
+			for( Receiver rx : rxList ) colorMap.remove(rx);
 			repaint();
 		}
 	};
 	/**
 	 * {@link MidiConnecterListModel} における {@link Transmitter}
-	 * の増減や状態変更があった場合に再描画するためのリスナー
+	 * の増減や状態変更があった場合にケーブルを再描画するためのリスナー
 	 */
 	public final ListDataListener midiConnecterListDataListener = new ListDataListener() {
 		@Override
@@ -91,8 +89,8 @@ public class MidiCablePane extends JComponent {
 		public void intervalRemoved(ListDataEvent e) { repaint(); }
 	};
 
-	private JDesktopPane desktopPane;
-	public MidiCablePane(JDesktopPane desktopPane) {
+	private MidiOpenedDevicesView desktopPane;
+	public MidiCablePane(MidiOpenedDevicesView desktopPane) {
 		this.desktopPane = desktopPane;
 		setOpaque(false);
 		setVisible(true);
@@ -108,8 +106,18 @@ public class MidiCablePane extends JComponent {
 		new Color(0,191,191,144),
 		new Color(191,0,191,144),
 	};
+	private static final Color ADDING_CABLE_COLOR = new Color(0, 0, 0, 144);
+	private static final Color REMOVING_CABLE_COLOR = new Color(128, 128, 128, 144);
 	private int nextColorIndex = 0;
 	private Hashtable<Receiver,Color> colorMap = new Hashtable<>();
+	private Color colorOf(Receiver rx) {
+		Color color = colorMap.get(rx);
+		if( color == null ) {
+			colorMap.put(rx, color=CABLE_COLORS[nextColorIndex++]);
+			if( nextColorIndex >= CABLE_COLORS.length ) nextColorIndex = 0;
+		}
+		return color;
+	}
 	@Override
 	public void paint(Graphics g) {
 		super.paint(g);
@@ -118,63 +126,48 @@ public class MidiCablePane extends JComponent {
 		JInternalFrame[] frames = desktopPane.getAllFramesInLayer(JLayeredPane.DEFAULT_LAYER);
 		for( JInternalFrame frame : frames ) {
 			if( ! (frame instanceof MidiDeviceFrame) ) continue;
-			MidiDeviceFrame txDeviceFrame = (MidiDeviceFrame)frame;
-			MidiConnecterListView txView = txDeviceFrame.getMidiConnecterListView();
-			Transmitter draggingTx = txView.getDraggingTransmitter();
-			List<Transmitter> txList = txView.getModel().getMidiDevice().getTransmitters();
-			for( Transmitter tx : txList ) {
-				//
-				// 送信端子の場所を特定
-				Rectangle txRect = txView.getCellBounds(tx);
-				if( txRect == null ) continue;
-				txRect.translate(
-					txDeviceFrame.getRootPane().getX() +
-					txDeviceFrame.getContentPane().getX() + txDeviceFrame.getX(),
-					txDeviceFrame.getRootPane().getY() +
-					txDeviceFrame.getContentPane().getY() + txDeviceFrame.getY()
-				);
-				int d = txRect.height - 5;
-				int r = d / 2;
-				int fromX = txRect.x + r + 4;
-				int fromY = txRect.y + r + 4;
-				//
-				// ドラッグ中であれば、マウスカーソルのある所まで線を引く
-				if( tx.equals(draggingTx) && draggingPoint != null ) {
-					g2.setColor(Color.BLACK);
-					g2.drawLine(fromX, fromY, draggingPoint.x, draggingPoint.y);
-					continue;
-				}
-				// 受信端子の場所を特定
-				Receiver rx = tx.getReceiver();
-				if( rx == null ) continue;
-				Rectangle rxRect = null;
-				for( JInternalFrame anotherFrame : frames ) {
-					if( ! (anotherFrame instanceof MidiDeviceFrame) ) continue;
-					MidiDeviceFrame rxDeviceFrame = (MidiDeviceFrame)anotherFrame;
-					rxRect = rxDeviceFrame.getMidiConnecterListView().getCellBounds(rx);
-					if( rxRect == null ) continue;
-					rxRect.translate(
-						rxDeviceFrame.getRootPane().getX() +
-						rxDeviceFrame.getContentPane().getX() + rxDeviceFrame.getX(),
-						rxDeviceFrame.getRootPane().getY() +
-						rxDeviceFrame.getContentPane().getY() + rxDeviceFrame.getY()
-					);
+			MidiDeviceFrame fromFrame = (MidiDeviceFrame)frame;
+			MidiConnecterListView fromView = fromFrame.getMidiConnecterListView();
+			MidiDevice fromDevice = fromView.getModel().getMidiDevice();
+			if( draggingPoint != null ) {
+				// Receiverからドラッグされた線を描画
+				List<Receiver> rxList = fromDevice.getReceivers();
+				for( Receiver rx : rxList ) {
+					if( ! rx.equals(fromView.getDraggingTransceiver()) ) continue;
+					Rectangle rxBounds = fromFrame.getBoundsOf(rx);
+					if( rxBounds == null ) continue;
+					int r = (rxBounds.height - 5) / 2;
+					rxBounds.translate(r+4, r+4);
+					g2.setColor(colorOf(rx));
+					g2.drawLine(rxBounds.x, rxBounds.y, draggingPoint.x, draggingPoint.y);
 					break;
 				}
-				if( rxRect == null ) continue;
-				//
-				// 受信端子まで線を引く
-				Color color = colorMap.get(rx);
-				if( color == null ) {
-					colorMap.put(rx, color=CABLE_COLORS[nextColorIndex++]);
-					if( nextColorIndex >= CABLE_COLORS.length ) nextColorIndex = 0;
+			}
+			List<Transmitter> txList = fromDevice.getTransmitters();
+			for( Transmitter tx : txList ) {
+				// Transmitterの場所を特定
+				Rectangle txBounds = fromFrame.getBoundsOf(tx);
+				if( txBounds == null ) continue;
+				int r = (txBounds.height - 5) / 2;
+				txBounds.translate(r+4, r+4);
+				AutoCloseable draggingTrx = fromView.getDraggingTransceiver();
+				Receiver rx = tx.getReceiver();
+				if( draggingPoint != null && tx.equals(draggingTrx) ) {
+					// Transmitterからドラッグされた線を描画
+					g2.setColor(rx == null ? ADDING_CABLE_COLOR : colorOf(rx));
+					g2.drawLine(txBounds.x, txBounds.y, draggingPoint.x, draggingPoint.y);
 				}
-				g2.setColor(color);
-				d = rxRect.height - 5;
-				r = d / 2;
-				int toX = rxRect.x + r + 4;
-				int toY = rxRect.y + r + 4;
-				g2.drawLine(fromX, fromY, toX, toY);
+				// TransmitterからReceiverへの接続線を描画
+				if( rx != null ) for( JInternalFrame toFrame : frames ) {
+					if( ! (toFrame instanceof MidiDeviceFrame) ) continue;
+					Rectangle rxBounds = ((MidiDeviceFrame)toFrame).getBoundsOf(rx);
+					if( rxBounds == null ) continue;
+					r = (rxBounds.height - 5) / 2;
+					rxBounds.translate(r+4, r+4);
+					g2.setColor(draggingTrx == tx ? REMOVING_CABLE_COLOR : colorOf(rx));
+					g2.drawLine(txBounds.x, txBounds.y, rxBounds.x, rxBounds.y);
+					break;
+				}
 			}
 		}
 	}

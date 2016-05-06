@@ -3,7 +3,6 @@ package camidion.chordhelper.mididevice;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import javax.sound.midi.InvalidMidiDataException;
@@ -36,14 +35,14 @@ public class MidiSequencerModel extends MidiConnecterListModel
 	 * MIDIシーケンサモデルを構築します。
 	 * @param deviceModelList 親のMIDIデバイスモデルリスト
 	 * @param sequencer シーケンサーMIDIデバイス
-	 * @param modelList MIDIコネクタリストモデルのリスト（タイムスタンプリセット対象）
+	 * @param connecterListModel MIDIコネクタリストモデルのリスト（タイムスタンプリセット対象）
 	 */
 	public MidiSequencerModel(
 		MidiDeviceModelList deviceModelList,
 		Sequencer sequencer,
-		List<MidiConnecterListModel> modelList
+		MidiDeviceModelList connecterListModel
 	) {
-		super(sequencer, modelList);
+		super(sequencer, connecterListModel);
 		this.deviceModelList = deviceModelList;
 	}
 	/**
@@ -142,8 +141,7 @@ public class MidiSequencerModel extends MidiConnecterListModel
 		timeRangeUpdater.start();
 		SequenceTrackListTableModel sequenceTableModel = getSequenceTrackListTableModel();
 		if( sequenceTableModel != null && sequenceTableModel.hasRecordChannel() ) {
-			for(MidiConnecterListModel m : deviceModelList)
-				m.resetMicrosecondPosition();
+			for(MidiConnecterListModel m : deviceModelList) m.resetMicrosecondPosition();
 			System.gc();
 			sequencer.startRecording();
 		}
@@ -208,9 +206,7 @@ public class MidiSequencerModel extends MidiConnecterListModel
 	 */
 	private boolean valueIsAdjusting = false;
 	@Override
-	public boolean getValueIsAdjusting() {
-		return valueIsAdjusting;
-	}
+	public boolean getValueIsAdjusting() { return valueIsAdjusting; }
 	@Override
 	public void setValueIsAdjusting(boolean valueIsAdjusting) {
 		this.valueIsAdjusting = valueIsAdjusting;
@@ -365,9 +361,7 @@ public class MidiSequencerModel extends MidiConnecterListModel
 				public void intervalRemoved(ListDataEvent e) { }
 				@Override
 				public void contentsChanged(ListDataEvent e) {
-					getSequencer().setMasterSyncMode(
-						(Sequencer.SyncMode)getSelectedItem()
-					);
+					getSequencer().setMasterSyncMode((Sequencer.SyncMode)getSelectedItem());
 				}
 			});
 		}};
@@ -383,9 +377,7 @@ public class MidiSequencerModel extends MidiConnecterListModel
 				public void intervalRemoved(ListDataEvent e) { }
 				@Override
 				public void contentsChanged(ListDataEvent e) {
-					getSequencer().setSlaveSyncMode(
-						(Sequencer.SyncMode)getSelectedItem()
-					);
+					getSequencer().setSlaveSyncMode((Sequencer.SyncMode)getSelectedItem());
 				}
 			});
 		}};

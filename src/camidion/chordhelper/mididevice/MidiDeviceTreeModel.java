@@ -1,7 +1,5 @@
 package camidion.chordhelper.mididevice;
 
-import java.util.List;
-
 import javax.swing.event.EventListenerList;
 import javax.swing.event.TreeModelEvent;
 import javax.swing.event.TreeModelListener;
@@ -9,15 +7,16 @@ import javax.swing.tree.TreeModel;
 import javax.swing.tree.TreePath;
 
 /**
- * MIDIデバイスツリーモデル
+ * {@link MidiDeviceModelList}に収容されたMIDIデバイスを
+ * {@link MidiDeviceInOutType}で分類したツリーとして扱えるようにするモデル
  */
 public class MidiDeviceTreeModel implements TreeModel {
-	List<MidiConnecterListModel> deviceModelList;
-	public MidiDeviceTreeModel(List<MidiConnecterListModel> deviceModelList) {
+	MidiDeviceModelList deviceModelList;
+	public MidiDeviceTreeModel(MidiDeviceModelList deviceModelList) {
 		this.deviceModelList = deviceModelList;
 	}
 	@Override
-	public Object getRoot() { return "MIDI devices"; }
+	public Object getRoot() { return MidiDeviceModelList.TITLE; }
 	@Override
 	public Object getChild(Object parent, int index) {
 		if( parent == getRoot() ) return MidiDeviceInOutType.values()[index + 1];
