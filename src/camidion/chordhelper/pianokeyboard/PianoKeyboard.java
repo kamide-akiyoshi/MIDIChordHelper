@@ -250,7 +250,7 @@ public class PianoKeyboard extends JComponent {
 	public VirtualMidiDevice midiDevice = new AbstractVirtualMidiDevice() {
 		class MyInfo extends Info {
 			protected MyInfo() {
-				super("MIDI Keyboard","Unknown vendor","Software MIDI keyboard","");
+				super("Built-in MIDI Keyboard","Unknown vendor","Software MIDI keyboard","");
 			}
 		}
 		/**

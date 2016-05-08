@@ -14,23 +14,23 @@ import javax.swing.tree.TreePath;
 /**
  * １個の{@link MidiDevice}で開かれている{@link Transmitter}/{@link Receiver}のリストモデル
  */
-public class MidiConnecterListModel extends AbstractListModel<AutoCloseable> {
+public class MidiTransceiverListModel extends AbstractListModel<AutoCloseable> {
 	protected MidiDevice device;
-	private MidiDeviceModelList deviceModelList;
+	protected MidiTransceiverListModelList deviceModelList;
 	private MidiDeviceInOutType ioType;
 	private TreePath treePath;
 	/**
 	 * 実体のない新規{@link Transmitter}を表すインターフェース
 	 */
 	public interface NewTransmitter extends Transmitter {};
-	public NewTransmitter newTransmitter;
+	private NewTransmitter newTransmitter;
 	/**
 	 * 指定のMIDIデバイスに属する {@link Transmitter}/{@link Receiver} のリストモデルを構築します。
 	 *
 	 * @param device 対象MIDIデバイス
 	 * @param deviceModelList 接続相手となりうるMIDIデバイスのリスト
 	 */
-	public MidiConnecterListModel(MidiDevice device, MidiDeviceModelList deviceModelList) {
+	public MidiTransceiverListModel(MidiDevice device, MidiTransceiverListModelList deviceModelList) {
 		this.device = device;
 		this.deviceModelList = deviceModelList;
 		if( txSupported() ) {
@@ -46,7 +46,7 @@ public class MidiConnecterListModel extends AbstractListModel<AutoCloseable> {
 		ioType = rxSupported() ?
 			(txSupported() ? MidiDeviceInOutType.MIDI_IN_OUT : MidiDeviceInOutType.MIDI_OUT) :
 			(txSupported() ? MidiDeviceInOutType.MIDI_IN     : MidiDeviceInOutType.MIDI_NONE);
-		treePath = new TreePath(new Object[] {MidiDeviceModelList.TITLE, ioType ,this});
+		treePath = new TreePath(new Object[] {MidiTransceiverListModelList.TITLE, ioType ,this});
 	}
 	/**
 	 * 対象MIDIデバイスを返します。
@@ -114,7 +114,7 @@ public class MidiConnecterListModel extends AbstractListModel<AutoCloseable> {
 	 * 未接続の{@link Transmitter}を、引数で指定されたリストモデルの最初の{@link Receiver}に接続します。
 	 * @param anotherModel 接続可能な{@link Receiver}を持つリストモデル
 	 */
-	public void connectToReceiverOf(MidiConnecterListModel anotherModel) {
+	public void connectToReceiverOf(MidiTransceiverListModel anotherModel) {
 		if( ! txSupported() || anotherModel == null || ! anotherModel.rxSupported() ) return;
 		List<Receiver> rxList = anotherModel.device.getReceivers();
 		if( rxList.isEmpty() ) return;
@@ -152,22 +152,23 @@ public class MidiConnecterListModel extends AbstractListModel<AutoCloseable> {
 		fireIntervalRemoved(this,0,getSize());
 	}
 	/**
-	 * 対象MIDIデバイスを開きます。
+	 * {@link Receiver}を1個だけ開きます。サポートしていない場合は無視されます。
+	 *
 	 * @throws MidiUnavailableException デバイスを開くことができない場合
 	 */
-	public void openDevice() throws MidiUnavailableException {
-		device.open();
+	public void openReceiver() throws MidiUnavailableException {
 		if( rxSupported() && device.getReceivers().isEmpty() ) device.getReceiver();
 	}
 	/**
-	 * 対象MIDIデバイスを閉じます。
-	 * 対象MIDIデバイスの{@link Receiver}を設定した他デバイスの{@link Transmitter}があれば、
-	 * それも閉じます。
+	 * {@link MidiDevice}を閉じる前に、{@link Receiver}を閉じます。
+	 *
+	 * 閉じようとしている{@link Receiver}を他デバイスの{@link Transmitter}が使用していた場合は、
+	 * その{@link Transmitter}も閉じます。
 	 */
-	public void closeDevice() {
-		if( rxSupported() ) {
-			Receiver rx = device.getReceivers().get(0);
-			for( MidiConnecterListModel m : deviceModelList ) {
+	public void closeReceiver() {
+		List<Receiver> rxList = device.getReceivers();
+		for( Receiver rx : rxList ) {
+			for( MidiTransceiverListModel m : deviceModelList ) {
 				if( m == this || ! m.txSupported() ) continue;
 				for( int i=0; i<m.getSize(); i++ ) {
 					AutoCloseable ac = m.getElementAt(i);
@@ -176,8 +177,8 @@ public class MidiConnecterListModel extends AbstractListModel<AutoCloseable> {
 					if( tx.getReceiver() == rx ) m.closeTransmitter(tx);
 				}
 			}
+			rx.close();
 		}
-		device.close();
 	}
 	/**
 	 * マイクロ秒位置をリセットします。
@@ -207,7 +208,7 @@ public class MidiConnecterListModel extends AbstractListModel<AutoCloseable> {
 		if( rxSupported() ) {
 			rx = device.getReceivers().get(0);
 			peerTxList = new Vector<Transmitter>();
-			for( MidiConnecterListModel m : deviceModelList ) {
+			for( MidiTransceiverListModel m : deviceModelList ) {
 				if( m == this || ! m.txSupported() ) continue;
 				for( int i=0; i<m.getSize(); i++ ) {
 					Object obj = m.getElementAt(i);

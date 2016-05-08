@@ -15,6 +15,7 @@ import java.awt.dnd.DropTarget;
 import java.awt.dnd.DropTargetAdapter;
 import java.awt.dnd.DropTargetDragEvent;
 import java.awt.dnd.DropTargetDropEvent;
+import java.awt.dnd.DropTargetListener;
 import java.util.Arrays;
 import java.util.List;
 
@@ -29,13 +30,11 @@ import javax.swing.ListSelectionModel;
 import camidion.chordhelper.ButtonIcon;
 
 /**
- * Transmitter(Tx)/Receiver(Rx) のリスト（view）
- *
- * <p>マウスで Tx からドラッグして Rx へドロップする機能を備えた
- * 仮想MIDI端子リストです。
- * </p>
+ * MIDI端子（{@link Transmitter}と{@link Receiver}）のリストビューです。
+ * リストの要素をドラッグ＆ドロップすることで、
+ * 2つのMIDI端子を仮想的なMIDIケーブルで接続することができます。
  */
-public class MidiConnecterListView extends JList<AutoCloseable> {
+public class MidiTransceiverListView extends JList<AutoCloseable> {
 
 	public static final Icon MIDI_CONNECTER_ICON = new ButtonIcon(ButtonIcon.MIDI_CONNECTOR_ICON);
 	/**
@@ -88,8 +87,7 @@ public class MidiConnecterListView extends JList<AutoCloseable> {
 
 	/**
 	 * 現在ドラッグされている{@link Transmitter}または{@link Receiver}を返します。
-	 * @return 現在ドラッグされている{@link Transmitter}または{@link Receiver}
-	 * （ドラッグ中でなければnull）
+	 * ドラッグ中でなければnullを返します。
 	 */
 	public AutoCloseable getDraggingTransceiver() { return draggingObject.trx; }
 
@@ -110,7 +108,7 @@ public class MidiConnecterListView extends JList<AutoCloseable> {
 	 * @param model このビューから参照されるデータモデル
 	 * @param cablePane MIDIケーブル描画面
 	 */
-	public MidiConnecterListView(MidiConnecterListModel model, MidiCablePane cablePane) {
+	public MidiTransceiverListView(MidiTransceiverListModel model, MidiCablePane cablePane) {
 		super(model);
 		this.cablePane = cablePane;
 		setCellRenderer(new CellRenderer());
@@ -118,27 +116,25 @@ public class MidiConnecterListView extends JList<AutoCloseable> {
 		setLayoutOrientation(JList.HORIZONTAL_WRAP);
 		setVisibleRowCount(0);
 		DragSource dragSource = new DragSource();
-		dragSource.createDefaultDragGestureRecognizer(this,
-			DnDConstants.ACTION_COPY_OR_MOVE,
-			new DragGestureListener() {
-				@Override
-				public void dragGestureRecognized(DragGestureEvent dge) {
-					if( (dge.getDragAction() & DnDConstants.ACTION_COPY_OR_MOVE) == 0 ) return;
-					MidiConnecterListModel m = getModel();
-					AutoCloseable source = m.getElementAt(locationToIndex(dge.getDragOrigin()));
-					if( source instanceof MidiConnecterListModel.NewTransmitter ) {
-						draggingObject.trx = m.openTransmitter();
-					} else if( source instanceof Transmitter || source instanceof Receiver ) {
-						draggingObject.trx = source;
-					} else {
-						return;
-					}
-					dge.startDrag(DragSource.DefaultLinkDrop, draggingObject, dragSourceListener);
+		DragGestureListener dgl = new DragGestureListener() {
+			@Override
+			public void dragGestureRecognized(DragGestureEvent dge) {
+				if( (dge.getDragAction() & DnDConstants.ACTION_COPY_OR_MOVE) == 0 ) return;
+				MidiTransceiverListModel m = getModel();
+				AutoCloseable source = m.getElementAt(locationToIndex(dge.getDragOrigin()));
+				if( source instanceof MidiTransceiverListModel.NewTransmitter ) {
+					draggingObject.trx = m.openTransmitter();
+				} else if( source instanceof Transmitter || source instanceof Receiver ) {
+					draggingObject.trx = source;
+				} else {
+					return;
 				}
+				dge.startDrag(DragSource.DefaultLinkDrop, draggingObject, dragSourceListener);
 			}
-		);
+		};
+		dragSource.createDefaultDragGestureRecognizer(this, DnDConstants.ACTION_COPY_OR_MOVE, dgl);
 		dragSource.addDragSourceMotionListener(cablePane.midiConnecterMotionListener);
-		DropTargetAdapter dta = new DropTargetAdapter() {
+		DropTargetListener dtl = new DropTargetAdapter() {
 			@Override
 			public void dragEnter(DropTargetDragEvent event) {
 				if( event.isDataFlavorSupported(transmitterFlavor) || event.isDataFlavorSupported(receiverFlavor) ) {
@@ -154,7 +150,7 @@ public class MidiConnecterListView extends JList<AutoCloseable> {
 						event.dropComplete(false);
 						return;
 					}
-					MidiConnecterListModel m = getModel();
+					MidiTransceiverListModel m = getModel();
 					AutoCloseable destination = m.getElementAt(locationToIndex(event.getLocation()));
 					Transferable t = event.getTransferable();
 					Object source;
@@ -167,7 +163,7 @@ public class MidiConnecterListView extends JList<AutoCloseable> {
 					} else if( (source = t.getTransferData(receiverFlavor)) != null ) {
 						if( destination instanceof Transmitter ) {
 							Transmitter tx = (Transmitter)destination;
-							if( tx instanceof MidiConnecterListModel.NewTransmitter ) {
+							if( tx instanceof MidiTransceiverListModel.NewTransmitter ) {
 								tx = m.openTransmitter();
 							}
 							tx.setReceiver((Receiver)source);
@@ -182,10 +178,15 @@ public class MidiConnecterListView extends JList<AutoCloseable> {
 				event.dropComplete(false);
 			}
 		};
-		new DropTarget( this, DnDConstants.ACTION_COPY_OR_MOVE, dta, true );
+		new DropTarget( this, DnDConstants.ACTION_COPY_OR_MOVE, dtl, true );
 	}
+	/**
+	 * {@link MidiTransceiverListView} によって表示される項目のリストを保持するデータモデルを返します。
+	 */
 	@Override
-	public MidiConnecterListModel getModel() { return (MidiConnecterListModel)super.getModel(); }
+	public MidiTransceiverListModel getModel() {
+		return (MidiTransceiverListModel)super.getModel();
+	}
 	/**
 	 * 引数で指定された{@link Transmitter}または{@link Receiver}のセル範囲を示す、
 	 * リストの座標系内の境界の矩形を返します。対応するセルがない場合はnullを返します。

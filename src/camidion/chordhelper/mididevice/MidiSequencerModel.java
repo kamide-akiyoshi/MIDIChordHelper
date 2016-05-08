@@ -28,22 +28,16 @@ import camidion.chordhelper.midieditor.SequenceTrackListTableModel;
 /**
  * MIDIシーケンサモデル
  */
-public class MidiSequencerModel extends MidiConnecterListModel
+public class MidiSequencerModel extends MidiTransceiverListModel
 	implements BoundedRangeModel
 {
 	/**
 	 * MIDIシーケンサモデルを構築します。
-	 * @param deviceModelList 親のMIDIデバイスモデルリスト
 	 * @param sequencer シーケンサーMIDIデバイス
-	 * @param connecterListModel MIDIコネクタリストモデルのリスト（タイムスタンプリセット対象）
+	 * @param deviceModelList 親のMIDIデバイスモデルリスト
 	 */
-	public MidiSequencerModel(
-		MidiDeviceModelList deviceModelList,
-		Sequencer sequencer,
-		MidiDeviceModelList connecterListModel
-	) {
-		super(sequencer, connecterListModel);
-		this.deviceModelList = deviceModelList;
+	public MidiSequencerModel(Sequencer sequencer, MidiTransceiverListModelList deviceModelList) {
+		super(sequencer, deviceModelList);
 	}
 	/**
 	 * このシーケンサーの再生スピード調整モデル
@@ -119,10 +113,6 @@ public class MidiSequencerModel extends MidiConnecterListModel
 		}
 	);
 	/**
-	 * MIDIデバイスモデルリスト（タイムスタンプリセット対象）
-	 */
-	private MidiDeviceModelList deviceModelList;
-	/**
 	 * このモデルのMIDIシーケンサを開始します。
 	 *
 	 * <p>録音するMIDIチャンネルがMIDIエディタで指定されている場合、
@@ -141,7 +131,7 @@ public class MidiSequencerModel extends MidiConnecterListModel
 		timeRangeUpdater.start();
 		SequenceTrackListTableModel sequenceTableModel = getSequenceTrackListTableModel();
 		if( sequenceTableModel != null && sequenceTableModel.hasRecordChannel() ) {
-			for(MidiConnecterListModel m : deviceModelList) m.resetMicrosecondPosition();
+			for(MidiTransceiverListModel m : deviceModelList) m.resetMicrosecondPosition();
 			System.gc();
 			sequencer.startRecording();
 		}
@@ -271,9 +261,7 @@ public class MidiSequencerModel extends MidiConnecterListModel
 	 * @param sequenceTableModel MIDIトラックリストテーブルモデル
 	 * @return 成功したらtrue
 	 */
-	public boolean setSequenceTrackListTableModel(
-		SequenceTrackListTableModel sequenceTableModel
-	) {
+	public boolean setSequenceTrackListTableModel(SequenceTrackListTableModel sequenceTableModel) {
 		// javax.sound.midi:Sequencer.setSequence() のドキュメントにある
 		// 「このメソッドは、Sequencer が閉じている場合でも呼び出すことができます。 」
 		// という記述は、null をセットする場合には当てはまらない。

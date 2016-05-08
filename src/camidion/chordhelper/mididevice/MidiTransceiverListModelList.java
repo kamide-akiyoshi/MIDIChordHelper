@@ -13,55 +13,44 @@ import camidion.chordhelper.ChordHelperApplet;
 import camidion.chordhelper.midieditor.MidiSequenceEditor;
 
 /**
- * すべてのMIDIデバイスモデル {@link MidiConnecterListModel} を収容するリストです。
+ * すべてのMIDIデバイスモデル {@link MidiTransceiverListModel} を収容するリストです。
  * {@link MidiDeviceTreeModel} もこのリストを参照します。
  */
-public class MidiDeviceModelList extends Vector<MidiConnecterListModel> {
+public class MidiTransceiverListModelList extends Vector<MidiTransceiverListModel> {
 	/**
 	 * ツリー表示のルートに使用するタイトル
 	 */
 	public static final String TITLE = "MIDI devices";
-	/**
-	 * MIDIエディタ
-	 */
+
 	public MidiSequenceEditor editorDialog;
-	/**
-	 * MIDIエディタモデル
-	 */
-	private MidiConnecterListModel editorDialogModel;
-	/**
-	 * MIDIシンセサイザーモデル
-	 */
-	private MidiConnecterListModel synthModel;
-	/**
-	 * 最初のMIDI出力
-	 */
-	private MidiConnecterListModel firstMidiOutModel;
-	/**
-	 * MIDIデバイスモデルリストを生成します。
-	 * @param guiVirtualDeviceList GUI仮想MIDIデバイスのリスト
-	 */
-	public MidiDeviceModelList(List<VirtualMidiDevice> guiVirtualDeviceList) {
-		MidiDevice.Info[] deviceInfos = MidiSystem.getMidiDeviceInfo();
-		MidiConnecterListModel guiModels[] = new MidiConnecterListModel[guiVirtualDeviceList.size()];
-		MidiConnecterListModel firstMidiInModel = null;
+
+	private MidiSequencerModel sequencerModel;
+	public MidiSequencerModel getSequencerModel() { return sequencerModel; }
+
+	public MidiTransceiverListModelList(List<VirtualMidiDevice> guiVirtualDeviceList) {
 		//
 		// GUI仮想MIDIデバイスリストの構築
-		for( int i=0; i<guiVirtualDeviceList.size(); i++ )
-			guiModels[i] = addMidiDevice(guiVirtualDeviceList.get(i));
-		//
+		MidiTransceiverListModel guiModels[] = new MidiTransceiverListModel[guiVirtualDeviceList.size()];
+		for( int i=0; i<guiVirtualDeviceList.size(); i++ ) {
+			addElement(guiModels[i] = new MidiTransceiverListModel(guiVirtualDeviceList.get(i), this));
+		}
 		// シーケンサの取得
 		Sequencer sequencer;
 		try {
 			sequencer = MidiSystem.getSequencer(false);
-			sequencerModel = (MidiSequencerModel)addMidiDevice(sequencer);
+			addElement(sequencerModel = new MidiSequencerModel(sequencer, this));
 		} catch( MidiUnavailableException e ) {
 			System.out.println(ChordHelperApplet.VersionInfo.NAME +" : MIDI sequencer unavailable");
 			e.printStackTrace();
 		}
 		// MIDIエディタの生成
 		editorDialog = new MidiSequenceEditor(sequencerModel);
-		editorDialogModel = addMidiDevice(editorDialog.getVirtualMidiDevice());
+		MidiTransceiverListModel editorDialogModel;
+		addElement(editorDialogModel = new MidiTransceiverListModel(editorDialog.getVirtualMidiDevice(), this));
+		MidiTransceiverListModel synthModel = null;
+		MidiTransceiverListModel firstMidiInModel = null;
+		MidiTransceiverListModel firstMidiOutModel = null;
+		MidiDevice.Info[] deviceInfos = MidiSystem.getMidiDeviceInfo();
 		for( MidiDevice.Info info : deviceInfos ) {
 			// MIDIデバイスの取得
 			MidiDevice device;
@@ -70,13 +59,13 @@ public class MidiDeviceModelList extends Vector<MidiConnecterListModel> {
 			} catch( MidiUnavailableException e ) {
 				e.printStackTrace(); continue;
 			}
-			// シーケンサの場合はすでに取得済みなのでスキップ
+			// シーケンサはすでに取得済みなのでスキップ
 			if( device instanceof Sequencer ) continue;
 			//
 			// Java内蔵シンセサイザ
 			if( device instanceof Synthesizer ) {
 				try {
-					synthModel = addMidiDevice(MidiSystem.getSynthesizer());
+					addElement(synthModel = new MidiTransceiverListModel(MidiSystem.getSynthesizer(), this));
 				} catch( MidiUnavailableException e ) {
 					System.out.println(ChordHelperApplet.VersionInfo.NAME +
 							" : Java internal MIDI synthesizer unavailable");
@@ -84,8 +73,9 @@ public class MidiDeviceModelList extends Vector<MidiConnecterListModel> {
 				}
 				continue;
 			}
-			// MIDIデバイスを追加し、最初のエントリを覚えておく
-			MidiConnecterListModel m = addMidiDevice(device);
+			// その他のMIDIデバイス
+			MidiTransceiverListModel m;
+			addElement(m = new MidiTransceiverListModel(device, this));
 			if( m.rxSupported() && firstMidiOutModel == null ) firstMidiOutModel = m;
 			if( m.txSupported() && firstMidiInModel == null ) firstMidiInModel = m;
 		}
@@ -101,34 +91,40 @@ public class MidiDeviceModelList extends Vector<MidiConnecterListModel> {
 		//   開く順序が逆になると「進みすぎるから遅らせよう」として
 		//   無用なレイテンシーが発生する原因になる。
 		try {
-			MidiConnecterListModel openModels[] = {
+			MidiTransceiverListModel openModels[] = {
 				synthModel,
 				firstMidiOutModel,
 				sequencerModel,
 				firstMidiInModel,
 				editorDialogModel,
 			};
-			for( MidiConnecterListModel m : openModels ) if( m != null ) m.openDevice();
-			for( MidiConnecterListModel m : guiModels ) m.openDevice();
+			for( MidiTransceiverListModel m : openModels ) if( m != null ) {
+				m.getMidiDevice().open();
+				m.openReceiver();
+			}
+			for( MidiTransceiverListModel m : guiModels ) {
+				m.getMidiDevice().open();
+				m.openReceiver();
+			}
 		} catch( MidiUnavailableException ex ) {
 			ex.printStackTrace();
 		}
 		// 初期接続
 		//
-		for( MidiConnecterListModel mtx : guiModels ) {
-			for( MidiConnecterListModel mrx : guiModels ) mtx.connectToReceiverOf(mrx);
+		for( MidiTransceiverListModel mtx : guiModels ) {
+			for( MidiTransceiverListModel mrx : guiModels ) mtx.connectToReceiverOf(mrx);
 			mtx.connectToReceiverOf(sequencerModel);
 			mtx.connectToReceiverOf(synthModel);
 			mtx.connectToReceiverOf(firstMidiOutModel);
 		}
 		if( firstMidiInModel != null ) {
-			for( MidiConnecterListModel m : guiModels ) firstMidiInModel.connectToReceiverOf(m);
+			for( MidiTransceiverListModel m : guiModels ) firstMidiInModel.connectToReceiverOf(m);
 			firstMidiInModel.connectToReceiverOf(sequencerModel);
 			firstMidiInModel.connectToReceiverOf(synthModel);
 			firstMidiInModel.connectToReceiverOf(firstMidiOutModel);
 		}
 		if( sequencerModel != null ) {
-			for( MidiConnecterListModel m : guiModels ) sequencerModel.connectToReceiverOf(m);
+			for( MidiTransceiverListModel m : guiModels ) sequencerModel.connectToReceiverOf(m);
 			sequencerModel.connectToReceiverOf(synthModel);
 			sequencerModel.connectToReceiverOf(firstMidiOutModel);
 		}
@@ -136,25 +132,5 @@ public class MidiDeviceModelList extends Vector<MidiConnecterListModel> {
 			editorDialogModel.connectToReceiverOf(synthModel);
 			editorDialogModel.connectToReceiverOf(firstMidiOutModel);
 		}
-	}
-	/**
-	 * このデバイスモデルリストに登録されたMIDIシーケンサーモデルを返します。
-	 * @return MIDIシーケンサーモデル
-	 */
-	public MidiSequencerModel getSequencerModel() { return sequencerModel; }
-	private MidiSequencerModel sequencerModel;
-	/**
-	 * 指定のMIDIデバイスからMIDIデバイスモデルを生成して追加します。
-	 * @param device MIDIデバイス
-	 * @return 生成されたMIDIデバイスモデル
-	 */
-	private MidiConnecterListModel addMidiDevice(MidiDevice device) {
-		MidiConnecterListModel m;
-		if( device instanceof Sequencer )
-			m = new MidiSequencerModel(this,(Sequencer)device,this);
-		else
-			m = new MidiConnecterListModel(device,this);
-		addElement(m);
-		return m;
 	}
 }

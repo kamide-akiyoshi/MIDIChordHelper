@@ -1,10 +1,12 @@
 package camidion.chordhelper.mididevice;
 
+import java.awt.datatransfer.Transferable;
 import java.awt.dnd.DnDConstants;
 import java.awt.dnd.DropTarget;
 import java.awt.dnd.DropTargetAdapter;
 import java.awt.dnd.DropTargetDragEvent;
 import java.awt.dnd.DropTargetDropEvent;
+import java.awt.dnd.DropTargetListener;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.beans.PropertyVetoException;
@@ -14,25 +16,24 @@ import javax.swing.JDesktopPane;
 import javax.swing.JInternalFrame;
 import javax.swing.JLayeredPane;
 import javax.swing.JOptionPane;
-import javax.swing.Timer;
 import javax.swing.event.TreeSelectionEvent;
 import javax.swing.event.TreeSelectionListener;
+import javax.swing.tree.TreePath;
 
 /**
  * 開いている MIDI デバイスを置くためのデスクトップビュー
  */
-public class MidiOpenedDevicesView extends JDesktopPane {
-
+public class MidiOpenedDevicesView extends JDesktopPane implements TreeSelectionListener {
 	/**
-	 * ツリー上で選択状態が変わったとき、
-	 * このデスクトップ上のフレームの選択状態に反映するためのリスナー
+	 * ツリー上で選択状態が変わったとき、このデスクトップ上のフレームの選択状態に反映します。
 	 */
-	private TreeSelectionListener treeSelectionListener = new TreeSelectionListener() {
-		@Override
-		public void valueChanged(TreeSelectionEvent e) {
-			Object lastSelected = e.getNewLeadSelectionPath().getLastPathComponent();
-			if( lastSelected instanceof MidiConnecterListModel ) {
-				MidiConnecterListModel deviceModel = (MidiConnecterListModel)lastSelected;
+	@Override
+	public void valueChanged(TreeSelectionEvent tse) {
+		TreePath treePath = tse.getNewLeadSelectionPath();
+		if( treePath != null ) {
+			Object lastSelected = treePath.getLastPathComponent();
+			if( lastSelected instanceof MidiTransceiverListModel ) {
+				MidiTransceiverListModel deviceModel = (MidiTransceiverListModel)lastSelected;
 				if( deviceModel.getMidiDevice().isOpen() ) {
 					// 開いているMIDIデバイスがツリー上で選択されたら
 					// このデスクトップでも選択する
@@ -44,22 +45,21 @@ public class MidiOpenedDevicesView extends JDesktopPane {
 					return;
 				}
 			}
-			// 閉じているMIDIデバイス、またはMIDIデバイス以外のノードがツリー上で選択されたら
-			// このデスクトップ上のMIDIデバイスフレームをすべて非選択にする
-			MidiDeviceFrame selectedDeviceFrame = getSelectedMidiDeviceFrame();
-			if( selectedDeviceFrame == null ) return;
-			try {
-				selectedDeviceFrame.setSelected(false);
-			} catch( PropertyVetoException ex ) {
-				ex.printStackTrace();
-			}
 		}
-	};
-
+		// 閉じているMIDIデバイス、またはMIDIデバイス以外のノードがツリー上で選択されたら
+		// このデスクトップ上のMIDIデバイスフレームをすべて非選択にする
+		JInternalFrame frame = getSelectedFrame();
+		if( ! (frame instanceof MidiDeviceFrame) ) return;
+		try {
+			((MidiDeviceFrame)frame).setSelected(false);
+		} catch( PropertyVetoException ex ) {
+			ex.printStackTrace();
+		}
+	}
 	/**
 	 * ツリー表示からこのデスクトップにドロップされたMIDIデバイスモデルに対応するフレームを表示するためのリスナー
 	 */
-	private DropTargetAdapter dropTargetListener = new DropTargetAdapter() {
+	private DropTargetListener dropTargetListener = new DropTargetAdapter() {
 		@Override
 		public void dragEnter(DropTargetDragEvent dtde) {
 			if( dtde.getTransferable().isDataFlavorSupported(MidiDeviceTreeView.TREE_MODEL_FLAVOR) ) {
@@ -75,14 +75,16 @@ public class MidiOpenedDevicesView extends JDesktopPane {
 					dtde.dropComplete(false);
 					return;
 				}
-				Object data = dtde.getTransferable().getTransferData(MidiDeviceTreeView.TREE_MODEL_FLAVOR);
-				if( ! (data instanceof MidiConnecterListModel) ) {
+				Transferable t = dtde.getTransferable();
+				Object data = t.getTransferData(MidiDeviceTreeView.TREE_MODEL_FLAVOR);
+				if( ! (data instanceof MidiTransceiverListModel) ) {
 					dtde.dropComplete(false);
 					return;
 				}
-				MidiConnecterListModel deviceModel = (MidiConnecterListModel)data;
+				MidiTransceiverListModel deviceModel = (MidiTransceiverListModel)data;
 				try {
-					deviceModel.openDevice();
+					deviceModel.getMidiDevice().open();
+					deviceModel.openReceiver();
 				} catch( MidiUnavailableException e ) {
 					//
 					// デバイスを開くのに失敗した場合
@@ -93,7 +95,7 @@ public class MidiOpenedDevicesView extends JDesktopPane {
 					//
 					String title = "Cannot open MIDI device";
 					String message = "MIDIデバイス "+deviceModel+" はすでに使用中です。\n"
-						+"他のデバイスが連動して開いていないか確認してください。\n\n"
+						+"他のデバイスが連動して開いている可能性があります。\n\n"
 						+ e.getMessage();
 					dtde.dropComplete(false);
 					JOptionPane.showMessageDialog(null, message, title, JOptionPane.ERROR_MESSAGE);
@@ -103,7 +105,7 @@ public class MidiOpenedDevicesView extends JDesktopPane {
 					// 例外が出なかったにも関わらずデバイスが開かれていない場合
 					String title = "Cannot open MIDI device";
 					String message = "MIDIデバイス "+deviceModel+" はすでに使用中です。\n"
-						+"他のデバイスが連動して開いていないか確認してください。";
+							+"他のデバイスが連動して開いている可能性があります。\n\n" ;
 					dtde.dropComplete(false);
 					JOptionPane.showMessageDialog(null, message, title, JOptionPane.ERROR_MESSAGE);
 					return;
@@ -126,16 +128,31 @@ public class MidiOpenedDevicesView extends JDesktopPane {
 
 	private MidiCablePane cablePane = new MidiCablePane(this);
 
-	public MidiOpenedDevicesView(MidiDeviceTreeView deviceTree) {
-		deviceTree.addTreeSelectionListener(treeSelectionListener);
+	public MidiOpenedDevicesView(
+			MidiDeviceTreeView deviceTreeView,
+			MidiDeviceInfoPane deviceInfoPane,
+			MidiDeviceDialog dialog
+	) {
 		add(cablePane, JLayeredPane.PALETTE_LAYER);
 		int openedFrameIndex = 0;
-		MidiDeviceTreeModel treeModel = (MidiDeviceTreeModel)deviceTree.getModel();
-		for( MidiConnecterListModel deviceModel : treeModel.deviceModelList ) {
+		MidiDeviceTreeModel deviceTreeModel = (MidiDeviceTreeModel)deviceTreeView.getModel();
+		MidiTransceiverListModelList deviceModels = deviceTreeModel.getDeviceModelList();
+		for( MidiTransceiverListModel deviceModel : deviceModels ) {
 			deviceModel.addListDataListener(cablePane.midiConnecterListDataListener);
-			MidiDeviceFrame frame = new MidiDeviceFrame(deviceModel, cablePane);
+			MidiTransceiverListView transceiverListView = new MidiTransceiverListView(deviceModel, cablePane);
+			MidiDeviceFrame frame = new MidiDeviceFrame(transceiverListView);
 			frame.setSize(250, 90);
-			frame.addInternalFrameListener(deviceTree.midiDeviceFrameListener);
+			//
+			// デバイスフレームが開閉したときの動作
+			frame.addInternalFrameListener(cablePane.midiDeviceFrameListener);
+			frame.addInternalFrameListener(deviceTreeView.midiDeviceFrameListener);
+			frame.addInternalFrameListener(deviceInfoPane.midiDeviceFrameListener);
+			//
+			// 移動または変形時の動作
+			frame.addComponentListener(cablePane.midiDeviceFrameComponentListener);
+			//
+			// ダイアログが閉じたときの動作
+			dialog.addWindowListener(frame.windowListener);
 			add(frame);
 			if( ! deviceModel.getMidiDevice().isOpen() ) continue;
 			frame.setLocation( 10+(openedFrameIndex%2)*260, 10+openedFrameIndex*50 );
@@ -156,41 +173,16 @@ public class MidiOpenedDevicesView extends JDesktopPane {
 	 * @param deviceModel MIDIデバイスモデル
 	 * @return 対応するMIDIデバイスフレーム（ない場合 null）
 	 */
-	public MidiDeviceFrame getMidiDeviceFrameOf(MidiConnecterListModel deviceModel) {
+	private MidiDeviceFrame getMidiDeviceFrameOf(MidiTransceiverListModel deviceModel) {
 		JInternalFrame[] frames = getAllFramesInLayer(JLayeredPane.DEFAULT_LAYER);
 		for( JInternalFrame frame : frames ) {
 			if( ! (frame instanceof MidiDeviceFrame) ) continue;
 			MidiDeviceFrame deviceFrame = (MidiDeviceFrame)frame;
-			if( deviceModel.equals(deviceFrame.getMidiConnecterListView().getModel()) ) {
+			if( deviceFrame.getMidiTransceiverListView().getModel().equals(deviceModel) ) {
 				return deviceFrame;
 			}
 		}
 		return null;
 	}
 
-	/**
-	 * このビュー上にある現在アクティブな{@link MidiDeviceFrame}を返します。
-	 * アクティブな{@link MidiDeviceFrame}がない場合は null を返します。
-	 * @return 現在アクティブな{@link MidiDeviceFrame}、または null
-	 */
-	public MidiDeviceFrame getSelectedMidiDeviceFrame() {
-		JInternalFrame frame = getSelectedFrame();
-		return frame instanceof MidiDeviceFrame ? (MidiDeviceFrame)frame : null;
-	}
-
-	private boolean isTimerStarted;
-	/**
-	 * タイムスタンプを更新するタイマーを開始または停止します。
-	 * @param toStart trueで開始、falseで停止
-	 */
-	public void setAllDeviceTimestampTimers(boolean toStart) {
-		if( isTimerStarted == toStart ) return;
-		isTimerStarted = toStart;
-		JInternalFrame[] frames = getAllFramesInLayer(JLayeredPane.DEFAULT_LAYER);
-		for( JInternalFrame frame : frames ) {
-			if( ! (frame instanceof MidiDeviceFrame) ) continue;
-			Timer timer = ((MidiDeviceFrame)frame).getTimer();
-			if( toStart ) timer.start(); else timer.stop();
-		}
-	}
 }

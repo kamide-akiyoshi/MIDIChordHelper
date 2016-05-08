@@ -56,7 +56,7 @@ import camidion.chordhelper.chordmatrix.ChordButtonLabel;
 import camidion.chordhelper.chordmatrix.ChordMatrix;
 import camidion.chordhelper.chordmatrix.ChordMatrixListener;
 import camidion.chordhelper.mididevice.MidiDeviceDialog;
-import camidion.chordhelper.mididevice.MidiDeviceModelList;
+import camidion.chordhelper.mididevice.MidiTransceiverListModelList;
 import camidion.chordhelper.mididevice.SequencerMeasureView;
 import camidion.chordhelper.mididevice.SequencerTimeView;
 import camidion.chordhelper.mididevice.VirtualMidiDevice;
@@ -284,7 +284,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public static class VersionInfo {
 		public static final String	NAME = "MIDI Chord Helper";
-		public static final String	VERSION = "Ver.20160506.2";
+		public static final String	VERSION = "Ver.20160508.1";
 		public static final String	COPYRIGHT = "Copyright (C) 2004-2016";
 		public static final String	AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String	URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";
@@ -374,7 +374,7 @@ public class ChordHelperApplet extends JApplet {
 	public static final Insets ZERO_INSETS = new Insets(0,0,0,0);
 	//
 	public ChordMatrix chordMatrix;
-	MidiDeviceModelList	deviceModelList;
+	MidiTransceiverListModelList	deviceModelList;
 	//
 	private JPanel keyboardSequencerPanel;
 	private JPanel chordGuide;
@@ -458,7 +458,7 @@ public class ChordHelperApplet extends JApplet {
 			);
 			keyboardCenterPanel.keyboard.setPreferredSize(new Dimension(571, 80));
 		}};
-		deviceModelList = new MidiDeviceModelList(
+		deviceModelList = new MidiTransceiverListModelList(
 			new Vector<VirtualMidiDevice>() {
 				{
 					add(keyboardPanel.keyboardCenterPanel.keyboard.midiDevice);

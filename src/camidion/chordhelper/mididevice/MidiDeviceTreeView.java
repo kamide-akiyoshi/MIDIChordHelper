@@ -24,7 +24,8 @@ import javax.swing.tree.TreeModel;
  */
 public class MidiDeviceTreeView extends JTree {
 
-	public static final DataFlavor TREE_MODEL_FLAVOR = new DataFlavor(TreeModel.class,"TreeModel");
+	public static final DataFlavor TREE_MODEL_FLAVOR  =
+			new DataFlavor(TreeModel.class,"MidiConnecterListModel");
 
 	private Transferable draggingObject = new Transferable() {
 		private DataFlavor flavors[] = {TREE_MODEL_FLAVOR};
@@ -39,11 +40,16 @@ public class MidiDeviceTreeView extends JTree {
 			return flavor.equals(TREE_MODEL_FLAVOR);
 		}
 	};
+	/**
+	 * このツリーからドラッグしたMIDIデバイスのドロップが成功し、
+	 * MIDIデバイスが開かれたときに再描画するためのリスナー
+	 */
 	private DragSourceListener dragSourceListener = new DragSourceAdapter() {
 		@Override
-		public void dragDropEnd(DragSourceDropEvent dsde) { repaint(); }
+		public void dragDropEnd(DragSourceDropEvent dsde) {
+			if( dsde.getDropSuccess() ) repaint();
+		}
 	};
-
 	/**
 	 *	{@link MidiDeviceFrame} が閉じられたり、選択されたりしたときに再描画するリスナー
 	 */
@@ -52,7 +58,7 @@ public class MidiDeviceTreeView extends JTree {
 		public void internalFrameActivated(InternalFrameEvent e) {
 			JInternalFrame frame = e.getInternalFrame();
 			if( ! (frame instanceof MidiDeviceFrame ) ) return;
-			setSelectionPath(((MidiDeviceFrame)frame).getMidiConnecterListView().getModel().getTreePath());
+			setSelectionPath(((MidiDeviceFrame)frame).getMidiTransceiverListView().getModel().getTreePath());
 		}
 		@Override
 		public void internalFrameClosing(InternalFrameEvent e) { repaint(); }
@@ -63,8 +69,7 @@ public class MidiDeviceTreeView extends JTree {
 	 */
 	public MidiDeviceTreeView(MidiDeviceTreeModel model) {
 		super(model);
-		DragSource dragSource = new DragSource();
-		dragSource.createDefaultDragGestureRecognizer(
+		(new DragSource()).createDefaultDragGestureRecognizer(
 			this, DnDConstants.ACTION_COPY_OR_MOVE, new DragGestureListener() {
 				@Override
 				public void dragGestureRecognized(DragGestureEvent dge) {
@@ -80,13 +85,14 @@ public class MidiDeviceTreeView extends JTree {
 			{
 				super.getTreeCellRendererComponent(tree, value, selected, expanded, leaf, row, hasFocus);
 				if(leaf) {
-					setIcon(MidiConnecterListView.MIDI_CONNECTER_ICON);
-					setDisabledIcon(MidiConnecterListView.MIDI_CONNECTER_ICON);
-					setEnabled( ! ((MidiConnecterListModel)value).getMidiDevice().isOpen() );
+					setIcon(MidiTransceiverListView.MIDI_CONNECTER_ICON);
+					setDisabledIcon(MidiTransceiverListView.MIDI_CONNECTER_ICON);
+					setEnabled( ! ((MidiTransceiverListModel)value).getMidiDevice().isOpen() );
 				}
 				return this;
 			}
 		});
+		// 初期状態でツリーノードを開いた状態にする
 		for( int row = 0; row < getRowCount() ; row++ ) expandRow(row);
 	}
 }

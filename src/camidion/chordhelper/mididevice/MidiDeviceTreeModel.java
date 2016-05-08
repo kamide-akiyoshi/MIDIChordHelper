@@ -7,22 +7,33 @@ import javax.swing.tree.TreeModel;
 import javax.swing.tree.TreePath;
 
 /**
- * {@link MidiDeviceModelList}に収容されたMIDIデバイスを
- * {@link MidiDeviceInOutType}で分類したツリーとして扱えるようにするモデル
+ * {@link MidiTransceiverListModelList}に収容されたMIDIデバイスを
+ * {@link MidiDeviceInOutType}で分類して参照できるようにするツリーモデル
  */
 public class MidiDeviceTreeModel implements TreeModel {
-	MidiDeviceModelList deviceModelList;
-	public MidiDeviceTreeModel(MidiDeviceModelList deviceModelList) {
+
+	private MidiTransceiverListModelList deviceModelList;
+
+	/**
+	 * 引数で指定されたMIDIデバイスモデルリストのツリーモデルを構築します。
+	 * @param deviceModelList 参照先MIDIデバイスモデルリスト
+	 */
+	public MidiDeviceTreeModel(MidiTransceiverListModelList deviceModelList) {
 		this.deviceModelList = deviceModelList;
 	}
+	/**
+	 * このツリーモデルが参照しているMIDIデバイスモデルリストを返します。
+	 */
+	public MidiTransceiverListModelList getDeviceModelList() { return deviceModelList; }
+
 	@Override
-	public Object getRoot() { return MidiDeviceModelList.TITLE; }
+	public Object getRoot() { return MidiTransceiverListModelList.TITLE; }
 	@Override
 	public Object getChild(Object parent, int index) {
 		if( parent == getRoot() ) return MidiDeviceInOutType.values()[index + 1];
 		if( parent instanceof MidiDeviceInOutType ) {
 			MidiDeviceInOutType ioType = (MidiDeviceInOutType)parent;
-			for( MidiConnecterListModel deviceModel : deviceModelList )
+			for( MidiTransceiverListModel deviceModel : deviceModelList )
 				if( deviceModel.getMidiDeviceInOutType() == ioType ) {
 					if( index == 0 ) return deviceModel;
 					index--;
@@ -36,7 +47,7 @@ public class MidiDeviceTreeModel implements TreeModel {
 		int childCount = 0;
 		if( parent instanceof MidiDeviceInOutType ) {
 			MidiDeviceInOutType ioType = (MidiDeviceInOutType)parent;
-			for( MidiConnecterListModel deviceModel : deviceModelList )
+			for( MidiTransceiverListModel deviceModel : deviceModelList )
 				if( deviceModel.getMidiDeviceInOutType() == ioType ) childCount++;
 		}
 		return childCount;
@@ -52,7 +63,7 @@ public class MidiDeviceTreeModel implements TreeModel {
 		if( parent instanceof MidiDeviceInOutType ) {
 			MidiDeviceInOutType ioType = (MidiDeviceInOutType)parent;
 			int index = 0;
-			for( MidiConnecterListModel deviceModel : deviceModelList ) {
+			for( MidiTransceiverListModel deviceModel : deviceModelList ) {
 				if( deviceModel.getMidiDeviceInOutType() == ioType ) {
 					if( deviceModel == child ) return index;
 					index++;
@@ -62,7 +73,7 @@ public class MidiDeviceTreeModel implements TreeModel {
 		return -1;
 	}
 	@Override
-	public boolean isLeaf(Object node) { return node instanceof MidiConnecterListModel; }
+	public boolean isLeaf(Object node) { return node instanceof MidiTransceiverListModel; }
 	@Override
 	public void valueForPathChanged(TreePath path, Object newValue) {}
 	//

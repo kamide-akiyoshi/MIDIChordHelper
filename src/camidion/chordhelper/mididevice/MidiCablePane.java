@@ -34,7 +34,7 @@ import javax.swing.event.ListDataListener;
 public class MidiCablePane extends JComponent {
 	private Point draggingPoint;
 	/**
-	 * {@link MidiConnecterListModel} の {@link Transmitter}
+	 * {@link MidiTransceiverListModel} の {@link Transmitter}
 	 * をドラッグしている最中に再描画するためのリスナー
 	 */
 	public final DragSourceMotionListener midiConnecterMotionListener = new DragSourceMotionListener() {
@@ -72,16 +72,14 @@ public class MidiCablePane extends JComponent {
 			JInternalFrame frame = e.getInternalFrame();
 			if( ! (frame instanceof MidiDeviceFrame) ) return;
 			MidiDeviceFrame f = (MidiDeviceFrame)frame;
-			MidiConnecterListModel m = f.getMidiConnecterListView().getModel();
+			MidiTransceiverListModel m = f.getMidiTransceiverListView().getModel();
 			List<Receiver> rxList = m.getMidiDevice().getReceivers();
 			for( Receiver rx : rxList ) colorMap.remove(rx);
-			m.closeDevice();
-			frame.setVisible(m.getMidiDevice().isOpen());
 			repaint();
 		}
 	};
 	/**
-	 * {@link MidiConnecterListModel} における {@link Transmitter}
+	 * {@link MidiTransceiverListModel} における {@link Transmitter}
 	 * の増減や状態変更があった場合にケーブルを再描画するためのリスナー
 	 */
 	public final ListDataListener midiConnecterListDataListener = new ListDataListener() {
@@ -136,7 +134,7 @@ public class MidiCablePane extends JComponent {
 		for( JInternalFrame frame : frames ) {
 			if( ! (frame instanceof MidiDeviceFrame) ) continue;
 			MidiDeviceFrame fromFrame = (MidiDeviceFrame)frame;
-			MidiConnecterListView fromView = fromFrame.getMidiConnecterListView();
+			MidiTransceiverListView fromView = fromFrame.getMidiTransceiverListView();
 			MidiDevice fromDevice = fromView.getModel().getMidiDevice();
 			if( draggingPoint != null ) {
 				// Receiverからドラッグされた線を描画
