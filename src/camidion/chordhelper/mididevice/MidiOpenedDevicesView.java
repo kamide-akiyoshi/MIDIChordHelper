@@ -56,13 +56,31 @@ public class MidiOpenedDevicesView extends JDesktopPane implements TreeSelection
 			ex.printStackTrace();
 		}
 	}
+
+	/**
+	 * 指定されたMIDIデバイスモデルに対するMIDIデバイスフレームを返します。
+	 *
+	 * @param deviceModel MIDIデバイスモデル
+	 * @return 対応するMIDIデバイスフレーム（ない場合 null）
+	 */
+	private MidiDeviceFrame getMidiDeviceFrameOf(MidiTransceiverListModel deviceModel) {
+		JInternalFrame[] frames = getAllFramesInLayer(JLayeredPane.DEFAULT_LAYER);
+		for( JInternalFrame frame : frames ) {
+			if( ! (frame instanceof MidiDeviceFrame) ) continue;
+			MidiDeviceFrame deviceFrame = (MidiDeviceFrame)frame;
+			if( deviceFrame.getMidiTransceiverListView().getModel().equals(deviceModel) ) {
+				return deviceFrame;
+			}
+		}
+		return null;
+	}
 	/**
 	 * ツリー表示からこのデスクトップにドロップされたMIDIデバイスモデルに対応するフレームを表示するためのリスナー
 	 */
 	private DropTargetListener dropTargetListener = new DropTargetAdapter() {
 		@Override
 		public void dragEnter(DropTargetDragEvent dtde) {
-			if( dtde.getTransferable().isDataFlavorSupported(MidiDeviceTreeView.TREE_MODEL_FLAVOR) ) {
+			if( dtde.getTransferable().isDataFlavorSupported(MidiDeviceTreeView.TREE_FLAVOR) ) {
 				dtde.acceptDrag(DnDConstants.ACTION_COPY_OR_MOVE);
 			}
 		}
@@ -76,7 +94,11 @@ public class MidiOpenedDevicesView extends JDesktopPane implements TreeSelection
 					return;
 				}
 				Transferable t = dtde.getTransferable();
-				Object data = t.getTransferData(MidiDeviceTreeView.TREE_MODEL_FLAVOR);
+				if( ! t.isDataFlavorSupported(MidiDeviceTreeView.TREE_FLAVOR) ) {
+					dtde.dropComplete(false);
+					return;
+				}
+				Object data = t.getTransferData(MidiDeviceTreeView.TREE_FLAVOR);
 				if( ! (data instanceof MidiTransceiverListModel) ) {
 					dtde.dropComplete(false);
 					return;
@@ -134,14 +156,16 @@ public class MidiOpenedDevicesView extends JDesktopPane implements TreeSelection
 			MidiDeviceDialog dialog
 	) {
 		add(cablePane, JLayeredPane.PALETTE_LAYER);
-		int openedFrameIndex = 0;
-		MidiDeviceTreeModel deviceTreeModel = (MidiDeviceTreeModel)deviceTreeView.getModel();
-		MidiTransceiverListModelList deviceModels = deviceTreeModel.getDeviceModelList();
+		addComponentListener(new ComponentAdapter() {
+			@Override
+			public void componentResized(ComponentEvent e) { cablePane.setSize(getSize()); }
+		});
+		int toX = 10;
+		int toY = 10;
+		MidiTransceiverListModelList deviceModels = deviceTreeView.getModel().getTransceiverListModelList();
 		for( MidiTransceiverListModel deviceModel : deviceModels ) {
 			deviceModel.addListDataListener(cablePane.midiConnecterListDataListener);
-			MidiTransceiverListView transceiverListView = new MidiTransceiverListView(deviceModel, cablePane);
-			MidiDeviceFrame frame = new MidiDeviceFrame(transceiverListView);
-			frame.setSize(250, 90);
+			MidiDeviceFrame frame = new MidiDeviceFrame(new MidiTransceiverListView(deviceModel, cablePane));
 			//
 			// デバイスフレームが開閉したときの動作
 			frame.addInternalFrameListener(cablePane.midiDeviceFrameListener);
@@ -153,36 +177,17 @@ public class MidiOpenedDevicesView extends JDesktopPane implements TreeSelection
 			//
 			// ダイアログが閉じたときの動作
 			dialog.addWindowListener(frame.windowListener);
+			//
+			frame.setSize(250, 90);
 			add(frame);
-			if( ! deviceModel.getMidiDevice().isOpen() ) continue;
-			frame.setLocation( 10+(openedFrameIndex%2)*260, 10+openedFrameIndex*50 );
-			frame.setVisible(true);
-			openedFrameIndex++;
-		}
-		// このデスクトップがリサイズされたらケーブル面もリサイズする
-		addComponentListener(new ComponentAdapter() {
-			@Override
-			public void componentResized(ComponentEvent e) { cablePane.setSize(getSize()); }
-		});
-		new DropTarget( this, DnDConstants.ACTION_COPY_OR_MOVE, dropTargetListener, true );
-	}
-
-	/**
-	 * 指定されたMIDIデバイスモデルに対するMIDIデバイスフレームを返します。
-	 *
-	 * @param deviceModel MIDIデバイスモデル
-	 * @return 対応するMIDIデバイスフレーム（ない場合 null）
-	 */
-	private MidiDeviceFrame getMidiDeviceFrameOf(MidiTransceiverListModel deviceModel) {
-		JInternalFrame[] frames = getAllFramesInLayer(JLayeredPane.DEFAULT_LAYER);
-		for( JInternalFrame frame : frames ) {
-			if( ! (frame instanceof MidiDeviceFrame) ) continue;
-			MidiDeviceFrame deviceFrame = (MidiDeviceFrame)frame;
-			if( deviceFrame.getMidiTransceiverListView().getModel().equals(deviceModel) ) {
-				return deviceFrame;
+			if( deviceModel.getMidiDevice().isOpen() ) {
+				frame.setLocation(toX, toY);
+				frame.setVisible(true);
+				toX = (toX == 10 ? 270 : 10);
+				toY += 50;
 			}
 		}
-		return null;
+		new DropTarget( this, DnDConstants.ACTION_COPY_OR_MOVE, dropTargetListener, true );
 	}
 
 }

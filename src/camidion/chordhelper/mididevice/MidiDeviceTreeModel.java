@@ -12,28 +12,22 @@ import javax.swing.tree.TreePath;
  */
 public class MidiDeviceTreeModel implements TreeModel {
 
-	private MidiTransceiverListModelList deviceModelList;
+	private MidiTransceiverListModelList trxListModelList;
 
-	/**
-	 * 引数で指定されたMIDIデバイスモデルリストのツリーモデルを構築します。
-	 * @param deviceModelList 参照先MIDIデバイスモデルリスト
-	 */
-	public MidiDeviceTreeModel(MidiTransceiverListModelList deviceModelList) {
-		this.deviceModelList = deviceModelList;
+	public MidiTransceiverListModelList getTransceiverListModelList() { return trxListModelList; }
+
+	public MidiDeviceTreeModel(MidiTransceiverListModelList trxListModelList) {
+		this.trxListModelList = trxListModelList;
 	}
-	/**
-	 * このツリーモデルが参照しているMIDIデバイスモデルリストを返します。
-	 */
-	public MidiTransceiverListModelList getDeviceModelList() { return deviceModelList; }
 
 	@Override
-	public Object getRoot() { return MidiTransceiverListModelList.TITLE; }
+	public Object getRoot() { return trxListModelList; }
 	@Override
 	public Object getChild(Object parent, int index) {
 		if( parent == getRoot() ) return MidiDeviceInOutType.values()[index + 1];
 		if( parent instanceof MidiDeviceInOutType ) {
 			MidiDeviceInOutType ioType = (MidiDeviceInOutType)parent;
-			for( MidiTransceiverListModel deviceModel : deviceModelList )
+			for( MidiTransceiverListModel deviceModel : trxListModelList )
 				if( deviceModel.getMidiDeviceInOutType() == ioType ) {
 					if( index == 0 ) return deviceModel;
 					index--;
@@ -47,7 +41,7 @@ public class MidiDeviceTreeModel implements TreeModel {
 		int childCount = 0;
 		if( parent instanceof MidiDeviceInOutType ) {
 			MidiDeviceInOutType ioType = (MidiDeviceInOutType)parent;
-			for( MidiTransceiverListModel deviceModel : deviceModelList )
+			for( MidiTransceiverListModel deviceModel : trxListModelList )
 				if( deviceModel.getMidiDeviceInOutType() == ioType ) childCount++;
 		}
 		return childCount;
@@ -63,7 +57,7 @@ public class MidiDeviceTreeModel implements TreeModel {
 		if( parent instanceof MidiDeviceInOutType ) {
 			MidiDeviceInOutType ioType = (MidiDeviceInOutType)parent;
 			int index = 0;
-			for( MidiTransceiverListModel deviceModel : deviceModelList ) {
+			for( MidiTransceiverListModel deviceModel : trxListModelList ) {
 				if( deviceModel.getMidiDeviceInOutType() == ioType ) {
 					if( deviceModel == child ) return index;
 					index++;

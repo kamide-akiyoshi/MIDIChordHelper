@@ -29,8 +29,7 @@ public class MidiDeviceFrame extends JInternalFrame {
 	 */
 	public MidiTransceiverListView getMidiTransceiverListView() { return transceiverListView; }
 	/**
-	 * ダイアログウィンドウがアクティブになったり閉じようとしたときに、
-	 * タイムスタンプ更新のON/OFFを制御するためのリスナー
+	 * ダイアログウィンドウがアクティブなときだけタイムスタンプ更新を有効にするためのリスナー
 	 */
 	public final WindowListener windowListener = new WindowAdapter() {
 		@Override
@@ -50,7 +49,7 @@ public class MidiDeviceFrame extends JInternalFrame {
 		add(new JLabel("--:--") {{
 			timer = new Timer(50, new ActionListener() {
 				private long sec = -2;
-				private MidiDevice device = MidiDeviceFrame.this.transceiverListView.getModel().getMidiDevice();
+				private MidiDevice device = getMidiTransceiverListView().getModel().getMidiDevice();
 				@Override
 				public void actionPerformed(ActionEvent e) {
 					long usec = device.getMicrosecondPosition();

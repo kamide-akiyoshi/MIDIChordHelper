@@ -153,22 +153,24 @@ public class MidiTransceiverListView extends JList<AutoCloseable> {
 					MidiTransceiverListModel m = getModel();
 					AutoCloseable destination = m.getElementAt(locationToIndex(event.getLocation()));
 					Transferable t = event.getTransferable();
-					Object source;
-					if( (source = t.getTransferData(transmitterFlavor)) != null ) {
-						if( destination instanceof Receiver ) {
-							((Transmitter)source).setReceiver((Receiver)destination);
-							event.dropComplete(true);
-							return;
-						}
-					} else if( (source = t.getTransferData(receiverFlavor)) != null ) {
-						if( destination instanceof Transmitter ) {
-							Transmitter tx = (Transmitter)destination;
-							if( tx instanceof MidiTransceiverListModel.NewTransmitter ) {
-								tx = m.openTransmitter();
+					if( t.isDataFlavorSupported(transmitterFlavor) || t.isDataFlavorSupported(receiverFlavor) ) {
+						Object source;
+						if( (source = t.getTransferData(transmitterFlavor)) != null ) {
+							if( destination instanceof Receiver ) {
+								((Transmitter)source).setReceiver((Receiver)destination);
+								event.dropComplete(true);
+								return;
 							}
-							tx.setReceiver((Receiver)source);
-							event.dropComplete(true);
-							return;
+						} else if( (source = t.getTransferData(receiverFlavor)) != null ) {
+							if( destination instanceof Transmitter ) {
+								Transmitter tx = (Transmitter)destination;
+								if( tx instanceof MidiTransceiverListModel.NewTransmitter ) {
+									tx = m.openTransmitter();
+								}
+								tx.setReceiver((Receiver)source);
+								event.dropComplete(true);
+								return;
+							}
 						}
 					}
 				}
@@ -180,13 +182,8 @@ public class MidiTransceiverListView extends JList<AutoCloseable> {
 		};
 		new DropTarget( this, DnDConstants.ACTION_COPY_OR_MOVE, dtl, true );
 	}
-	/**
-	 * {@link MidiTransceiverListView} によって表示される項目のリストを保持するデータモデルを返します。
-	 */
 	@Override
-	public MidiTransceiverListModel getModel() {
-		return (MidiTransceiverListModel)super.getModel();
-	}
+	public MidiTransceiverListModel getModel() { return (MidiTransceiverListModel)super.getModel(); }
 	/**
 	 * 引数で指定された{@link Transmitter}または{@link Receiver}のセル範囲を示す、
 	 * リストの座標系内の境界の矩形を返します。対応するセルがない場合はnullを返します。

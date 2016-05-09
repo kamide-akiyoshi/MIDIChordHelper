@@ -46,7 +46,7 @@ public class MidiTransceiverListModel extends AbstractListModel<AutoCloseable> {
 		ioType = rxSupported() ?
 			(txSupported() ? MidiDeviceInOutType.MIDI_IN_OUT : MidiDeviceInOutType.MIDI_OUT) :
 			(txSupported() ? MidiDeviceInOutType.MIDI_IN     : MidiDeviceInOutType.MIDI_NONE);
-		treePath = new TreePath(new Object[] {MidiTransceiverListModelList.TITLE, ioType ,this});
+		treePath = new TreePath(new Object[] {deviceModelList, ioType ,this});
 	}
 	/**
 	 * 対象MIDIデバイスを返します。

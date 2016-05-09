@@ -17,10 +17,8 @@ import camidion.chordhelper.midieditor.MidiSequenceEditor;
  * {@link MidiDeviceTreeModel} もこのリストを参照します。
  */
 public class MidiTransceiverListModelList extends Vector<MidiTransceiverListModel> {
-	/**
-	 * ツリー表示のルートに使用するタイトル
-	 */
-	public static final String TITLE = "MIDI devices";
+
+	public String toString() { return "MIDI devices"; }
 
 	public MidiSequenceEditor editorDialog;
 

@@ -1,6 +1,7 @@
 package camidion.chordhelper.mididevice;
 
 import java.awt.Component;
+import java.awt.Point;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
 import java.awt.dnd.DnDConstants;
@@ -24,22 +25,23 @@ import javax.swing.tree.TreeModel;
  */
 public class MidiDeviceTreeView extends JTree {
 
-	public static final DataFlavor TREE_MODEL_FLAVOR  =
-			new DataFlavor(TreeModel.class,"MidiConnecterListModel");
+	public static final DataFlavor TREE_FLAVOR  = new DataFlavor(TreeModel.class,"TreeModel");
 
-	private Transferable draggingObject = new Transferable() {
-		private DataFlavor flavors[] = {TREE_MODEL_FLAVOR};
+	public class DraggingObject implements Transferable {
+		private DataFlavor flavors[] = {TREE_FLAVOR};
+		private MidiTransceiverListModel trxListModel;
 		@Override
 		public Object getTransferData(DataFlavor flavor) {
-			return getLastSelectedPathComponent();
+			return TREE_FLAVOR.equals(flavor) ? trxListModel : null;
 		}
 		@Override
 		public DataFlavor[] getTransferDataFlavors() { return flavors; }
 		@Override
 		public boolean isDataFlavorSupported(DataFlavor flavor) {
-			return flavor.equals(TREE_MODEL_FLAVOR);
+			return TREE_FLAVOR.equals(flavor);
 		}
 	};
+	private DraggingObject draggingObject = new DraggingObject();
 	/**
 	 * このツリーからドラッグしたMIDIデバイスのドロップが成功し、
 	 * MIDIデバイスが開かれたときに再描画するためのリスナー
@@ -74,7 +76,12 @@ public class MidiDeviceTreeView extends JTree {
 				@Override
 				public void dragGestureRecognized(DragGestureEvent dge) {
 					if( (dge.getDragAction() & DnDConstants.ACTION_COPY_OR_MOVE) == 0 ) return;
-					dge.startDrag(DragSource.DefaultMoveDrop, draggingObject, dragSourceListener);
+					Point origin = dge.getDragOrigin();
+					Object leaf = getPathForLocation(origin.x, origin.y).getLastPathComponent();
+					if( leaf instanceof MidiTransceiverListModel ) {
+						draggingObject.trxListModel = (MidiTransceiverListModel)leaf;
+						dge.startDrag(DragSource.DefaultMoveDrop, draggingObject, dragSourceListener);
+					}
 				}
 			}
 		);
@@ -95,4 +102,6 @@ public class MidiDeviceTreeView extends JTree {
 		// 初期状態でツリーノードを開いた状態にする
 		for( int row = 0; row < getRowCount() ; row++ ) expandRow(row);
 	}
+	@Override
+	public MidiDeviceTreeModel getModel() { return (MidiDeviceTreeModel) super.getModel(); }
 }
