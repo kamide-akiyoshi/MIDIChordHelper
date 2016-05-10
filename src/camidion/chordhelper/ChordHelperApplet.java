@@ -284,7 +284,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public static class VersionInfo {
 		public static final String	NAME = "MIDI Chord Helper";
-		public static final String	VERSION = "Ver.20160509.1";
+		public static final String	VERSION = "Ver.20160510.1";
 		public static final String	COPYRIGHT = "Copyright (C) 2004-2016";
 		public static final String	AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String	URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";
@@ -466,7 +466,7 @@ public class ChordHelperApplet extends JApplet {
 			}
 		);
 		deviceModelList.editorDialog.setIconImage(iconImage);
-		new DropTarget(this, DnDConstants.ACTION_COPY_OR_MOVE, deviceModelList.editorDialog, true);
+		new DropTarget(this, DnDConstants.ACTION_COPY_OR_MOVE, deviceModelList.editorDialog.dropTargetListener, true);
 		keyboardPanel.setEventDialog(deviceModelList.editorDialog.eventDialog);
 		midiConnectionDialog = new MidiDeviceDialog(deviceModelList);
 		midiConnectionDialog.setIconImage(iconImage);
