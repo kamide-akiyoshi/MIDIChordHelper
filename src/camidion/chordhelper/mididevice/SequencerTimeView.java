@@ -11,60 +11,54 @@ import javax.swing.event.ChangeListener;
 /**
  * シーケンサの現在位置（分：秒）を表示するビュー
  */
-public class SequencerTimeView extends JPanel implements ChangeListener {
+public class SequencerTimeView extends JPanel {
+	private TimeLabel timePositionLabel = new TimePositionLabel();
+	private TimeLabel timeLengthLabel = new TimeLengthLabel();
 	/**
-	 * シーケンサの現在位置（分：秒）を表示するビューを構築します。
+	 * シーケンサの現在位置と曲の長さを（分：秒）で表示するビューを構築します。
 	 * @param model MIDIシーケンサモデル
 	 */
 	public SequencerTimeView(MidiSequencerModel model) {
 		setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
 		add(timePositionLabel);
 		add(timeLengthLabel);
-		(this.model = model).addChangeListener(this);
+		model.addChangeListener(new ChangeListener() {
+			@Override
+			public void stateChanged(ChangeEvent e) {
+				Object source = e.getSource();
+				if( source instanceof MidiSequencerModel ) {
+					MidiSequencerModel model = (MidiSequencerModel)source;
+					timeLengthLabel.changeTimeInSecond(model.getMaximum()/1000);
+					timePositionLabel.changeTimeInSecond(model.getValue()/1000);
+				}
+			}
+		});
 	}
-	@Override
-	public void stateChanged(ChangeEvent e) {
-		timeLengthLabel.setTimeInSecond(model.getMaximum()/1000);
-		timePositionLabel.setTimeInSecond(model.getValue()/1000);
-	}
-	private MidiSequencerModel model;
-	private SequencerTimeView.TimeLabel timePositionLabel = new TimePositionLabel();
-	private SequencerTimeView.TimeLabel timeLengthLabel = new TimeLengthLabel();
 	private static abstract class TimeLabel extends JLabel {
-		/**
-		 * 時間の値（秒）
-		 */
-		private int valueInSec;
-		/**
-		 * 時間の値を秒単位で設定します。
-		 * @param sec 秒単位の時間
-		 */
-		public void setTimeInSecond(int sec) {
-			if(valueInSec != sec) setText(toTimeString(valueInSec = sec));
-		}
-		/**
-		 * 時間の値を文字列に変換します。
-		 * @param sec 秒単位の時間
-		 * @return 変換結果（分：秒）
-		 */
+		{ setTimeInSecond(0); }
 		protected String toTimeString(int sec) {
-			return String.format("%02d:%02d", sec/60, sec%60);
+			int min = sec/60;
+			return String.format("%02d:%02d", min, sec - min * 60);
+		}
+		private int valueInSec;
+		private void setTimeInSecond(int sec) {
+			setText(toTimeString(valueInSec = sec));
+		}
+		private void changeTimeInSecond(int sec) {
+			if(valueInSec != sec) setTimeInSecond(sec);
 		}
 	}
-	private static class TimePositionLabel extends SequencerTimeView.TimeLabel {
-		public TimePositionLabel() {
+	private static class TimePositionLabel extends TimeLabel {
+		{
 			setFont( getFont().deriveFont(getFont().getSize2D() + 4) );
 			setForeground( new Color(0x80,0x00,0x00) );
 			setToolTipText("Time position - 現在位置（分：秒）");
-			setText(toTimeString(0));
 		}
 	}
-	private static class TimeLengthLabel extends SequencerTimeView.TimeLabel {
-		public TimeLengthLabel() {
+	private static class TimeLengthLabel extends TimeLabel {
+		{
 			setToolTipText("Time length - 曲の長さ（分：秒）");
-			setText(toTimeString(0));
 		}
-		@Override
 		protected String toTimeString(int sec) {
 			return "/"+super.toTimeString(sec);
 		}

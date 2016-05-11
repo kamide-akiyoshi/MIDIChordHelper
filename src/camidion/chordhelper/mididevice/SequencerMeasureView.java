@@ -15,10 +15,9 @@ import camidion.chordhelper.midieditor.SequenceTrackListTableModel;
 /**
  * 小節表示ビュー
  */
-public class SequencerMeasureView extends JPanel implements ChangeListener {
-	private SequencerMeasureView.MeasurePositionLabel measurePositionLabel;
-	private SequencerMeasureView.MeasureLengthLabel measureLengthLabel;
-	private MidiSequencerModel model;
+public class SequencerMeasureView extends JPanel {
+	private MeasurePositionLabel measurePositionLabel;
+	private MeasureLengthLabel measureLengthLabel;
 	/**
 	 * シーケンサの現在の小節位置を表示するビューを構築します。
 	 * @param model スライダー用の時間範囲データモデル
@@ -27,35 +26,39 @@ public class SequencerMeasureView extends JPanel implements ChangeListener {
 		setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
 		add(measurePositionLabel = new MeasurePositionLabel());
 		add(measureLengthLabel = new MeasureLengthLabel());
-		(this.model = model).addChangeListener(this);
-	}
-	@Override
-	public void stateChanged(ChangeEvent e) {
-		Sequencer sequencer = model.getSequencer();
-		SequenceTrackListTableModel sequenceTableModel = model.getSequenceTrackListTableModel();
-		SequenceTickIndex tickIndex = (
-			sequenceTableModel == null ? null : sequenceTableModel.getSequenceTickIndex()
-		);
-		if( ! sequencer.isRunning() || sequencer.isRecording() ) {
-			// 停止中または録音中の場合、長さが変わることがあるので表示を更新
-			if( tickIndex == null ) {
-				measureLengthLabel.setMeasure(0);
+		model.addChangeListener(new ChangeListener() {
+			@Override
+			public void stateChanged(ChangeEvent e) {
+				Object source = e.getSource();
+				if( ! (source instanceof MidiSequencerModel) ) return;
+				MidiSequencerModel model = (MidiSequencerModel)source;
+				Sequencer sequencer = model.getSequencer();
+				SequenceTrackListTableModel sequenceTableModel = model.getSequenceTrackListTableModel();
+				SequenceTickIndex tickIndex = (
+					sequenceTableModel == null ? null : sequenceTableModel.getSequenceTickIndex()
+				);
+				if( ! sequencer.isRunning() || sequencer.isRecording() ) {
+					// 停止中または録音中の場合、長さが変わることがあるので表示を更新
+					if( tickIndex == null ) {
+						measureLengthLabel.setMeasure(0);
+					}
+					else {
+						long tickLength = sequencer.getTickLength();
+						int measureLength = tickIndex.tickToMeasure(tickLength);
+						measureLengthLabel.setMeasure(measureLength);
+					}
+				}
+				// 小節位置の表示を更新
+				if( tickIndex == null ) {
+					measurePositionLabel.setMeasure(0, 0);
+				}
+				else {
+					long tickPosition = sequencer.getTickPosition();
+					int measurePosition = tickIndex.tickToMeasure(tickPosition);
+					measurePositionLabel.setMeasure(measurePosition, tickIndex.lastBeat);
+				}
 			}
-			else {
-				long tickLength = sequencer.getTickLength();
-				int measureLength = tickIndex.tickToMeasure(tickLength);
-				measureLengthLabel.setMeasure(measureLength);
-			}
-		}
-		// 小節位置の表示を更新
-		if( tickIndex == null ) {
-			measurePositionLabel.setMeasure(0, 0);
-		}
-		else {
-			long tickPosition = sequencer.getTickPosition();
-			int measurePosition = tickIndex.tickToMeasure(tickPosition);
-			measurePositionLabel.setMeasure(measurePosition, tickIndex.lastBeat);
-		}
+		});
 	}
 	private static abstract class MeasureLabel extends JLabel {
 		protected int measure = -1;
@@ -65,7 +68,7 @@ public class SequencerMeasureView extends JPanel implements ChangeListener {
 			return true;
 		}
 	}
-	private static class MeasurePositionLabel extends SequencerMeasureView.MeasureLabel {
+	private static class MeasurePositionLabel extends MeasureLabel {
 		protected int beat = 0;
 		public MeasurePositionLabel() {
 			setFont( getFont().deriveFont(getFont().getSize2D() + 4) );
@@ -80,7 +83,7 @@ public class SequencerMeasureView extends JPanel implements ChangeListener {
 			return true;
 		}
 	}
-	private static class MeasureLengthLabel extends SequencerMeasureView.MeasureLabel {
+	private static class MeasureLengthLabel extends MeasureLabel {
 		public MeasureLengthLabel() {
 			setText("/0000");
 			setToolTipText("Measure length - 小節の数");

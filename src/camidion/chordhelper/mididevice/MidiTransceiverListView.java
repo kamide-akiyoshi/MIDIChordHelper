@@ -133,7 +133,7 @@ public class MidiTransceiverListView extends JList<AutoCloseable> {
 			}
 		};
 		dragSource.createDefaultDragGestureRecognizer(this, DnDConstants.ACTION_COPY_OR_MOVE, dgl);
-		dragSource.addDragSourceMotionListener(cablePane.midiConnecterMotionListener);
+		dragSource.addDragSourceMotionListener(cablePane);
 		DropTargetListener dtl = new DropTargetAdapter() {
 			@Override
 			public void dragEnter(DropTargetDragEvent event) {

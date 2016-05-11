@@ -28,9 +28,7 @@ import camidion.chordhelper.midieditor.SequenceTrackListTableModel;
 /**
  * MIDIシーケンサモデル
  */
-public class MidiSequencerModel extends MidiTransceiverListModel
-	implements BoundedRangeModel
-{
+public class MidiSequencerModel extends MidiTransceiverListModel implements BoundedRangeModel {
 	/**
 	 * MIDIシーケンサモデルを構築します。
 	 * @param sequencer シーケンサーMIDIデバイス
@@ -43,17 +41,15 @@ public class MidiSequencerModel extends MidiTransceiverListModel
 	 * このシーケンサーの再生スピード調整モデル
 	 */
 	public BoundedRangeModel speedSliderModel = new DefaultBoundedRangeModel(0, 0, -7, 7) {{
-		addChangeListener(
-			new ChangeListener() {
-				@Override
-				public void stateChanged(ChangeEvent e) {
-					int val = getValue();
-					getSequencer().setTempoFactor((float)(
-						val == 0 ? 1.0 : Math.pow( 2.0, ((double)val)/12.0 )
-					));
-				}
+		addChangeListener(new ChangeListener() {
+			@Override
+			public void stateChanged(ChangeEvent e) {
+				int val = getValue();
+				getSequencer().setTempoFactor((float)(
+					val == 0 ? 1.0 : Math.pow( 2.0, ((double)val)/12.0 )
+				));
 			}
-		);
+		});
 	}};
 	/**
 	 * MIDIシーケンサを返します。

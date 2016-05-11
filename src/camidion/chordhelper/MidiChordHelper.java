@@ -64,7 +64,7 @@ public class MidiChordHelper {
 				} else {
 					frame = new AppletFrame(applet = new ChordHelperApplet());
 				}
-				applet.deviceModelList.editorDialog.loadAndPlay(fileList);
+				applet.deviceModelList.getEditorDialog().loadAndPlay(fileList);
 			}
 		});
 	}
@@ -108,7 +108,7 @@ public class MidiChordHelper {
 			 * @param applet 対象アプレット
 			 */
 			public TitleUpdater(ChordHelperApplet applet) {
-				applet.deviceModelList.editorDialog.sequenceListTable.getModel().addTableModelListener(this);
+				applet.deviceModelList.getEditorDialog().sequenceListTable.getModel().addTableModelListener(this);
 				sequencerModel = applet.deviceModelList.getSequencerModel();
 				sequencerModel.addChangeListener(this);
 			}

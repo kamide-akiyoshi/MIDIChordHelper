@@ -31,21 +31,19 @@ import javax.swing.event.ListDataListener;
 /**
  * MIDI ケーブル描画面
  */
-public class MidiCablePane extends JComponent {
+public class MidiCablePane extends JComponent implements DragSourceMotionListener {
 	private Point draggingPoint;
 	/**
 	 * {@link MidiTransceiverListModel} の {@link Transmitter}
 	 * をドラッグしている最中に再描画するためのリスナー
 	 */
-	public final DragSourceMotionListener midiConnecterMotionListener = new DragSourceMotionListener() {
-		@Override
-		public void dragMouseMoved(DragSourceDragEvent dsde) {
-			Point origin = MidiCablePane.this.getLocationOnScreen();
-			draggingPoint = dsde.getLocation();
-			draggingPoint.translate(-origin.x, -origin.y);
-			repaint();
-		}
-	};
+	@Override
+	public void dragMouseMoved(DragSourceDragEvent dsde) {
+		Point origin = getLocationOnScreen();
+		draggingPoint = dsde.getLocation();
+		draggingPoint.translate(-origin.x, -origin.y);
+		repaint();
+	}
 	/**
 	 * ドラッグ＆ドロップの終了時に必要な再描画を行います。
 	 */

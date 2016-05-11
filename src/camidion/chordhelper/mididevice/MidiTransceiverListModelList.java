@@ -20,7 +20,8 @@ public class MidiTransceiverListModelList extends Vector<MidiTransceiverListMode
 
 	public String toString() { return "MIDI devices"; }
 
-	public MidiSequenceEditor editorDialog;
+	private MidiSequenceEditor editorDialog;
+	public MidiSequenceEditor getEditorDialog() { return editorDialog; }
 
 	private MidiSequencerModel sequencerModel;
 	public MidiSequencerModel getSequencerModel() { return sequencerModel; }
