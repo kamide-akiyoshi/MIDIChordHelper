@@ -58,15 +58,11 @@ public abstract class AbstractVirtualMidiDevice implements VirtualMidiDevice {
 	 *  MIDI IN 接続の最大数を設定します。デフォルト値は -1 です。
 	 * @param maxReceivers MIDI IN 接続の最大数、または利用可能な接続数に制限がない場合は -1。
 	 */
-	protected void setMaxReceivers(int maxReceivers) {
-		this.maxReceivers = maxReceivers;
-	}
+	protected void setMaxReceivers(int maxReceivers) { this.maxReceivers = maxReceivers; }
 	@Override
 	public int getMaxReceivers() { return maxReceivers; }
 	@Override
-	public Receiver getReceiver() {
-		return rxList.isEmpty() ? null : rxList.get(0);
-	}
+	public Receiver getReceiver() { return rxList.isEmpty() ? null : rxList.get(0); }
 	protected void setReceiver(Receiver rx) {
 		if( maxReceivers == 0 ) return;
 		if( ! rxList.isEmpty() ) rxList.clear();
@@ -86,14 +82,10 @@ public abstract class AbstractVirtualMidiDevice implements VirtualMidiDevice {
 	 *  MIDI OUT 接続の最大数を設定します。デフォルト値は -1 です。
 	 * @param maxTransmitters MIDI OUT 接続の最大数、または利用可能な接続数に制限がない場合は -1。
 	 */
-	protected void setMaxTransmitters(int maxTransmitters) {
-		this.maxTransmitters = maxTransmitters;
-	}
+	protected void setMaxTransmitters(int maxTransmitters) { this.maxTransmitters = maxTransmitters; }
 	@Override
 	public Transmitter getTransmitter() throws MidiUnavailableException {
-		if( maxTransmitters == 0 ) {
-			throw new MidiUnavailableException();
-		}
+		if( maxTransmitters == 0 ) throw new MidiUnavailableException();
 		Transmitter new_tx = new Transmitter() {
 			private Receiver rx = null;
 			@Override
@@ -128,9 +120,7 @@ public abstract class AbstractVirtualMidiDevice implements VirtualMidiDevice {
 		 * @param vmd 仮想MIDIデバイス
 		 * @param channel MIDIチャンネルインデックス（チャンネル 1 のとき 0）
 		 */
-		public VirtualDeviceMidiChannel(int channel) {
-			this.channel = channel;
-		}
+		public VirtualDeviceMidiChannel(int channel) { this.channel = channel; }
 		private void sendShortMessage(int command, int data1, int data2) {
 			try {
 				sendMidiMessage(new ShortMessage(command, channel, data1, data2));
@@ -139,9 +129,7 @@ public abstract class AbstractVirtualMidiDevice implements VirtualMidiDevice {
 			}
 		}
 		@Override
-		public void noteOff(int noteNumber) {
-			noteOff(noteNumber, 64);
-		}
+		public void noteOff(int noteNumber) { noteOff(noteNumber, 64); }
 		@Override
 		public void noteOff(int noteNumber, int velocity) {
 			sendShortMessage(ShortMessage.NOTE_OFF, noteNumber, velocity);

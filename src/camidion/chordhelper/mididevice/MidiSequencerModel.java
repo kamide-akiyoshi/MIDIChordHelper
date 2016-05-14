@@ -252,8 +252,8 @@ public class MidiSequencerModel extends MidiTransceiverListModel implements Boun
 		return sequenceTableModel;
 	}
 	/**
-	 * MIDIトラックリストテーブルモデルを
-	 * このシーケンサーモデルにセットします。
+	 * MIDIトラックリストテーブルモデルをこのシーケンサーモデルにセットします。
+	 * nullを指定してアンセットすることもできます。
 	 * @param sequenceTableModel MIDIトラックリストテーブルモデル
 	 * @return 成功したらtrue
 	 */
@@ -266,8 +266,7 @@ public class MidiSequencerModel extends MidiTransceiverListModel implements Boun
 		//
 		if( sequenceTableModel != null || getSequencer().isOpen() ) {
 			Sequence sequence = null;
-			if( sequenceTableModel != null )
-				sequence = sequenceTableModel.getSequence();
+			if( sequenceTableModel != null ) sequence = sequenceTableModel.getSequence();
 			try {
 				getSequencer().setSequence(sequence);
 			} catch ( InvalidMidiDataException e ) {
@@ -291,8 +290,7 @@ public class MidiSequencerModel extends MidiTransceiverListModel implements Boun
 	 * @param measureOffset 何小節進めるか（戻したいときは負数を指定）
 	 */
 	private void moveMeasure(int measureOffset) {
-		if( measureOffset == 0 || sequenceTableModel == null )
-			return;
+		if( measureOffset == 0 || sequenceTableModel == null ) return;
 		SequenceTickIndex seqIndex = sequenceTableModel.getSequenceTickIndex();
 		Sequencer sequencer = getSequencer();
 		int measurePosition = seqIndex.tickToMeasure(sequencer.getTickPosition());

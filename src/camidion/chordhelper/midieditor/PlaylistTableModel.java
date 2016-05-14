@@ -410,9 +410,7 @@ public class PlaylistTableModel extends AbstractTableModel {
 	 * @return 未保存の修正内容を持つシーケンスがあればtrue
 	 */
 	public boolean isModified() {
-		for( SequenceTrackListTableModel m : sequenceList ) {
-			if( m.isModified() ) return true;
-		}
+		for( SequenceTrackListTableModel m : sequenceList ) if( m.isModified() ) return true;
 		return false;
 	}
 	/**
@@ -448,8 +446,7 @@ public class PlaylistTableModel extends AbstractTableModel {
 	 */
 	public void fireSequenceModified(SequenceTrackListTableModel sequenceTableModel) {
 		int index = sequenceList.indexOf(sequenceTableModel);
-		if( index < 0 )
-			return;
+		if( index < 0 ) return;
 		sequenceTableModel.setModified(true);
 		fireTableRowsUpdated(index, index);
 	}
@@ -511,9 +508,7 @@ public class PlaylistTableModel extends AbstractTableModel {
 	 * @return 追加されたシーケンスのインデックス（先頭が 0）
 	 */
 	public int addSequence(Sequence sequence, String filename) {
-		sequenceList.add(
-			new SequenceTrackListTableModel(this, sequence, filename)
-		);
+		sequenceList.add( new SequenceTrackListTableModel(this, sequence, filename) );
 		int lastIndex = sequenceList.size() - 1;
 		fireTableRowsInserted(lastIndex, lastIndex);
 		return lastIndex;
@@ -553,14 +548,11 @@ public class PlaylistTableModel extends AbstractTableModel {
 	 * @throws InvalidMidiDataException ファイル内のMIDIデータが正しくない場合
 	 * @throws IOException ファイル入出力に失敗した場合
 	 */
-	public int addSequences(List<File> fileList)
-		throws InvalidMidiDataException, IOException
-	{
+	public int addSequences(List<File> fileList) throws InvalidMidiDataException, IOException {
 		int firstIndex = -1;
 		for( File file : fileList ) {
 			int lastIndex = addSequence(file);
-			if( firstIndex == -1 )
-				firstIndex = lastIndex;
+			if( firstIndex == -1 ) firstIndex = lastIndex;
 		}
 		return firstIndex;
 	}
@@ -575,50 +567,43 @@ public class PlaylistTableModel extends AbstractTableModel {
 	public int addSequenceFromURL(String midiFileUrl)
 		throws URISyntaxException, IOException, InvalidMidiDataException
 	{
-		URI uri = new URI(midiFileUrl);
-		URL url = uri.toURL();
-		Sequence seq = MidiSystem.getSequence(url);
-		String filename = url.getFile().replaceFirst("^.*/","");
-		return addSequence(seq, filename);
+		URL url = (new URI(midiFileUrl)).toURL();
+		return addSequence(MidiSystem.getSequence(url), url.getFile().replaceFirst("^.*/",""));
 	}
 
 	/**
-	 * 選択したシーケンスを除去します。
-	 * @param listSelectionModel 選択状態
+	 * 選択されたシーケンスを除去します。
+	 * 除去されたシーケンスがシーケンサーにロード済みの場合、アンロードします。
 	 */
 	public void removeSelectedSequence() {
-		if( sequenceListSelectionModel.isSelectionEmpty() )
-			return;
+		if( sequenceListSelectionModel.isSelectionEmpty() ) return;
 		int selectedIndex = sequenceListSelectionModel.getMinSelectionIndex();
-		if( sequenceList.remove(selectedIndex).isOnSequencer() ) {
-			// 削除したシーケンスが
-			// シーケンサーにロード済みだった場合、アンロードする。
+		if( sequenceList.remove(selectedIndex).isOnSequencer() )
 			sequencerModel.setSequenceTrackListTableModel(null);
-		}
 		fireTableRowsDeleted(selectedIndex, selectedIndex);
 	}
 	/**
 	 * 指定したインデックス位置のシーケンスをシーケンサーにロードします。
+	 * すでに同じIDのシーケンスがロードされていた場合はスキップします。
 	 * @param index シーケンスのインデックス位置（-1 を指定するとアンロードされます）
 	 */
 	public void loadToSequencer(int index) {
 		SequenceTrackListTableModel oldSeq = sequencerModel.getSequenceTrackListTableModel();
 		SequenceTrackListTableModel newSeq = (index < 0 ? null : sequenceList.get(index));
-		if(oldSeq == newSeq)
-			return;
+		if(oldSeq == newSeq) return;
 		sequencerModel.setSequenceTrackListTableModel(newSeq);
+		//
+		// 変更点をテーブルビューに通知して再表示してもらう
 		int columnIndices[] = {
 			Column.PLAY.ordinal(),
 			Column.POSITION.ordinal(),
 		};
 		if( oldSeq != null ) {
 			int oldIndex = sequenceList.indexOf(oldSeq);
-			for( int columnIndex : columnIndices )
-				fireTableCellUpdated(oldIndex, columnIndex);
+			for( int columnIndex : columnIndices ) fireTableCellUpdated(oldIndex, columnIndex);
 		}
 		if( newSeq != null ) {
-			for( int columnIndex : columnIndices )
-				fireTableCellUpdated(index, columnIndex);
+			for( int columnIndex : columnIndices ) fireTableCellUpdated(index, columnIndex);
 		}
 	}
 	/**
@@ -637,8 +622,7 @@ public class PlaylistTableModel extends AbstractTableModel {
 	public boolean loadNext(int offset) {
 		int loadedIndex = indexOfSequenceOnSequencer();
 		int index = (loadedIndex < 0 ? 0 : loadedIndex + offset);
-		if( index < 0 || index >= sequenceList.size() )
-			return false;
+		if( index < 0 || index >= sequenceList.size() ) return false;
 		loadToSequencer(index);
 		return true;
 	}

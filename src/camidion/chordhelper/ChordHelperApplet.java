@@ -22,12 +22,10 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.security.AccessControlException;
 import java.util.Arrays;
-import java.util.Vector;
 
 import javax.sound.midi.InvalidMidiDataException;
 import javax.sound.midi.MetaEventListener;
 import javax.sound.midi.MetaMessage;
-import javax.sound.midi.Sequence;
 import javax.sound.midi.Sequencer;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -59,10 +57,10 @@ import camidion.chordhelper.mididevice.MidiDeviceDialog;
 import camidion.chordhelper.mididevice.MidiTransceiverListModelList;
 import camidion.chordhelper.mididevice.SequencerMeasureView;
 import camidion.chordhelper.mididevice.SequencerTimeView;
-import camidion.chordhelper.mididevice.VirtualMidiDevice;
 import camidion.chordhelper.midieditor.Base64Dialog;
 import camidion.chordhelper.midieditor.KeySignatureLabel;
 import camidion.chordhelper.midieditor.MidiSequenceEditor;
+import camidion.chordhelper.midieditor.NewSequenceDialog;
 import camidion.chordhelper.midieditor.SequenceTickIndex;
 import camidion.chordhelper.midieditor.SequenceTrackListTableModel;
 import camidion.chordhelper.midieditor.TempoSelecter;
@@ -100,9 +98,10 @@ public class ChordHelperApplet extends JApplet {
 	 * @return 追加先のインデックス値（０から始まる）。追加できなかったときは -1
 	 */
 	public int addRandomSongToPlaylist(int measureLength) {
-		deviceModelList.getEditorDialog().newSequenceDialog.setRandomChordProgression(measureLength);
-		Sequence sequence = deviceModelList.getEditorDialog().newSequenceDialog.getMidiSequence();
-		return deviceModelList.getEditorDialog().sequenceListTable.getModel().addSequenceAndPlay(sequence);
+		MidiSequenceEditor editor = deviceModelList.getEditorDialog();
+		NewSequenceDialog d = editor.newSequenceDialog;
+		d.setRandomChordProgression(measureLength);
+		return editor.sequenceListTable.getModel().addSequenceAndPlay(d.getMidiSequence());
 	}
 	/**
 	 * URLで指定されたMIDIファイルをプレイリストへ追加します。
@@ -288,7 +287,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public static class VersionInfo {
 		public static final String	NAME = "MIDI Chord Helper";
-		public static final String	VERSION = "Ver.20160511.1";
+		public static final String	VERSION = "Ver.20160514.1";
 		public static final String	COPYRIGHT = "Copyright (C) 2004-2016";
 		public static final String	AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String	URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";
@@ -353,8 +352,7 @@ public class ChordHelperApplet extends JApplet {
 		@Override
 		public void actionPerformed(ActionEvent e) {
 			JOptionPane.showMessageDialog(
-				null, this, "Version info",
-				JOptionPane.INFORMATION_MESSAGE, imageIcon
+				null, this, "Version info", JOptionPane.INFORMATION_MESSAGE, imageIcon
 			);
 		}
 	}
@@ -445,9 +443,7 @@ public class ChordHelperApplet extends JApplet {
 			keyboardCenterPanel.keyboard.addPianoKeyboardListener(
 				new PianoKeyboardAdapter() {
 					@Override
-					public void pianoKeyPressed(int n, InputEvent e) {
-						chordDiagram.clear();
-					}
+					public void pianoKeyPressed(int n, InputEvent e) { chordDiagram.clear(); }
 				}
 			);
 			keySelecter.keysigCombobox.addActionListener(
@@ -463,11 +459,7 @@ public class ChordHelperApplet extends JApplet {
 			keyboardCenterPanel.keyboard.setPreferredSize(new Dimension(571, 80));
 		}};
 		deviceModelList = new MidiTransceiverListModelList(
-			new Vector<VirtualMidiDevice>() {
-				{
-					add(keyboardPanel.keyboardCenterPanel.keyboard.midiDevice);
-				}
-			}
+			Arrays.asList(keyboardPanel.keyboardCenterPanel.keyboard.midiDevice)
 		);
 		deviceModelList.getEditorDialog().setIconImage(iconImage);
 		new DropTarget(this, DnDConstants.ACTION_COPY_OR_MOVE, deviceModelList.getEditorDialog().dropTargetListener, true);
@@ -496,18 +488,14 @@ public class ChordHelperApplet extends JApplet {
 		}};
 		keysigLabel = new KeySignatureLabel() {{
 			addMouseListener(new MouseAdapter() {
-				public void mousePressed(MouseEvent e) {
-					chordMatrix.setKeySignature(getKey());
-				}
+				public void mousePressed(MouseEvent e) { chordMatrix.setKeySignature(getKey()); }
 			});
 		}};
 		deviceModelList.getSequencerModel().getSequencer().addMetaEventListener(
 			new MetaEventListener() {
 				class SetKeySignatureRunnable implements Runnable {
 					Key key;
-					public SetKeySignatureRunnable(Key key) {
-						this.key = key;
-					}
+					public SetKeySignatureRunnable(Key key) { this.key = key; }
 					@Override
 					public void run() { setKeySignature(key); }
 				}
@@ -517,9 +505,7 @@ public class ChordHelperApplet extends JApplet {
 					case 0x59: // Key signature (2 bytes) : 調号
 						Key key = new Key(msg.getData());
 						if( ! SwingUtilities.isEventDispatchThread() ) {
-							SwingUtilities.invokeLater(
-								new SetKeySignatureRunnable(key)
-							);
+							SwingUtilities.invokeLater(new SetKeySignatureRunnable(key));
 						}
 						setKeySignature(key);
 						break;
@@ -714,22 +700,15 @@ public class ChordHelperApplet extends JApplet {
 				add(anoGakkiPane = new AnoGakkiPane(), JLayeredPane.PALETTE_LAYER);
 				addComponentListener(new ComponentAdapter() {
 					@Override
-					public void componentResized(ComponentEvent e) {
-						adjustSize();
-					}
+					public void componentResized(ComponentEvent e) { adjustSize(); }
 					@Override
-					public void componentShown(ComponentEvent e) {
-						adjustSize();
-					}
-					private void adjustSize() {
-						anoGakkiPane.setBounds(getBounds());
-					}
+					public void componentShown(ComponentEvent e) { adjustSize(); }
+					private void adjustSize() { anoGakkiPane.setBounds(getBounds()); }
 				});
 				setLayout(new BorderLayout());
 				setOpaque(true);
 				add(mainSplitPane = new JSplitPane(
-					JSplitPane.VERTICAL_SPLIT,
-					chordMatrix, keyboardSequencerPanel
+					JSplitPane.VERTICAL_SPLIT, chordMatrix, keyboardSequencerPanel
 				){
 					{
 						setResizeWeight(0.5);
