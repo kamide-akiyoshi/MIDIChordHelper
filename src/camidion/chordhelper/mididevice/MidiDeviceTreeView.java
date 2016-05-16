@@ -15,6 +15,7 @@ import java.awt.dnd.DragSourceListener;
 import javax.swing.JInternalFrame;
 import javax.swing.JTree;
 import javax.swing.ListModel;
+import javax.swing.ToolTipManager;
 import javax.swing.event.InternalFrameAdapter;
 import javax.swing.event.InternalFrameEvent;
 import javax.swing.event.InternalFrameListener;
@@ -91,15 +92,26 @@ public class MidiDeviceTreeView extends JTree {
 					boolean selected, boolean expanded, boolean leaf, int row, boolean hasFocus)
 			{
 				super.getTreeCellRendererComponent(tree, value, selected, expanded, leaf, row, hasFocus);
+				setToolTipText(value.toString());
 				if(leaf) {
-					setIcon(MidiTransceiverListView.MIDI_CONNECTER_ICON);
-					setDisabledIcon(MidiTransceiverListView.MIDI_CONNECTER_ICON);
-					setEnabled( ! ((MidiTransceiverListModel)value).getMidiDevice().isOpen() );
+					MidiTransceiverListModel deviceModel = (MidiTransceiverListModel)value;
+					if( deviceModel.getMidiDevice().isOpen() ) {
+						setDisabledIcon(MidiTransceiverListView.MIDI_CONNECTER_ICON);
+						setEnabled(false);
+						setToolTipText(getToolTipText()+"はすでに開いています");
+					} else {
+						setIcon(MidiTransceiverListView.MIDI_CONNECTER_ICON);
+						setEnabled(true);
+						setToolTipText("ドラッグ＆ドロップで"+getToolTipText()+"が開きます");
+					}
 				}
 				return this;
 			}
 		});
 		// 初期状態でツリーノードを開いた状態にする
 		for( int row = 0; row < getRowCount() ; row++ ) expandRow(row);
+		//
+		// ツリーノードのToolTipを有効化
+		ToolTipManager.sharedInstance().registerComponent(this);
 	}
 }

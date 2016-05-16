@@ -41,8 +41,10 @@ public class MidiOpenedDevicesView extends JDesktopPane implements TreeSelection
 				MidiTransceiverListModel deviceModel = (MidiTransceiverListModel)lastSelected;
 				if( deviceModel.getMidiDevice().isOpen() ) {
 					// 開いているMIDIデバイスがツリー上で選択されたら、対応するフレームを選択
+					MidiDeviceFrame deviceFrame = modelToFrame.get(deviceModel);
+					deviceFrame.toFront();
 					try {
-						modelToFrame.get(deviceModel).setSelected(true);
+						deviceFrame.setSelected(true);
 					} catch( PropertyVetoException ex ) {
 						ex.printStackTrace();
 					}

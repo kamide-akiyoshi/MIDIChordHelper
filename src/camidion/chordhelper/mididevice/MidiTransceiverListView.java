@@ -28,6 +28,7 @@ import javax.swing.ListCellRenderer;
 import javax.swing.ListSelectionModel;
 
 import camidion.chordhelper.ButtonIcon;
+import camidion.chordhelper.mididevice.MidiTransceiverListModel.NewTransmitter;
 
 /**
  * MIDI端子（{@link Transmitter}と{@link Receiver}）のリストビューです。
@@ -45,13 +46,28 @@ public class MidiTransceiverListView extends JList<AutoCloseable> {
 				JList<? extends AutoCloseable> list, AutoCloseable value, int index,
 				boolean isSelected, boolean cellHasFocus)
 		{
-			String text;
-			if( value == null ) text = null;
-			else if( value instanceof Receiver ) text = "Rx";
-			else if( value instanceof Transmitter ) text = "Tx";
-			else text = value.toString();
-			setText(text);
+			setEnabled(list.isEnabled());
+			setFont(list.getFont());
+			setOpaque(true);
 			setIcon(MIDI_CONNECTER_ICON);
+			if( value == null ) {
+				setText(null);
+				setToolTipText(null);
+			} else if( value instanceof Receiver ) {
+				setText("Rx");
+				setToolTipText("Rxをドラッグ＆ドロップしてTxに接続");
+			} else if( value instanceof Transmitter ) {
+				setText("Tx");
+				if( value instanceof NewTransmitter ) {
+					setToolTipText("Txをドラッグ＆ドロップしてRxに接続");
+				} else {
+					setToolTipText("Txをドラッグ＆ドロップして切断、またはRx切替");
+				}
+			}
+			else {
+				setText(value.toString());
+				setToolTipText(value.toString());
+			}
 			if (isSelected) {
 				setBackground(list.getSelectionBackground());
 				setForeground(list.getSelectionForeground());
@@ -59,9 +75,6 @@ public class MidiTransceiverListView extends JList<AutoCloseable> {
 				setBackground(list.getBackground());
 				setForeground(list.getForeground());
 			}
-			setEnabled(list.isEnabled());
-			setFont(list.getFont());
-			setOpaque(true);
 			return this;
 		}
 	}
