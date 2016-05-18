@@ -85,7 +85,7 @@ public class MidiSequencerModel extends MidiTransceiverListModel implements Boun
 		 * 開始されているかどうかを設定します。
 		 * @param isRunning 開始されていたらtrue
 		 */
-		public void setRunning(boolean isRunning) {
+		private void setRunning(boolean isRunning) {
 			putValue(LARGE_ICON_KEY, iconMap.get(isRunning));
 			putValue(SELECTED_KEY, isRunning);
 		}

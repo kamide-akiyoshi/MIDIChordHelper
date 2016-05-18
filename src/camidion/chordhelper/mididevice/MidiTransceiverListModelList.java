@@ -13,8 +13,7 @@ import camidion.chordhelper.ChordHelperApplet;
 import camidion.chordhelper.midieditor.MidiSequenceEditor;
 
 /**
- * 仮想MIDIデバイスを含めた、すべてのMIDIデバイスモデル {@link MidiTransceiverListModel}
- * を収容するリストです。{@link MidiDeviceTreeModel} もこのリストを参照します。
+ * 仮想MIDIデバイスを含めたすべてのMIDIデバイスモデル {@link MidiTransceiverListModel} を収容するリスト
  */
 public class MidiTransceiverListModelList extends Vector<MidiTransceiverListModel> {
 

@@ -27,6 +27,8 @@ import javax.sound.midi.InvalidMidiDataException;
 import javax.sound.midi.MetaEventListener;
 import javax.sound.midi.MetaMessage;
 import javax.sound.midi.Sequencer;
+import javax.swing.AbstractAction;
+import javax.swing.Action;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
@@ -287,7 +289,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public static class VersionInfo {
 		public static final String	NAME = "MIDI Chord Helper";
-		public static final String	VERSION = "Ver.20160516.1";
+		public static final String	VERSION = "Ver.20160518.1";
 		public static final String	COPYRIGHT = "Copyright (C) 2004-2016";
 		public static final String	AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String	URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";
@@ -301,7 +303,7 @@ public class ChordHelperApplet extends JApplet {
 	}
 	@Override
 	public String getAppletInfo() { return VersionInfo.getInfo(); }
-	private class AboutMessagePane extends JEditorPane implements ActionListener {
+	private class AboutMessagePane extends JEditorPane {
 		URI uri = null;
 		public AboutMessagePane() { this(true); }
 		public AboutMessagePane(boolean link_enabled) {
@@ -349,12 +351,22 @@ public class ChordHelperApplet extends JApplet {
 				}
 			});
 		}
-		@Override
-		public void actionPerformed(ActionEvent e) {
-			JOptionPane.showMessageDialog(
-				null, this, "Version info", JOptionPane.INFORMATION_MESSAGE, imageIcon
-			);
-		}
+		/**
+		 * バージョン情報を開くアクション
+		 */
+		public Action openAction = new AbstractAction() {
+			{
+				putValue(NAME, "Version info");
+				putValue(SHORT_DESCRIPTION, VersionInfo.NAME + " " + VersionInfo.VERSION);
+			}
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				JOptionPane.showMessageDialog(
+					null, AboutMessagePane.this, getValue(NAME).toString(),
+					JOptionPane.INFORMATION_MESSAGE, imageIcon
+				);
+			}
+		};
 	}
 	// 終了してよいか確認する
 	public boolean isConfirmedToExit() {
@@ -390,7 +402,7 @@ public class ChordHelperApplet extends JApplet {
 	private MidiKeyboardPanel keyboardPanel;
 	private InversionAndOmissionLabel inversionOmissionButton;
 	private JToggleButton darkModeToggleButton;
-	private MidiDeviceDialog midiConnectionDialog;
+	private MidiDeviceDialog midiDeviceDialog;
 	private ChordDiagram chordDiagram;
 	private TempoSelecter tempoSelecter;
 	private TimeSignatureSelecter timesigSelecter;
@@ -464,8 +476,7 @@ public class ChordHelperApplet extends JApplet {
 		deviceModelList.getEditorDialog().setIconImage(iconImage);
 		new DropTarget(this, DnDConstants.ACTION_COPY_OR_MOVE, deviceModelList.getEditorDialog().dropTargetListener, true);
 		keyboardPanel.setEventDialog(deviceModelList.getEditorDialog().eventDialog);
-		midiConnectionDialog = new MidiDeviceDialog(deviceModelList);
-		midiConnectionDialog.setIconImage(iconImage);
+		(midiDeviceDialog = new MidiDeviceDialog(deviceModelList)).setIconImage(iconImage);
 		lyricDisplay = new ChordTextField(deviceModelList.getSequencerModel()) {{
 			addActionListener(new ActionListener() {
 				@Override
@@ -682,16 +693,8 @@ public class ChordHelperApplet extends JApplet {
 					add( Box.createHorizontalStrut(10) );
 				}});
 				add(new JPanel() {{
-					add(new JButton(
-						"MIDI device connection",
-						new ButtonIcon( ButtonIcon.MIDI_CONNECTOR_ICON )
-					) {{
-						addActionListener(midiConnectionDialog);
-					}});
-					add(new JButton("Version info") {{
-						setToolTipText(VersionInfo.NAME + " " + VersionInfo.VERSION);
-						addActionListener(new AboutMessagePane());
-					}});
+					add(new JButton(midiDeviceDialog.openAction));
+					add(new JButton((new AboutMessagePane()).openAction));
 				}});
 			}});
 		}};

@@ -1,20 +1,25 @@
 package camidion.chordhelper.mididevice;
 
 import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 
+import javax.swing.AbstractAction;
+import javax.swing.Action;
 import javax.swing.JDialog;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 
+import camidion.chordhelper.ButtonIcon;
+
 /**
  * MIDIデバイスダイアログ (View)
  */
-public class MidiDeviceDialog extends JDialog implements ActionListener {
-	@Override
-	public void actionPerformed(ActionEvent event) { setVisible(true); }
+public class MidiDeviceDialog extends JDialog {
+	/**
+	 * MIDIデバイスダイアログを構築します。
+	 * @param deviceModelList デバイスモデル（MIDIコネクタリストモデル）のリスト
+	 */
 	public MidiDeviceDialog(MidiTransceiverListModelList deviceModelList) {
-		setTitle("MIDI device connection");
+		setTitle(openAction.getValue(Action.NAME).toString());
 		setBounds( 300, 300, 800, 500 );
 		MidiDeviceTreeModel deviceTreeModel = new MidiDeviceTreeModel(deviceModelList);
 		MidiDeviceTreeView deviceTreeView = new MidiDeviceTreeView(deviceTreeModel);
@@ -37,4 +42,16 @@ public class MidiDeviceDialog extends JDialog implements ActionListener {
 			setDividerLocation(250);
 		}});
 	}
+	/**
+	 * MIDIデバイスダイアログを開くアクション
+	 */
+	public Action openAction = new AbstractAction() {
+		{
+			putValue(NAME, "MIDI device connection");
+			putValue(SHORT_DESCRIPTION, "MIDIデバイス間の接続を編集");
+			putValue(LARGE_ICON_KEY, new ButtonIcon(ButtonIcon.MIDI_CONNECTOR_ICON));
+		}
+		@Override
+		public void actionPerformed(ActionEvent event) { setVisible(true); }
+	};
 }
