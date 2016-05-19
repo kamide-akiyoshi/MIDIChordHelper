@@ -135,7 +135,7 @@ public class MidiSequenceEditor extends JDialog {
 	 * @param message 確認メッセージ
 	 * @return 確認OKのときtrue
 	 */
-	boolean confirm(String message) {
+	public boolean confirm(String message) {
 		return JOptionPane.showConfirmDialog(this, message, ChordHelperApplet.VersionInfo.NAME,
 				JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE) == JOptionPane.YES_OPTION ;
 	}
@@ -1135,7 +1135,7 @@ public class MidiSequenceEditor extends JDialog {
 
 	/**
 	 * 新しい {@link MidiSequenceEditor} を構築します。
-	 * @param deviceModelList MIDIデバイスモデルリスト
+	 * @param sequencerModel シーケンサーモデル
 	 */
 	public MidiSequenceEditor(MidiSequencerModel sequencerModel) {
 		sequenceListTable = new SequenceListTable(new PlaylistTableModel(sequencerModel));

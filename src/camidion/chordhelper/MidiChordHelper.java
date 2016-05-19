@@ -11,6 +11,7 @@ import java.awt.Image;
 import java.awt.Toolkit;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.awt.event.WindowListener;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -30,6 +31,7 @@ import javax.swing.event.TableModelEvent;
 import javax.swing.event.TableModelListener;
 
 import camidion.chordhelper.mididevice.MidiSequencerModel;
+import camidion.chordhelper.midieditor.MidiSequenceEditor;
 import camidion.chordhelper.midieditor.PlaylistTableModel;
 import camidion.chordhelper.midieditor.SequenceTrackListTableModel;
 
@@ -68,30 +70,31 @@ public class MidiChordHelper {
 			}
 		});
 	}
-	private static class AppletFrame extends JFrame
-		implements AppletStub, AppletContext
-	{
-		JLabel status_;
-		ChordHelperApplet applet;
+	private static class AppletFrame extends JFrame implements AppletStub, AppletContext {
+		private JLabel status_ = new JLabel("Welcome to "+ChordHelperApplet.VersionInfo.NAME) {
+			{ setFont(getFont().deriveFont(Font.PLAIN)); }
+		};
+		private ChordHelperApplet applet;
+		private WindowListener windowListener = new WindowAdapter() {
+			@Override
+			public void windowClosing(WindowEvent evt) {
+				MidiSequenceEditor ed = applet.deviceModelList.getEditorDialog();
+				if( ! ed.sequenceListTable.getModel().isModified() || ed.confirm(
+					"MIDI file not saved, exit anyway ?\n"+
+					"保存されていないMIDIファイルがありますが、終了してよろしいですか？"
+				)) System.exit(0);
+			}
+		};
 		public AppletFrame(ChordHelperApplet applet) {
+			this.applet = applet;
 			setTitle(ChordHelperApplet.VersionInfo.NAME);
-			(status_ = new JLabel()).setFont(
-				status_.getFont().deriveFont(Font.PLAIN)
-			);
-			add( this.applet = applet, BorderLayout.CENTER );
+			add( applet, BorderLayout.CENTER );
 			add( status_, BorderLayout.SOUTH );
 			applet.setStub(this);
 			applet.init();
-			Image iconImage = applet.imageIcon == null ? null : applet.imageIcon.getImage();
-			setIconImage(iconImage);
+			setIconImage(applet.iconImage);
 			setDefaultCloseOperation( WindowConstants.DO_NOTHING_ON_CLOSE );
-			addWindowListener(new WindowAdapter() {
-				@Override
-				public void windowClosing(WindowEvent evt) {
-					if( AppletFrame.this.applet.isConfirmedToExit() )
-						System.exit(0);
-				}
-			});
+			addWindowListener(windowListener);
 			new TitleUpdater(applet);
 			pack();
 			setLocationRelativeTo(null);
@@ -102,7 +105,7 @@ public class MidiChordHelper {
 		 * タイトルバー更新器
 		 */
 		private class TitleUpdater implements ChangeListener, TableModelListener {
-			MidiSequencerModel sequencerModel;
+			private MidiSequencerModel sequencerModel;
 			/**
 			 * タイトルバー更新器の構築
 			 * @param applet 対象アプレット
@@ -118,10 +121,7 @@ public class MidiChordHelper {
 			@Override
 			public void tableChanged(TableModelEvent e) {
 				int col = e.getColumn();
-				if( col == PlaylistTableModel.Column.FILENAME.ordinal() ) {
-					setFilenameToTitle();
-				}
-				if( col == TableModelEvent.ALL_COLUMNS ) {
+				if( col == PlaylistTableModel.Column.FILENAME.ordinal() || col == TableModelEvent.ALL_COLUMNS ) {
 					setFilenameToTitle();
 				}
 			}

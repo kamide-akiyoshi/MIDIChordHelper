@@ -289,7 +289,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public static class VersionInfo {
 		public static final String	NAME = "MIDI Chord Helper";
-		public static final String	VERSION = "Ver.20160518.1";
+		public static final String	VERSION = "Ver.20160519.1";
 		public static final String	COPYRIGHT = "Copyright (C) 2004-2016";
 		public static final String	AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String	URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";
@@ -368,20 +368,14 @@ public class ChordHelperApplet extends JApplet {
 			}
 		};
 	}
-	// 終了してよいか確認する
-	public boolean isConfirmedToExit() {
-		return ! isModified() || JOptionPane.showConfirmDialog(
-			this,
-			"MIDI file not saved, exit anyway ?\n保存されていないMIDIファイルがありますが、終了してよろしいですか？",
-			VersionInfo.NAME,
-			JOptionPane.YES_NO_OPTION,
-			JOptionPane.WARNING_MESSAGE
-		) == JOptionPane.YES_OPTION ;
-	}
+	/**
+	 * アプリケーションのイメージアイコン
+	 */
+	public ImageIcon imageIcon;
 	/**
 	 * アプリケーションのアイコンイメージ
 	 */
-	public ImageIcon imageIcon;
+	public Image iconImage;
 	/**
 	 * ボタンの余白を詰めたいときに setMargin() の引数に指定するインセット
 	 */
@@ -416,12 +410,11 @@ public class ChordHelperApplet extends JApplet {
 		URL imageIconUrl = getClass().getResource(imageIconPath);
 		if( imageIconUrl == null ) {
 			System.out.println("Icon image "+imageIconPath+" not found");
-			imageIcon = null;
 		}
 		else {
 			imageIcon = new ImageIcon(imageIconUrl);
+			iconImage = imageIcon.getImage();
 		}
-		Image iconImage = (imageIcon == null) ? null : imageIcon.getImage();
 		rootPaneDefaultBgcolor = getContentPane().getBackground();
 		chordMatrix = new ChordMatrix() {{
 			addChordMatrixListener(new ChordMatrixListener(){
