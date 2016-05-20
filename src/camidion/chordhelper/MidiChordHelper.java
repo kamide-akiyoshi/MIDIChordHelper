@@ -6,12 +6,10 @@ import java.applet.AppletStub;
 import java.applet.AudioClip;
 import java.awt.BorderLayout;
 import java.awt.Font;
-import java.awt.Frame;
 import java.awt.Image;
 import java.awt.Toolkit;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.awt.event.WindowListener;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -31,6 +29,7 @@ import javax.swing.event.TableModelEvent;
 import javax.swing.event.TableModelListener;
 
 import camidion.chordhelper.mididevice.MidiSequencerModel;
+import camidion.chordhelper.mididevice.MidiTransceiverListModelList;
 import camidion.chordhelper.midieditor.MidiSequenceEditor;
 import camidion.chordhelper.midieditor.PlaylistTableModel;
 import camidion.chordhelper.midieditor.SequenceTrackListTableModel;
@@ -39,8 +38,6 @@ import camidion.chordhelper.midieditor.SequenceTrackListTableModel;
  * MIDI Chord Helper を Java アプリとして起動します。
  */
 public class MidiChordHelper {
-	private static int count = 0;
-	private static AppletFrame frame = null;
 	private static List<File> fileList = new Vector<File>();
 	/**
 	 * MIDI Chord Helper を Java アプリとして起動します。
@@ -48,45 +45,30 @@ public class MidiChordHelper {
 	 * @throws Exception 何らかの異常が発生した場合にスローされる
 	 */
 	public static void main(String[] args) throws Exception {
-		if( args.length > 0 ) {
-			for( String arg : args ) fileList.add(new File(arg));
-		}
+		for( String arg : args ) fileList.add(new File(arg));
 		SwingUtilities.invokeLater(new Runnable(){
 			@Override
-			public void run() {
-				ChordHelperApplet applet;
-				if( count++ > 0 && frame != null) {
-					applet = frame.applet;
-					int windowState = frame.getExtendedState();
-					if( ( windowState & Frame.ICONIFIED ) == 0 ) {
-						frame.toFront();
-					} else {
-						frame.setExtendedState(windowState &= ~(Frame.ICONIFIED));
-					}
-				} else {
-					frame = new AppletFrame(applet = new ChordHelperApplet());
-				}
-				applet.deviceModelList.getEditorDialog().loadAndPlay(fileList);
-			}
+			public void run() { new AppletFrame(new ChordHelperApplet(), fileList); }
 		});
 	}
 	private static class AppletFrame extends JFrame implements AppletStub, AppletContext {
 		private JLabel status_ = new JLabel("Welcome to "+ChordHelperApplet.VersionInfo.NAME) {
 			{ setFont(getFont().deriveFont(Font.PLAIN)); }
 		};
-		private ChordHelperApplet applet;
-		private WindowListener windowListener = new WindowAdapter() {
-			@Override
-			public void windowClosing(WindowEvent evt) {
-				MidiSequenceEditor ed = applet.deviceModelList.getEditorDialog();
-				if( ! ed.sequenceListTable.getModel().isModified() || ed.confirm(
-					"MIDI file not saved, exit anyway ?\n"+
-					"保存されていないMIDIファイルがありますが、終了してよろしいですか？"
-				)) System.exit(0);
+		/**
+		 * 指定されたMIDIシーケンスモデルのファイル名をタイトルバーに反映します。
+		 * @param seq MIDIシーケンスモデル
+		 */
+		private void setFilenameToTitle(SequenceTrackListTableModel seq) {
+			String title = ChordHelperApplet.VersionInfo.NAME;
+			if( seq != null ) {
+				String filename = seq.getFilename();
+				if( filename != null && ! filename.isEmpty() ) title = filename + " - " + title;
 			}
-		};
-		public AppletFrame(ChordHelperApplet applet) {
-			this.applet = applet;
+			setTitle(title);
+		}
+		private MidiSequenceEditor editor;
+		public AppletFrame(ChordHelperApplet applet, List<File> fileList) {
 			setTitle(ChordHelperApplet.VersionInfo.NAME);
 			add( applet, BorderLayout.CENTER );
 			add( status_, BorderLayout.SOUTH );
@@ -94,54 +76,45 @@ public class MidiChordHelper {
 			applet.init();
 			setIconImage(applet.iconImage);
 			setDefaultCloseOperation( WindowConstants.DO_NOTHING_ON_CLOSE );
-			addWindowListener(windowListener);
-			new TitleUpdater(applet);
 			pack();
 			setLocationRelativeTo(null);
 			setVisible(true);
 			applet.start();
-		}
-		/**
-		 * タイトルバー更新器
-		 */
-		private class TitleUpdater implements ChangeListener, TableModelListener {
-			private MidiSequencerModel sequencerModel;
-			/**
-			 * タイトルバー更新器の構築
-			 * @param applet 対象アプレット
-			 */
-			public TitleUpdater(ChordHelperApplet applet) {
-				applet.deviceModelList.getEditorDialog().sequenceListTable.getModel().addTableModelListener(this);
-				sequencerModel = applet.deviceModelList.getSequencerModel();
-				sequencerModel.addChangeListener(this);
-			}
-			/**
-			 * プレイリスト上で変更されたファイル名をタイトルバーに反映します。
-			 */
-			@Override
-			public void tableChanged(TableModelEvent e) {
-				int col = e.getColumn();
-				if( col == PlaylistTableModel.Column.FILENAME.ordinal() || col == TableModelEvent.ALL_COLUMNS ) {
-					setFilenameToTitle();
+			MidiTransceiverListModelList deviceModelList = applet.deviceModelList;
+			deviceModelList.getSequencerModel().addChangeListener(new ChangeListener() {
+				/**
+				 * シーケンサで切り替わった再生対象ファイル名をタイトルバーに反映
+				 */
+				@Override
+				public void stateChanged(ChangeEvent event) {
+					MidiSequencerModel sequencerModel = (MidiSequencerModel) event.getSource();
+					setFilenameToTitle(sequencerModel.getSequenceTrackListTableModel());
 				}
-			}
-			/**
-			 * 再生中にファイルが切り替わったら、そのファイル名をタイトルバーに反映します。
-			 */
-			@Override
-			public void stateChanged(ChangeEvent e) { setFilenameToTitle(); }
-			/**
-			 * シーケンサーにロードされている曲のファイル名をタイトルバーに反映します。
-			 */
-			private void setFilenameToTitle() {
-				SequenceTrackListTableModel seq = sequencerModel.getSequenceTrackListTableModel();
-				String filename = ( seq == null ? null : seq.getFilename() );
-				String title = ChordHelperApplet.VersionInfo.NAME;
-				if( filename != null && ! filename.isEmpty() ) {
-					title = filename + " - " + title;
+			});
+			editor = deviceModelList.getEditorDialog();
+			addWindowListener(new WindowAdapter() {
+				@Override
+				public void windowClosing(WindowEvent event) {
+					if( ! editor.sequenceListTable.getModel().isModified() || editor.confirm(
+						"MIDI file not saved, exit anyway ?\n"+
+						"保存されていないMIDIファイルがありますが、終了してよろしいですか？"
+					)) System.exit(0);
 				}
-				setTitle(title);
-			}
+			});
+			editor.sequenceListTable.getModel().addTableModelListener(new TableModelListener() {
+				/**
+				 * プレイリスト上で変更された再生対象ファイル名をタイトルバーに反映
+				 */
+				@Override
+				public void tableChanged(TableModelEvent event) {
+					int col = event.getColumn();
+					if( col == PlaylistTableModel.Column.FILENAME.ordinal() || col == TableModelEvent.ALL_COLUMNS ) {
+						PlaylistTableModel pl = (PlaylistTableModel) event.getSource();
+						setFilenameToTitle(pl.sequencerModel.getSequenceTrackListTableModel());
+					}
+				}
+			});
+			editor.loadAndPlay(fileList);
 		}
 		@Override
 		public boolean isActive() { return true; }

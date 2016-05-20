@@ -209,7 +209,8 @@ public class MidiSequencerModel extends MidiTransceiverListModel implements Boun
 	protected EventListenerList listenerList = new EventListenerList();
 	/**
 	 * {@inheritDoc}
-	 * <p>このシーケンサーの再生時間位置変更通知を受けるリスナーを追加します。
+	 * <p>このシーケンサーの再生時間位置または再生対象ファイルが変更されたときに
+	 * 通知を受けるリスナーを追加します。
 	 * </p>
 	 */
 	@Override
@@ -218,7 +219,8 @@ public class MidiSequencerModel extends MidiTransceiverListModel implements Boun
 	}
 	/**
 	 * {@inheritDoc}
-	 * <p>このシーケンサーの再生時間位置変更通知を受けるリスナーを除去します。
+	 * <p>このシーケンサーの再生時間位置または再生対象ファイルが変更されたときに
+	 * 通知を受けるリスナーを除去します。
 	 * </p>
 	 */
 	@Override
