@@ -98,24 +98,9 @@ public class MidiSequenceEditor extends JDialog {
 	};
 
 	/**
-	 * このMIDIエディタにおける操作音の出力先となる仮想MIDIデバイスを返します。
+	 * イベントリスト操作音出力先MIDIデバイスを返します。
 	 */
-	public VirtualMidiDevice getVirtualMidiDevice() { return virtualMidiDevice; }
-	private static VirtualMidiDevice virtualMidiDevice = new AbstractVirtualMidiDevice() {
-		{
-			info = new MyInfo();
-			setMaxReceivers(0); // 送信専用とする（MIDI IN はサポートしない）
-		}
-		/**
-		 * MIDIデバイス情報
-		 */
-		protected MyInfo info;
-		@Override
-		public Info getDeviceInfo() { return info; }
-		class MyInfo extends Info {
-			protected MyInfo() { super("MIDI Editor","Unknown vendor","MIDI sequence editor",""); }
-		}
-	};
+	public VirtualMidiDevice getEventTableMidiDevice() { return eventListTable.outputMidiDevice; }
 
 	/**
 	 * エラーメッセージダイアログを表示します。
@@ -215,7 +200,7 @@ public class MidiSequenceEditor extends JDialog {
 	/**
 	 * 新しいMIDIシーケンスを生成するダイアログ
 	 */
-	public NewSequenceDialog newSequenceDialog = new NewSequenceDialog(this);
+	public NewSequenceDialog newSequenceDialog;
 	/**
 	 * BASE64テキスト入力ダイアログ
 	 */
@@ -663,6 +648,21 @@ public class MidiSequenceEditor extends JDialog {
 	 * MIDIイベントリストテーブルビュー（選択中のトラックの中身）
 	 */
 	public class EventListTable extends JTable {
+		private VirtualMidiDevice outputMidiDevice = new AbstractVirtualMidiDevice() {
+			{
+				info = new MyInfo();
+				setMaxReceivers(0); // 送信専用とする（MIDI IN はサポートしない）
+			}
+			/**
+			 * MIDIデバイス情報
+			 */
+			protected MyInfo info;
+			@Override
+			public Info getDeviceInfo() { return info; }
+			class MyInfo extends Info {
+				protected MyInfo() { super("MIDI Event Table Editor","Unknown vendor","MIDI event table editor",""); }
+			}
+		};
 		/**
 		 * 新しいイベントリストテーブルを構築します。
 		 * <p>データモデルとして一つのトラックのイベントリストを指定できます。
@@ -772,7 +772,7 @@ public class MidiSequenceEditor extends JDialog {
 							int cmd = sm.getCommand();
 							if( cmd == 0x80 || cmd == 0x90 || cmd == 0xA0 ) {
 								// ノート番号を持つ場合、音を鳴らす。
-								MidiChannel outMidiChannels[] = virtualMidiDevice.getChannels();
+								MidiChannel outMidiChannels[] = outputMidiDevice.getChannels();
 								int ch = sm.getChannel();
 								int note = sm.getData1();
 								int vel = sm.getData2();
@@ -1051,7 +1051,7 @@ public class MidiSequenceEditor extends JDialog {
 			 * MIDIイベントセルエディタを構築します。
 			 */
 			public MidiEventCellEditor() {
-				eventDialog.midiMessageForm.setOutputMidiChannels(virtualMidiDevice.getChannels());
+				eventDialog.midiMessageForm.setOutputMidiChannels(outputMidiDevice.getChannels());
 				eventDialog.tickPositionInputForm.setModel(editContext.tickPositionModel);
 				int index = TrackEventListTableModel.Column.MESSAGE.ordinal();
 				getColumnModel().getColumn(index).setCellEditor(this);
@@ -1135,14 +1135,15 @@ public class MidiSequenceEditor extends JDialog {
 
 	/**
 	 * 新しい {@link MidiSequenceEditor} を構築します。
-	 * @param sequencerModel シーケンサーモデル
+	 * @param playlistTableModel このエディタが参照するプレイリストモデル
 	 */
-	public MidiSequenceEditor(MidiSequencerModel sequencerModel) {
-		sequenceListTable = new SequenceListTable(new PlaylistTableModel(sequencerModel));
+	public MidiSequenceEditor(PlaylistTableModel playlistTableModel) {
+		sequenceListTable = new SequenceListTable(playlistTableModel);
 		trackListTable = new TrackListTable(
 			new SequenceTrackListTableModel(sequenceListTable.getModel(), null, null)
 		);
 		eventListTable = new EventListTable(new TrackEventListTableModel(trackListTable.getModel(), null));
+		newSequenceDialog = new NewSequenceDialog(playlistTableModel, eventListTable.outputMidiDevice);
 		setTitle("MIDI Editor/Playlist - MIDI Chord Helper");
 		setBounds( 150, 200, 900, 500 );
 		setLayout(new FlowLayout());

@@ -54,11 +54,11 @@ public class TempoSelecter extends JPanel implements MouseListener, MetaEventLis
 	public void meta(MetaMessage msg) {
 		switch(msg.getType()) {
 		case 0x51: // Tempo (3 bytes) - テンポ
-			if( ! SwingUtilities.isEventDispatchThread() ) {
+			if( SwingUtilities.isEventDispatchThread() ) {
+				setTempo(msg.getData());
+			} else {
 				SwingUtilities.invokeLater(new SetTempoRunnable(msg.getData()));
-				break;
 			}
-			setTempo(msg.getData());
 			break;
 		}
 	}

@@ -29,20 +29,20 @@ public class TimeSignatureSelecter extends JPanel implements MetaEventListener {
 		}
 	};
 	private class SetValueRunnable implements Runnable {
-		byte[] qpm;
-		public SetValueRunnable(byte[] qpm) { this.qpm = qpm; }
+		byte[] timesig;
+		public SetValueRunnable(byte[] timesig) { this.timesig = timesig; }
 		@Override
-		public void run() { setValue(qpm);}
+		public void run() { setValue(timesig);}
 	}
 	@Override
 	public void meta(MetaMessage msg) {
 		switch(msg.getType()) {
 		case 0x58: // Time signature (4 bytes) - 拍子
-			if( ! SwingUtilities.isEventDispatchThread() ) {
+			if( SwingUtilities.isEventDispatchThread() ) {
+				setValue(msg.getData());
+			} else {
 				SwingUtilities.invokeLater(new SetValueRunnable(msg.getData()));
-				break;
 			}
-			setValue(msg.getData());
 			break;
 		}
 	}

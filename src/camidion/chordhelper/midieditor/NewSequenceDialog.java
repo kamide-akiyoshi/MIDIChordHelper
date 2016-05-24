@@ -40,6 +40,7 @@ import javax.swing.event.ChangeListener;
 
 import camidion.chordhelper.ButtonIcon;
 import camidion.chordhelper.ChordHelperApplet;
+import camidion.chordhelper.mididevice.VirtualMidiDevice;
 import camidion.chordhelper.music.AbstractNoteTrackSpec;
 import camidion.chordhelper.music.ChordProgression;
 import camidion.chordhelper.music.DrumTrackSpec;
@@ -93,7 +94,7 @@ public class NewSequenceDialog extends JDialog {
 		@Override
 		public void actionPerformed(ActionEvent e) { setVisible(true); }
 	};
-	private MidiSequenceEditor midiEditor;
+	private PlaylistTableModel playlist;
 	/**
 	 * MIDIシーケンス生成アクション
 	 */
@@ -103,17 +104,18 @@ public class NewSequenceDialog extends JDialog {
 	) {
 		@Override
 		public void actionPerformed(ActionEvent e) {
-			midiEditor.sequenceListTable.getModel().addSequenceAndPlay(getMidiSequence());
+			playlist.addSequenceAndPlay(getMidiSequence());
 			NewSequenceDialog.this.setVisible(false);
 		}
 	};
 	/**
 	 * 新しいMIDIシーケンスを生成するダイアログを構築します。
-	 * @param midiEditor シーケンス追加先エディタ
+	 * @param playlist シーケンス追加先プレイリスト
+	 * @param midiOutDevice 操作音を出力するMIDI出力デバイス
 	 */
-	public NewSequenceDialog(MidiSequenceEditor midiEditor) {
-		this.midiEditor = midiEditor;
-		trackSpecPanel.setChannels(midiEditor.getVirtualMidiDevice().getChannels());
+	public NewSequenceDialog(PlaylistTableModel playlist, VirtualMidiDevice midiOutDevice) {
+		this.playlist = playlist;
+		trackSpecPanel.setChannels(midiOutDevice.getChannels());
 		setTitle("Generate new sequence - " + ChordHelperApplet.VersionInfo.NAME);
 		add(new JTabbedPane() {{
 			add("Sequence", new JPanel() {{

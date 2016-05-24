@@ -11,6 +11,7 @@ import javax.sound.midi.Synthesizer;
 
 import camidion.chordhelper.ChordHelperApplet;
 import camidion.chordhelper.midieditor.MidiSequenceEditor;
+import camidion.chordhelper.midieditor.PlaylistTableModel;
 
 /**
  * 仮想MIDIデバイスを含めたすべてのMIDIデバイスモデル {@link MidiTransceiverListModel} を収容するリスト
@@ -42,9 +43,9 @@ public class MidiTransceiverListModelList extends Vector<MidiTransceiverListMode
 			e.printStackTrace();
 		}
 		// MIDIエディタの生成
-		editorDialog = new MidiSequenceEditor(sequencerModel);
-		MidiTransceiverListModel editorDialogModel;
-		addElement(editorDialogModel = new MidiTransceiverListModel(editorDialog.getVirtualMidiDevice(), this));
+		editorDialog = new MidiSequenceEditor(new PlaylistTableModel(sequencerModel));
+		MidiTransceiverListModel eventTableDeviceModel;
+		addElement(eventTableDeviceModel = new MidiTransceiverListModel(editorDialog.getEventTableMidiDevice(), this));
 		MidiTransceiverListModel synthModel = null;
 		MidiTransceiverListModel firstMidiInModel = null;
 		MidiTransceiverListModel firstMidiOutModel = null;
@@ -94,7 +95,7 @@ public class MidiTransceiverListModelList extends Vector<MidiTransceiverListMode
 				firstMidiOutModel,
 				sequencerModel,
 				firstMidiInModel,
-				editorDialogModel,
+				eventTableDeviceModel,
 			};
 			for( MidiTransceiverListModel m : openModels ) if( m != null ) {
 				m.getMidiDevice().open();
@@ -126,9 +127,9 @@ public class MidiTransceiverListModelList extends Vector<MidiTransceiverListMode
 			sequencerModel.connectToReceiverOf(synthModel);
 			sequencerModel.connectToReceiverOf(firstMidiOutModel);
 		}
-		if( editorDialogModel != null ) {
-			editorDialogModel.connectToReceiverOf(synthModel);
-			editorDialogModel.connectToReceiverOf(firstMidiOutModel);
+		if( eventTableDeviceModel != null ) {
+			eventTableDeviceModel.connectToReceiverOf(synthModel);
+			eventTableDeviceModel.connectToReceiverOf(firstMidiOutModel);
 		}
 	}
 }

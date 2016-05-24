@@ -289,7 +289,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public static class VersionInfo {
 		public static final String	NAME = "MIDI Chord Helper";
-		public static final String	VERSION = "Ver.20160520.1";
+		public static final String	VERSION = "Ver.20160524.1";
 		public static final String	COPYRIGHT = "Copyright (C) 2004-2016";
 		public static final String	AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String	URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";
@@ -381,6 +381,8 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public static final Insets ZERO_INSETS = new Insets(0,0,0,0);
 	//
+	private static final String IMAGE_ICON_PATH = "midichordhelper.png";
+	//
 	public ChordMatrix chordMatrix;
 	MidiTransceiverListModelList	deviceModelList;
 	//
@@ -406,16 +408,19 @@ public class ChordHelperApplet extends JApplet {
 	private JToggleButton anoGakkiToggleButton;
 
 	public void init() {
-		String imageIconPath = "midichordhelper.png";
-		URL imageIconUrl = getClass().getResource(imageIconPath);
+		//
+		// アイコンイメージの取得
+		URL imageIconUrl = getClass().getResource(IMAGE_ICON_PATH);
 		if( imageIconUrl == null ) {
-			System.out.println("Icon image "+imageIconPath+" not found");
+			System.out.println("Icon image "+IMAGE_ICON_PATH+" not found");
 		}
 		else {
-			imageIcon = new ImageIcon(imageIconUrl);
-			iconImage = imageIcon.getImage();
+			iconImage = (imageIcon = new ImageIcon(imageIconUrl)).getImage();
 		}
+		// 背景色の取得
 		rootPaneDefaultBgcolor = getContentPane().getBackground();
+		//
+		// コードボタンとピアノ鍵盤のセットアップ
 		chordMatrix = new ChordMatrix() {{
 			addChordMatrixListener(new ChordMatrixListener(){
 				public void keySignatureChanged() {
@@ -463,12 +468,14 @@ public class ChordHelperApplet extends JApplet {
 			);
 			keyboardCenterPanel.keyboard.setPreferredSize(new Dimension(571, 80));
 		}};
+		// MIDIデバイスのセットアップ
 		deviceModelList = new MidiTransceiverListModelList(
 			Arrays.asList(keyboardPanel.keyboardCenterPanel.keyboard.midiDevice)
 		);
-		deviceModelList.getEditorDialog().setIconImage(iconImage);
-		new DropTarget(this, DnDConstants.ACTION_COPY_OR_MOVE, deviceModelList.getEditorDialog().dropTargetListener, true);
-		keyboardPanel.setEventDialog(deviceModelList.getEditorDialog().eventDialog);
+		MidiSequenceEditor midiEditor = deviceModelList.getEditorDialog();
+		midiEditor.setIconImage(iconImage);
+		new DropTarget(this, DnDConstants.ACTION_COPY_OR_MOVE, midiEditor.dropTargetListener, true);
+		keyboardPanel.setEventDialog(midiEditor.eventDialog);
 		(midiDeviceDialog = new MidiDeviceDialog(deviceModelList)).setIconImage(iconImage);
 		lyricDisplay = new ChordTextField(deviceModelList.getSequencerModel()) {{
 			addActionListener(new ActionListener() {
@@ -482,42 +489,38 @@ public class ChordHelperApplet extends JApplet {
 		lyricDisplayDefaultBorder = lyricDisplay.getBorder();
 		lyricDisplayDefaultBgcolor = lyricDisplay.getBackground();
 		chordDiagram = new ChordDiagram(this);
-		tempoSelecter = new TempoSelecter() {{
-			setEditable(false);
-			deviceModelList.getSequencerModel().getSequencer().addMetaEventListener(this);
-		}};
-		timesigSelecter = new TimeSignatureSelecter() {{
-			setEditable(false);
-			deviceModelList.getSequencerModel().getSequencer().addMetaEventListener(this);
-		}};
+		Sequencer sequencer = deviceModelList.getSequencerModel().getSequencer();
+		sequencer.addMetaEventListener(tempoSelecter = new TempoSelecter() {{ setEditable(false); }});
+		sequencer.addMetaEventListener(timesigSelecter = new TimeSignatureSelecter() {{ setEditable(false); }});
 		keysigLabel = new KeySignatureLabel() {{
 			addMouseListener(new MouseAdapter() {
 				public void mousePressed(MouseEvent e) { chordMatrix.setKeySignature(getKey()); }
 			});
 		}};
-		deviceModelList.getSequencerModel().getSequencer().addMetaEventListener(
+		sequencer.addMetaEventListener(
 			new MetaEventListener() {
-				class SetKeySignatureRunnable implements Runnable {
-					Key key;
-					public SetKeySignatureRunnable(Key key) { this.key = key; }
-					@Override
-					public void run() { setKeySignature(key); }
-				}
+				private Key key;
 				@Override
 				public void meta(MetaMessage msg) {
 					switch(msg.getType()) {
 					case 0x59: // Key signature (2 bytes) : 調号
-						Key key = new Key(msg.getData());
-						if( ! SwingUtilities.isEventDispatchThread() ) {
-							SwingUtilities.invokeLater(new SetKeySignatureRunnable(key));
+						key = new Key(msg.getData());
+						if( SwingUtilities.isEventDispatchThread() ) {
+							keysigLabel.setKeySignature(key);
+							chordMatrix.setKeySignature(key);
+						} else {
+							// MIDIシーケンサのスレッドから呼ばれた場合、GUI更新は自分で行わず、
+							// AWTイベントディスパッチスレッドに依頼する。
+							SwingUtilities.invokeLater(new Runnable() {
+								@Override
+								public void run() {
+									keysigLabel.setKeySignature(key);
+									chordMatrix.setKeySignature(key);
+								}
+							});
 						}
-						setKeySignature(key);
 						break;
 					}
-				}
-				private void setKeySignature(Key key) {
-					keysigLabel.setKeySignature(key);
-					chordMatrix.setKeySignature(key);
 				}
 			}
 		);
