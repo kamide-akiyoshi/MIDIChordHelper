@@ -70,7 +70,6 @@ import javax.swing.table.TableModel;
 
 import camidion.chordhelper.ButtonIcon;
 import camidion.chordhelper.ChordHelperApplet;
-import camidion.chordhelper.mididevice.AbstractVirtualMidiDevice;
 import camidion.chordhelper.mididevice.MidiSequencerModel;
 import camidion.chordhelper.mididevice.VirtualMidiDevice;
 import camidion.chordhelper.music.MIDISpec;
@@ -97,10 +96,11 @@ public class MidiSequenceEditor extends JDialog {
 		}
 	};
 
+	private VirtualMidiDevice outputMidiDevice;
 	/**
 	 * イベントリスト操作音出力先MIDIデバイスを返します。
 	 */
-	public VirtualMidiDevice getEventTableMidiDevice() { return eventListTable.outputMidiDevice; }
+	//public VirtualMidiDevice getEventTableMidiDevice() { return eventListTable.outputMidiDevice; }
 
 	/**
 	 * エラーメッセージダイアログを表示します。
@@ -648,21 +648,6 @@ public class MidiSequenceEditor extends JDialog {
 	 * MIDIイベントリストテーブルビュー（選択中のトラックの中身）
 	 */
 	public class EventListTable extends JTable {
-		private VirtualMidiDevice outputMidiDevice = new AbstractVirtualMidiDevice() {
-			{
-				info = new MyInfo();
-				setMaxReceivers(0); // 送信専用とする（MIDI IN はサポートしない）
-			}
-			/**
-			 * MIDIデバイス情報
-			 */
-			protected MyInfo info;
-			@Override
-			public Info getDeviceInfo() { return info; }
-			class MyInfo extends Info {
-				protected MyInfo() { super("MIDI Event Table Editor","Unknown vendor","MIDI event table editor",""); }
-			}
-		};
 		/**
 		 * 新しいイベントリストテーブルを構築します。
 		 * <p>データモデルとして一つのトラックのイベントリストを指定できます。
@@ -1136,14 +1121,16 @@ public class MidiSequenceEditor extends JDialog {
 	/**
 	 * 新しい {@link MidiSequenceEditor} を構築します。
 	 * @param playlistTableModel このエディタが参照するプレイリストモデル
+	 * @param outputMidiDevice イベントテーブルの操作音出力先MIDIデバイス
 	 */
-	public MidiSequenceEditor(PlaylistTableModel playlistTableModel) {
+	public MidiSequenceEditor(PlaylistTableModel playlistTableModel, VirtualMidiDevice outputMidiDevice) {
+		this.outputMidiDevice = outputMidiDevice;
 		sequenceListTable = new SequenceListTable(playlistTableModel);
 		trackListTable = new TrackListTable(
 			new SequenceTrackListTableModel(sequenceListTable.getModel(), null, null)
 		);
 		eventListTable = new EventListTable(new TrackEventListTableModel(trackListTable.getModel(), null));
-		newSequenceDialog = new NewSequenceDialog(playlistTableModel, eventListTable.outputMidiDevice);
+		newSequenceDialog = new NewSequenceDialog(playlistTableModel, outputMidiDevice);
 		setTitle("MIDI Editor/Playlist - MIDI Chord Helper");
 		setBounds( 150, 200, 900, 500 );
 		setLayout(new FlowLayout());

@@ -29,7 +29,6 @@ import javax.swing.event.TableModelEvent;
 import javax.swing.event.TableModelListener;
 
 import camidion.chordhelper.mididevice.MidiSequencerModel;
-import camidion.chordhelper.mididevice.MidiTransceiverListModelList;
 import camidion.chordhelper.midieditor.MidiSequenceEditor;
 import camidion.chordhelper.midieditor.PlaylistTableModel;
 import camidion.chordhelper.midieditor.SequenceTrackListTableModel;
@@ -68,6 +67,7 @@ public class MidiChordHelper {
 			setTitle(title);
 		}
 		private MidiSequenceEditor editor;
+		private PlaylistTableModel playlist;
 		public AppletFrame(ChordHelperApplet applet, List<File> fileList) {
 			setTitle(ChordHelperApplet.VersionInfo.NAME);
 			add( applet, BorderLayout.CENTER );
@@ -80,8 +80,17 @@ public class MidiChordHelper {
 			setLocationRelativeTo(null);
 			setVisible(true);
 			applet.start();
-			MidiTransceiverListModelList deviceModelList = applet.deviceModelList;
-			deviceModelList.getSequencerModel().addChangeListener(new ChangeListener() {
+			playlist = (editor = applet.midiEditor).sequenceListTable.getModel();
+			addWindowListener(new WindowAdapter() {
+				@Override
+				public void windowClosing(WindowEvent event) {
+					if( ! playlist.isModified() || editor.confirm(
+						"MIDI file not saved, exit anyway ?\n"+
+						"保存されていないMIDIファイルがありますが、終了してよろしいですか？"
+					)) System.exit(0);
+				}
+			});
+			playlist.sequencerModel.addChangeListener(new ChangeListener() {
 				/**
 				 * シーケンサで切り替わった再生対象ファイル名をタイトルバーに反映
 				 */
@@ -91,17 +100,7 @@ public class MidiChordHelper {
 					setFilenameToTitle(sequencerModel.getSequenceTrackListTableModel());
 				}
 			});
-			editor = deviceModelList.getEditorDialog();
-			addWindowListener(new WindowAdapter() {
-				@Override
-				public void windowClosing(WindowEvent event) {
-					if( ! editor.sequenceListTable.getModel().isModified() || editor.confirm(
-						"MIDI file not saved, exit anyway ?\n"+
-						"保存されていないMIDIファイルがありますが、終了してよろしいですか？"
-					)) System.exit(0);
-				}
-			});
-			editor.sequenceListTable.getModel().addTableModelListener(new TableModelListener() {
+			playlist.addTableModelListener(new TableModelListener() {
 				/**
 				 * プレイリスト上で変更された再生対象ファイル名をタイトルバーに反映
 				 */

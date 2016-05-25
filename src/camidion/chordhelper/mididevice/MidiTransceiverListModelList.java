@@ -10,8 +10,6 @@ import javax.sound.midi.Sequencer;
 import javax.sound.midi.Synthesizer;
 
 import camidion.chordhelper.ChordHelperApplet;
-import camidion.chordhelper.midieditor.MidiSequenceEditor;
-import camidion.chordhelper.midieditor.PlaylistTableModel;
 
 /**
  * 仮想MIDIデバイスを含めたすべてのMIDIデバイスモデル {@link MidiTransceiverListModel} を収容するリスト
@@ -20,15 +18,12 @@ public class MidiTransceiverListModelList extends Vector<MidiTransceiverListMode
 
 	public String toString() { return "MIDI devices"; }
 
-	private MidiSequenceEditor editorDialog;
-	public MidiSequenceEditor getEditorDialog() { return editorDialog; }
-
 	private MidiSequencerModel sequencerModel;
 	public MidiSequencerModel getSequencerModel() { return sequencerModel; }
 
 	public MidiTransceiverListModelList(List<VirtualMidiDevice> guiVirtualDeviceList) {
 		//
-		// GUI仮想MIDIデバイスリストの構築
+		// GUI仮想MIDIデバイス
 		MidiTransceiverListModel guiModels[] = new MidiTransceiverListModel[guiVirtualDeviceList.size()];
 		for( int i=0; i<guiVirtualDeviceList.size(); i++ ) {
 			addElement(guiModels[i] = new MidiTransceiverListModel(guiVirtualDeviceList.get(i), this));
@@ -42,16 +37,12 @@ public class MidiTransceiverListModelList extends Vector<MidiTransceiverListMode
 			System.out.println(ChordHelperApplet.VersionInfo.NAME +" : MIDI sequencer unavailable");
 			e.printStackTrace();
 		}
-		// MIDIエディタの生成
-		editorDialog = new MidiSequenceEditor(new PlaylistTableModel(sequencerModel));
-		MidiTransceiverListModel eventTableDeviceModel;
-		addElement(eventTableDeviceModel = new MidiTransceiverListModel(editorDialog.getEventTableMidiDevice(), this));
+		// その他のリアルMIDIデバイスの取得
 		MidiTransceiverListModel synthModel = null;
 		MidiTransceiverListModel firstMidiInModel = null;
 		MidiTransceiverListModel firstMidiOutModel = null;
 		MidiDevice.Info[] deviceInfos = MidiSystem.getMidiDeviceInfo();
 		for( MidiDevice.Info info : deviceInfos ) {
-			// MIDIデバイスの取得
 			MidiDevice device;
 			try {
 				device = MidiSystem.getMidiDevice(info);
@@ -95,7 +86,6 @@ public class MidiTransceiverListModelList extends Vector<MidiTransceiverListMode
 				firstMidiOutModel,
 				sequencerModel,
 				firstMidiInModel,
-				eventTableDeviceModel,
 			};
 			for( MidiTransceiverListModel m : openModels ) if( m != null ) {
 				m.getMidiDevice().open();
@@ -126,10 +116,6 @@ public class MidiTransceiverListModelList extends Vector<MidiTransceiverListMode
 			for( MidiTransceiverListModel m : guiModels ) sequencerModel.connectToReceiverOf(m);
 			sequencerModel.connectToReceiverOf(synthModel);
 			sequencerModel.connectToReceiverOf(firstMidiOutModel);
-		}
-		if( eventTableDeviceModel != null ) {
-			eventTableDeviceModel.connectToReceiverOf(synthModel);
-			eventTableDeviceModel.connectToReceiverOf(firstMidiOutModel);
 		}
 	}
 }
