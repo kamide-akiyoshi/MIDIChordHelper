@@ -29,7 +29,6 @@ import javax.swing.event.TableModelEvent;
 import javax.swing.event.TableModelListener;
 
 import camidion.chordhelper.mididevice.MidiSequencerModel;
-import camidion.chordhelper.midieditor.MidiSequenceEditor;
 import camidion.chordhelper.midieditor.PlaylistTableModel;
 import camidion.chordhelper.midieditor.SequenceTrackListTableModel;
 
@@ -66,9 +65,7 @@ public class MidiChordHelper {
 			}
 			setTitle(title);
 		}
-		private MidiSequenceEditor editor;
-		private PlaylistTableModel playlist;
-		public AppletFrame(ChordHelperApplet applet, List<File> fileList) {
+		public AppletFrame(final ChordHelperApplet applet, List<File> fileList) {
 			setTitle(ChordHelperApplet.VersionInfo.NAME);
 			add( applet, BorderLayout.CENTER );
 			add( status_, BorderLayout.SOUTH );
@@ -80,17 +77,16 @@ public class MidiChordHelper {
 			setLocationRelativeTo(null);
 			setVisible(true);
 			applet.start();
-			playlist = (editor = applet.midiEditor).sequenceListTable.getModel();
 			addWindowListener(new WindowAdapter() {
 				@Override
 				public void windowClosing(WindowEvent event) {
-					if( ! playlist.isModified() || editor.confirm(
+					if( ! applet.playlistModel.isModified() || applet.midiEditor.confirm(
 						"MIDI file not saved, exit anyway ?\n"+
 						"保存されていないMIDIファイルがありますが、終了してよろしいですか？"
 					)) System.exit(0);
 				}
 			});
-			playlist.sequencerModel.addChangeListener(new ChangeListener() {
+			applet.sequencerModel.addChangeListener(new ChangeListener() {
 				/**
 				 * シーケンサで切り替わった再生対象ファイル名をタイトルバーに反映
 				 */
@@ -100,7 +96,7 @@ public class MidiChordHelper {
 					setFilenameToTitle(sequencerModel.getSequenceTrackListTableModel());
 				}
 			});
-			playlist.addTableModelListener(new TableModelListener() {
+			applet.playlistModel.addTableModelListener(new TableModelListener() {
 				/**
 				 * プレイリスト上で変更された再生対象ファイル名をタイトルバーに反映
 				 */
@@ -113,7 +109,7 @@ public class MidiChordHelper {
 					}
 				}
 			});
-			editor.loadAndPlay(fileList);
+			applet.midiEditor.loadAndPlay(fileList);
 		}
 		@Override
 		public boolean isActive() { return true; }
