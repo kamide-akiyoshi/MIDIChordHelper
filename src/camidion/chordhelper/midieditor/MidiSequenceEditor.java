@@ -96,12 +96,6 @@ public class MidiSequenceEditor extends JDialog {
 		}
 	};
 
-	private VirtualMidiDevice outputMidiDevice;
-	/**
-	 * イベントリスト操作音出力先MIDIデバイスを返します。
-	 */
-	//public VirtualMidiDevice getEventTableMidiDevice() { return eventListTable.outputMidiDevice; }
-
 	/**
 	 * エラーメッセージダイアログを表示します。
 	 * @param message エラーメッセージ
@@ -221,6 +215,7 @@ public class MidiSequenceEditor extends JDialog {
 	 * MIDIイベント入力ダイアログ（イベント入力とイベント送出で共用）
 	 */
 	public MidiEventDialog eventDialog = new MidiEventDialog();
+	private VirtualMidiDevice outputMidiDevice;
 	/**
 	 * プレイリストビュー（シーケンスリスト）
 	 */
@@ -389,7 +384,7 @@ public class MidiSequenceEditor extends JDialog {
 				//
 				// セル内にプレイボタンがあれば、シングルクリックを受け付ける。
 				// プレイボタンのないセルは、ダブルクリックのみ受け付ける。
-				return model.sequenceList.get(row).isOnSequencer() || me.getClickCount() == 2;
+				return model.getSequenceList().get(row).isOnSequencer() || me.getClickCount() == 2;
 			}
 			@Override
 			public Object getCellEditorValue() { return null; }
@@ -408,7 +403,7 @@ public class MidiSequenceEditor extends JDialog {
 			) {
 				fireEditingStopped();
 				PlaylistTableModel model = getModel();
-				if( model.sequenceList.get(row).isOnSequencer() ) return playButton;
+				if( model.getSequenceList().get(row).isOnSequencer() ) return playButton;
 				model.loadToSequencer(row);
 				return null;
 			}
@@ -418,7 +413,7 @@ public class MidiSequenceEditor extends JDialog {
 				boolean hasFocus, int row, int column
 			) {
 				PlaylistTableModel model = getModel();
-				if(model.sequenceList.get(row).isOnSequencer()) return playButton;
+				if(model.getSequenceList().get(row).isOnSequencer()) return playButton;
 				Class<?> cc = model.getColumnClass(column);
 				TableCellRenderer defaultRenderer = table.getDefaultRenderer(cc);
 				return defaultRenderer.getTableCellRendererComponent(
@@ -722,6 +717,7 @@ public class MidiSequenceEditor extends JDialog {
 				newTrackModel.eventSelectionModel.addListSelectionListener(eventSelectionListener);
 			}
 		}
+
 		/**
 		 * イベント選択リスナー
 		 */

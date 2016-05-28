@@ -23,8 +23,6 @@ import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
 import java.util.ArrayList;
 
-import javax.swing.ComboBoxModel;
-import javax.swing.DefaultComboBoxModel;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -32,6 +30,7 @@ import javax.swing.JPanel;
 
 import camidion.chordhelper.ButtonIcon;
 import camidion.chordhelper.ChordDisplayLabel;
+import camidion.chordhelper.chorddiagram.CapoComboBoxModel;
 import camidion.chordhelper.chorddiagram.CapoSelecterView;
 import camidion.chordhelper.midieditor.SequenceTickIndex;
 import camidion.chordhelper.music.Chord;
@@ -44,7 +43,7 @@ import camidion.chordhelper.music.SymbolLanguage;
  * MIDI Chord Helper 用のコードボタンマトリクス
  *
  * @author
- *	Copyright (C) 2004-2013 Akiyoshi Kamide
+ *	Copyright (C) 2004-2016 Akiyoshi Kamide
  *	http://www.yk.rim.or.jp/~kamide/music/chordhelper/
  */
 public class ChordMatrix extends JPanel
@@ -538,41 +537,23 @@ public class ChordMatrix extends JPanel
 	private ColorSet currentColorset = normalModeColorset;
 
 	/**
-	 * カポ値選択コンボボックスのデータモデル
-	 * （コードボタン側とコードダイアグラム側の両方から参照される）
-	 */
-	public ComboBoxModel<Integer> capoValueModel =
-		new DefaultComboBoxModel<Integer>() {
-			{
-				for( int i=1; i<=Music.SEMITONES_PER_OCTAVE-1; i++ )
-					addElement(i);
-			}
-		};
-	/**
 	 * カポ値選択コンボボックス（コードボタン側ビュー）
 	 */
-	public CapoSelecterView capoSelecter = new CapoSelecterView(capoValueModel) {
-		private void capoChanged() {
-			ChordMatrix.this.capoChanged(getCapo());
-		}
-		{
-			checkbox.addItemListener(
-				new ItemListener() {
-					public void itemStateChanged(ItemEvent e) {capoChanged();}
-				}
-			);
-			valueSelecter.addActionListener(
-				new ActionListener() {
-					public void actionPerformed(ActionEvent e) {capoChanged();}
-				}
-			);
-		}
-	};
+	public CapoSelecterView capoSelecter;
 
 	/**
 	 * コードボタンマトリクスの構築
+	 * @param capoValueModel カポ選択値モデル
 	 */
-	public ChordMatrix() {
+	public ChordMatrix(CapoComboBoxModel capoValueModel) {
+		capoSelecter = new CapoSelecterView(capoValueModel) {{
+			checkbox.addItemListener(new ItemListener() {
+				public void itemStateChanged(ItemEvent e) {capoChanged(getCapo());}
+			});
+			valueSelecter.addActionListener(new ActionListener() {
+				public void actionPerformed(ActionEvent e) {capoChanged(getCapo());}
+			});
+		}};
 		int i, v;
 		Dimension buttonSize = new Dimension(28,26);
 		//

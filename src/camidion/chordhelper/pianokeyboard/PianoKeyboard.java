@@ -101,7 +101,7 @@ public class PianoKeyboard extends JComponent {
 	/**
 	 * ノートのリスト。配列の要素として使えるようクラス名を割り当てます。
 	 */
-	private class NoteList extends LinkedList<Integer> {
+	private static class NoteList extends LinkedList<Integer> {
 		// 何もすることはない
 	}
 	/**

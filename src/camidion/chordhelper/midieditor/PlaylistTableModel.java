@@ -60,7 +60,7 @@ public class PlaylistTableModel extends AbstractTableModel {
 	};
 	/**
 	 * 新しいプレイリストのテーブルモデルを構築します。
-	 * @param sequencerModel MIDIシーケンサーモデル
+	 * @param sequencerModel 連携するMIDIシーケンサーモデル
 	 */
 	public PlaylistTableModel(MidiSequencerModel sequencerModel) {
 		this.sequencerModel = sequencerModel;
@@ -74,7 +74,7 @@ public class PlaylistTableModel extends AbstractTableModel {
 				/**
 				 * {@inheritDoc}
 				 *
-				 * <p>EOT (End Of Track、type==0x2F) を受信したときの処理です。
+				 * <p>EOT (End Of Track、type==0x2F) を受信したとき、次の曲へ進みます。
 				 * </p>
 				 * <p>これは MetaEventListener のための実装なので、多くの場合
 				 * Swing EDT ではなく MIDI シーケンサの EDT から起動されます。
@@ -107,7 +107,7 @@ public class PlaylistTableModel extends AbstractTableModel {
 	 * <p>リピートモードの場合は同じ曲をもう一度再生、
 	 * そうでない場合は次の曲へ進んで再生します。
 	 * 次の曲がなければ、そこで停止します。
-	 * いずれの場合も局の先頭へ戻ります。
+	 * いずれの場合も曲の先頭へ戻ります。
 	 * </p>
 	 */
 	private void goNext() {
@@ -134,7 +134,11 @@ public class PlaylistTableModel extends AbstractTableModel {
 	/**
 	 * シーケンスリスト
 	 */
-	List<SequenceTrackListTableModel> sequenceList = new Vector<>();
+	private List<SequenceTrackListTableModel> sequenceList = new Vector<>();
+	/**
+	 * このプレイリストが保持している {@link SequenceTrackListTableModel} のリストを返します。
+	 */
+	public List<SequenceTrackListTableModel> getSequenceList() { return sequenceList; }
 	/**
 	 * 行が選択されているときだけイネーブルになるアクション
 	 */

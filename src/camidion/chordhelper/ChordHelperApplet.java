@@ -51,6 +51,7 @@ import javax.swing.event.HyperlinkEvent;
 import javax.swing.event.HyperlinkListener;
 
 import camidion.chordhelper.anogakki.AnoGakkiPane;
+import camidion.chordhelper.chorddiagram.CapoComboBoxModel;
 import camidion.chordhelper.chorddiagram.ChordDiagram;
 import camidion.chordhelper.chordmatrix.ChordButtonLabel;
 import camidion.chordhelper.chordmatrix.ChordMatrix;
@@ -278,7 +279,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public static class VersionInfo {
 		public static final String	NAME = "MIDI Chord Helper";
-		public static final String	VERSION = "Ver.20160526.1";
+		public static final String	VERSION = "Ver.20160528.1";
 		public static final String	COPYRIGHT = "Copyright (C) 2004-2016";
 		public static final String	AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String	URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";
@@ -393,7 +394,7 @@ public class ChordHelperApplet extends JApplet {
 	private TempoSelecter tempoSelecter;
 	private TimeSignatureSelecter timesigSelecter;
 	private KeySignatureLabel keysigLabel;
-	private JLabel songTitleLabel;
+	private JLabel songTitleLabel = new JLabel();
 	private AnoGakkiPane anoGakkiPane;
 	private JToggleButton anoGakkiToggleButton;
 
@@ -410,8 +411,10 @@ public class ChordHelperApplet extends JApplet {
 		// 背景色の取得
 		rootPaneDefaultBgcolor = getContentPane().getBackground();
 		//
-		// コードボタンとピアノ鍵盤のセットアップ
-		chordMatrix = new ChordMatrix() {{
+		// コードダイアグラム、コードボタン、ピアノ鍵盤のセットアップ
+		CapoComboBoxModel capoValueModel = new CapoComboBoxModel();
+		chordDiagram = new ChordDiagram(capoValueModel);
+		chordMatrix = new ChordMatrix(capoValueModel) {{
 			addChordMatrixListener(new ChordMatrixListener(){
 				public void keySignatureChanged() {
 					Key capoKey = getKeySignatureCapo();
@@ -419,6 +422,11 @@ public class ChordHelperApplet extends JApplet {
 					keyboardPanel.keyboardCenterPanel.keyboard.setKeySignature(capoKey);
 				}
 				public void chordChanged() { chordOn(); }
+			});
+		}};
+		keysigLabel = new KeySignatureLabel() {{
+			addMouseListener(new MouseAdapter() {
+				public void mousePressed(MouseEvent e) { chordMatrix.setKeySignature(getKey()); }
 			});
 		}};
 		chordMatrix.capoSelecter.checkbox.addItemListener(new ItemListener() {
@@ -450,8 +458,9 @@ public class ChordHelperApplet extends JApplet {
 			});
 			keyboardCenterPanel.keyboard.setPreferredSize(new Dimension(571, 80));
 		}};
-		// MIDIデバイス一覧を構築
 		VirtualMidiDevice guiMidiDevice = keyboardPanel.keyboardCenterPanel.keyboard.midiDevice;
+		//
+		// MIDIデバイス一覧を構築
 		MidiTransceiverListModelList deviceModelList = new MidiTransceiverListModelList(Arrays.asList(guiMidiDevice));
 		(midiDeviceDialog = new MidiDeviceDialog(deviceModelList)).setIconImage(iconImage);
 		//
@@ -467,6 +476,7 @@ public class ChordHelperApplet extends JApplet {
 		// MIDIエディタのイベントダイアログを、ピアノ鍵盤のイベント送出ダイアログと共用
 		keyboardPanel.setEventDialog(midiEditor.eventDialog);
 		//
+		// 歌詞表示
 		lyricDisplay = new ChordTextField(sequencerModel) {{
 			addActionListener(new ActionListener() {
 				@Override
@@ -478,43 +488,36 @@ public class ChordHelperApplet extends JApplet {
 		}};
 		lyricDisplayDefaultBorder = lyricDisplay.getBorder();
 		lyricDisplayDefaultBgcolor = lyricDisplay.getBackground();
-		chordDiagram = new ChordDiagram(this);
+		//
+		// メタイベント（テンポ・拍子・調号）を受信して表示するリスナーを登録
 		Sequencer sequencer = sequencerModel.getSequencer();
 		sequencer.addMetaEventListener(tempoSelecter = new TempoSelecter() {{ setEditable(false); }});
 		sequencer.addMetaEventListener(timesigSelecter = new TimeSignatureSelecter() {{ setEditable(false); }});
-		keysigLabel = new KeySignatureLabel() {{
-			addMouseListener(new MouseAdapter() {
-				public void mousePressed(MouseEvent e) { chordMatrix.setKeySignature(getKey()); }
-			});
-		}};
-		sequencer.addMetaEventListener(
-			new MetaEventListener() {
-				private Key key;
-				@Override
-				public void meta(MetaMessage msg) {
-					switch(msg.getType()) {
-					case 0x59: // Key signature (2 bytes) : 調号
-						key = new Key(msg.getData());
-						if( SwingUtilities.isEventDispatchThread() ) {
-							keysigLabel.setKeySignature(key);
-							chordMatrix.setKeySignature(key);
-						} else {
-							// MIDIシーケンサのスレッドから呼ばれた場合、GUI更新は自分で行わず、
-							// AWTイベントディスパッチスレッドに依頼する。
-							SwingUtilities.invokeLater(new Runnable() {
-								@Override
-								public void run() {
-									keysigLabel.setKeySignature(key);
-									chordMatrix.setKeySignature(key);
-								}
-							});
-						}
-						break;
+		sequencer.addMetaEventListener(new MetaEventListener() {
+			private Key key;
+			@Override
+			public void meta(MetaMessage msg) {
+				switch(msg.getType()) {
+				case 0x59: // Key signature (2 bytes) : 調号
+					key = new Key(msg.getData());
+					if( SwingUtilities.isEventDispatchThread() ) {
+						keysigLabel.setKeySignature(key);
+						chordMatrix.setKeySignature(key);
+					} else {
+						// MIDIシーケンサのスレッドから呼ばれた場合、GUI更新は自分で行わず、
+						// AWTイベントディスパッチスレッドに依頼する。
+						SwingUtilities.invokeLater(new Runnable() {
+							@Override
+							public void run() {
+								keysigLabel.setKeySignature(key);
+								chordMatrix.setKeySignature(key);
+							}
+						});
 					}
+					break;
 				}
 			}
-		);
-		songTitleLabel = new JLabel();
+		});
 		//シーケンサーの時間スライダーの値が変わったときのリスナーを登録
 		sequencerModel.addChangeListener(new ChangeListener() {
 			@Override

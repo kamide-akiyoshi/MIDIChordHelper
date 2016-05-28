@@ -18,6 +18,7 @@ import java.util.Objects;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
+import javax.swing.ComboBoxModel;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
 import javax.swing.JScrollBar;
@@ -26,7 +27,6 @@ import javax.swing.SwingConstants;
 
 import camidion.chordhelper.ButtonIcon;
 import camidion.chordhelper.ChordDisplayLabel;
-import camidion.chordhelper.ChordHelperApplet;
 import camidion.chordhelper.music.Chord;
 
 /**
@@ -71,10 +71,10 @@ public class ChordDiagram extends JPanel {
 	}
 	/**
 	 * コードダイアグラムを構築します。
-	 * @param applet 親となるアプレット
+	 * @param capoValueModel カポ値選択コンボボックスのデータモデル
 	 */
-	public ChordDiagram(ChordHelperApplet applet) {
-		capoSelecterView.valueSelecter.setModel(applet.chordMatrix.capoValueModel);
+	public ChordDiagram(ComboBoxModel<Integer> capoValueModel) {
+		capoSelecterView.valueSelecter.setModel(capoValueModel);
 		setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
 		add(new JPanel() {
 			{

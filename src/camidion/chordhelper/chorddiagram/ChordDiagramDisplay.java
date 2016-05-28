@@ -27,8 +27,7 @@ import camidion.chordhelper.music.NoteSymbol;
 /**
  * コードダイアグラム表示部
  */
-class ChordDiagramDisplay extends JComponent
-	implements MouseListener, MouseMotionListener {
+class ChordDiagramDisplay extends JComponent implements MouseListener, MouseMotionListener {
 	/**
 	 * 可視フレット数
 	 */
@@ -60,8 +59,7 @@ class ChordDiagramDisplay extends JComponent
 	/**
 	 * フレット方向の横スクロールバーで使用する境界つき値範囲
 	 */
-	DefaultBoundedRangeModel fretViewIndexModel
-		= new DefaultBoundedRangeModel( 0, VISIBLE_FRETS, 0, MAX_FRETS );
+	DefaultBoundedRangeModel fretViewIndexModel = new DefaultBoundedRangeModel( 0, VISIBLE_FRETS, 0, MAX_FRETS );
 	/**
 	 * チューニング対象楽器
 	 */
@@ -122,9 +120,7 @@ class ChordDiagramDisplay extends JComponent
 		 * 指定した弦を弾かないことを表す {@link PressingPoint} を構築します。
 		 * @param stringIndex 弦インデックス
 		 */
-		public PressingPoint(int stringIndex) {
-			this(-1,-1,stringIndex);
-		}
+		public PressingPoint(int stringIndex) { this(-1,-1,stringIndex); }
 		/**
 		 * 指定した弦、フレットを押さえると
 		 * 指定されたコード構成音が鳴ることを表す {@link PressingPoint} を構築します。
@@ -151,7 +147,7 @@ class ChordDiagramDisplay extends JComponent
 	/**
 	 * 押さえる場所リスト（配列要素として使えるようにするための空の継承クラス）
 	 */
-	private class PressingPointList extends LinkedList<PressingPoint> {
+	private static class PressingPointList extends LinkedList<PressingPoint> {
 	}
 	/**
 	 * コードの押さえ方のバリエーション
@@ -261,9 +257,7 @@ class ChordDiagramDisplay extends JComponent
 					scanFret( stringIndex + 1 );
 					continue;
 				}
-				if( hasValidNewVariation() ) {
-					add(validatingPoints.clone());
-				}
+				if( hasValidNewVariation() ) add(validatingPoints.clone());
 			}
 		}
 		/**
@@ -531,18 +525,13 @@ class ChordDiagramDisplay extends JComponent
 	@Override
 	public void mouseReleased(MouseEvent e) { }
 	@Override
-	public void mouseEntered(MouseEvent e) {
-		mouseMoved(e);
-	}
+	public void mouseEntered(MouseEvent e) { mouseMoved(e); }
 	@Override
-	public void mouseExited(MouseEvent e) {
-		mouseMoved(e);
-	}
+	public void mouseExited(MouseEvent e) { mouseMoved(e); }
 	@Override
 	public void mouseClicked(MouseEvent e) { }
 	@Override
-	public void mouseDragged(MouseEvent e) {
-	}
+	public void mouseDragged(MouseEvent e) { }
 	@Override
 	public void mouseMoved(MouseEvent e) {
 		Point point = e.getPoint();
@@ -633,15 +622,10 @@ class ChordDiagramDisplay extends JComponent
 	/**
 	 * コード（和音）を再設定します。
 	 */
-	public void setChord() {
-		setChord(chordVariations.chord);
-	}
+	public void setChord() { setChord(chordVariations.chord); }
 	/**
 	 * コード（和音）を設定します。
 	 * @param chord コード
 	 */
-	public void setChord(Chord chord) {
-		chordVariations.setChord(chord);
-		repaint();
-	}
+	public void setChord(Chord chord) { chordVariations.setChord(chord); repaint(); }
 }
