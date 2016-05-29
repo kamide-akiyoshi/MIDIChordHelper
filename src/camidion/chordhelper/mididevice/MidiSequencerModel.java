@@ -17,7 +17,6 @@ import javax.swing.DefaultComboBoxModel;
 import javax.swing.Icon;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
-import javax.swing.event.EventListenerList;
 import javax.swing.event.ListDataEvent;
 import javax.swing.event.ListDataListener;
 
@@ -203,10 +202,6 @@ public class MidiSequencerModel extends MidiTransceiverListModel implements Boun
 		setValueIsAdjusting(valueIsAdjusting);
 		fireStateChanged();
 	}
-	/**
-	 * イベントリスナーのリスト
-	 */
-	protected EventListenerList listenerList = new EventListenerList();
 	/**
 	 * {@inheritDoc}
 	 * <p>このシーケンサーの再生時間位置または再生対象ファイルが変更されたときに
