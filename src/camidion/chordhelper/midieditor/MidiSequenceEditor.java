@@ -35,6 +35,7 @@ import javax.sound.midi.InvalidMidiDataException;
 import javax.sound.midi.MidiChannel;
 import javax.sound.midi.MidiEvent;
 import javax.sound.midi.MidiMessage;
+import javax.sound.midi.Sequence;
 import javax.sound.midi.Sequencer;
 import javax.sound.midi.ShortMessage;
 import javax.swing.AbstractAction;
@@ -134,8 +135,7 @@ public class MidiSequenceEditor extends JDialog {
 		public void drop(DropTargetDropEvent event) {
 			event.acceptDrop(DnDConstants.ACTION_COPY_OR_MOVE);
 			try {
-				int action = event.getDropAction();
-				if ( (action & DnDConstants.ACTION_COPY_OR_MOVE) != 0 ) {
+				if ( (event.getDropAction() & DnDConstants.ACTION_COPY_OR_MOVE) != 0 ) {
 					Transferable t = event.getTransferable();
 					if( t.isDataFlavorSupported(DataFlavor.javaFileListFlavor) ) {
 						loadAndPlay((List<File>)t.getTransferData(DataFlavor.javaFileListFlavor));
@@ -156,6 +156,7 @@ public class MidiSequenceEditor extends JDialog {
 	 * すでに再生されていた場合、このエディタダイアログを表示します。
 	 *
 	 * @param fileList 読み込むMIDIファイルのリスト
+	 * @throws InvalidMidiDataException {@link Sequencer#setSequence(Sequence)} を参照
 	 * @see #loadAndPlay(File)
 	 */
 	public void loadAndPlay(List<File> fileList) {
@@ -169,15 +170,20 @@ public class MidiSequenceEditor extends JDialog {
 			showError(e.getMessage());
 			e.printStackTrace();
 		}
-		MidiSequencerModel sequencerModel = playlist.sequencerModel;
-		if( sequencerModel.getSequencer().isRunning() ) {
+		if( playlist.sequencerModel.getSequencer().isRunning() ) {
 			String command = (String)openAction.getValue(Action.NAME);
 			openAction.actionPerformed(new ActionEvent(this, ActionEvent.ACTION_PERFORMED, command));
 			return;
 		}
 		if( indexOfAddedTop >= 0 ) {
-			playlist.loadToSequencer(indexOfAddedTop);
-			sequencerModel.start();
+			try {
+				playlist.loadToSequencer(indexOfAddedTop);
+			} catch (InvalidMidiDataException ex) {
+				ex.printStackTrace();
+				showError(ex.getMessage());
+				return;
+			}
+			playlist.sequencerModel.start();
 		}
 	}
 	/**
@@ -185,9 +191,12 @@ public class MidiSequenceEditor extends JDialog {
 	 * すでに再生されていた場合、このエディタダイアログを表示します。
 	 *
 	 * @param file 読み込むMIDIファイル
+	 * @throws InvalidMidiDataException {@link Sequencer#setSequence(Sequence)} を参照
 	 * @see #loadAndPlay(List) loadAndPlay(List&lt;File&gt;)
 	 */
-	public void loadAndPlay(File file) { loadAndPlay(Arrays.asList(file)); }
+	public void loadAndPlay(File file) throws InvalidMidiDataException {
+		loadAndPlay(Arrays.asList(file));
+	}
 
 	private static final Insets ZERO_INSETS = new Insets(0,0,0,0);
 	private static final Icon deleteIcon = new ButtonIcon(ButtonIcon.X_ICON);
@@ -305,9 +314,7 @@ public class MidiSequenceEditor extends JDialog {
 		/**
 		 * 時間位置表示セルエディタ（ダブルクリック専用）
 		 */
-		private class PositionCellEditor extends AbstractCellEditor
-			implements TableCellEditor
-		{
+		private class PositionCellEditor extends AbstractCellEditor implements TableCellEditor {
 			public PositionCellEditor() {
 				int column = PlaylistTableModel.Column.POSITION.ordinal();
 				TableColumn tc = getColumnModel().getColumn(column);
@@ -334,10 +341,14 @@ public class MidiSequenceEditor extends JDialog {
 			 */
 			@Override
 			public Component getTableCellEditorComponent(
-				JTable table, Object value, boolean isSelected,
-				int row, int column
+				JTable table, Object value, boolean isSelected, int row, int column
 			) {
-				getModel().loadToSequencer(row);
+				try {
+					getModel().loadToSequencer(row);
+				} catch (InvalidMidiDataException ex) {
+					ex.printStackTrace();
+					showError(ex.getMessage());
+				}
 				fireEditingStopped();
 				return null;
 			}
@@ -404,7 +415,12 @@ public class MidiSequenceEditor extends JDialog {
 				fireEditingStopped();
 				PlaylistTableModel model = getModel();
 				if( model.getSequenceList().get(row).isOnSequencer() ) return playButton;
-				model.loadToSequencer(row);
+				try {
+					model.loadToSequencer(row);
+				} catch (InvalidMidiDataException ex) {
+					ex.printStackTrace();
+					showError(ex.getMessage());
+				}
 				return null;
 			}
 			@Override
@@ -436,7 +452,7 @@ public class MidiSequenceEditor extends JDialog {
 			"Delete selected MIDI sequence - 選択した曲をプレイリストから削除"
 		) {
 			@Override
-			public void actionPerformed(ActionEvent e) {
+			public void actionPerformed(ActionEvent event) {
 				PlaylistTableModel model = getModel();
 				if( midiFileChooser != null ) {
 					if( model.getSelectedSequenceModel().isModified() ) {
@@ -446,7 +462,12 @@ public class MidiSequenceEditor extends JDialog {
 						if( ! confirm(message) ) return;
 					}
 				}
-				model.removeSelectedSequence();
+				try {
+					model.removeSelectedSequence();
+				} catch (InvalidMidiDataException ex) {
+					ex.printStackTrace();
+					showError(ex.getMessage());
+				}
 			}
 		};
 		/**
@@ -492,7 +513,12 @@ public class MidiSequenceEditor extends JDialog {
 				@Override
 				public void actionPerformed(ActionEvent event) {
 					if( showOpenDialog((Component)event.getSource()) != JFileChooser.APPROVE_OPTION ) return;
-					loadAndPlay(getSelectedFile());
+					try {
+						loadAndPlay(getSelectedFile());
+					} catch (InvalidMidiDataException ex) {
+						ex.printStackTrace();
+						showError(ex.getMessage());
+					}
 				}
 			};
 		};
@@ -1123,7 +1149,7 @@ public class MidiSequenceEditor extends JDialog {
 		this.outputMidiDevice = outputMidiDevice;
 		sequenceListTable = new SequenceListTable(playlistTableModel);
 		trackListTable = new TrackListTable(
-			new SequenceTrackListTableModel(sequenceListTable.getModel(), null, null)
+			new SequenceTrackListTableModel(playlistTableModel, null, null)
 		);
 		eventListTable = new EventListTable(new TrackEventListTableModel(trackListTable.getModel(), null));
 		newSequenceDialog = new NewSequenceDialog(playlistTableModel, outputMidiDevice);
@@ -1140,9 +1166,7 @@ public class MidiSequenceEditor extends JDialog {
 				add(new JButton(newSequenceDialog.openAction) {{ setMargin(ZERO_INSETS); }});
 				if( sequenceListTable.midiFileChooser != null ) {
 					add( Box.createRigidArea(new Dimension(5, 0)) );
-					add(new JButton(sequenceListTable.midiFileChooser.openMidiFileAction) {{
-						setMargin(ZERO_INSETS);
-					}});
+					add(new JButton(sequenceListTable.midiFileChooser.openMidiFileAction) {{ setMargin(ZERO_INSETS); }});
 				}
 				if(sequenceListTable.base64EncodeAction != null) {
 					add(Box.createRigidArea(new Dimension(5, 0)));
@@ -1155,9 +1179,7 @@ public class MidiSequenceEditor extends JDialog {
 				add(new JButton(playlistTableModel.moveToBottomAction) {{ setMargin(ZERO_INSETS); }});
 				if( sequenceListTable.midiFileChooser != null ) {
 					add(Box.createRigidArea(new Dimension(5, 0)));
-					add(new JButton(sequenceListTable.midiFileChooser.saveMidiFileAction) {{
-						setMargin(ZERO_INSETS);
-					}});
+					add(new JButton(sequenceListTable.midiFileChooser.saveMidiFileAction) {{ setMargin(ZERO_INSETS); }});
 				}
 				add( Box.createRigidArea(new Dimension(5, 0)) );
 				add(new JButton(sequenceListTable.deleteSequenceAction) {{ setMargin(ZERO_INSETS); }});

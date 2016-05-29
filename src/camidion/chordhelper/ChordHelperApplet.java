@@ -26,6 +26,7 @@ import java.util.Arrays;
 import javax.sound.midi.InvalidMidiDataException;
 import javax.sound.midi.MetaEventListener;
 import javax.sound.midi.MetaMessage;
+import javax.sound.midi.Sequence;
 import javax.sound.midi.Sequencer;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
@@ -100,8 +101,9 @@ public class ChordHelperApplet extends JApplet {
 	 * 指定された小節数の曲を、乱数で自動作曲してプレイリストへ追加します。
 	 * @param measureLength 小節数
 	 * @return 追加先のインデックス値（０から始まる）。追加できなかったときは -1
+	 * @throws InvalidMidiDataException {@link Sequencer#setSequence(Sequence)} を参照
 	 */
-	public int addRandomSongToPlaylist(int measureLength) {
+	public int addRandomSongToPlaylist(int measureLength) throws InvalidMidiDataException {
 		NewSequenceDialog d = midiEditor.newSequenceDialog;
 		d.setRandomChordProgression(measureLength);
 		return playlistModel.addSequenceAndPlay(d.getMidiSequence());
@@ -157,14 +159,18 @@ public class ChordHelperApplet extends JApplet {
 	/**
 	 * プレイリスト上で現在選択されているMIDIシーケンスを、
 	 * シーケンサへロードして再生します。
+	 * @throws InvalidMidiDataException {@link Sequencer#setSequence(Sequence)} を参照
 	 */
-	public void play() { play(playlistModel.sequenceListSelectionModel.getMinSelectionIndex()); }
+	public void play() throws InvalidMidiDataException { play(playlistModel.sequenceListSelectionModel.getMinSelectionIndex()); }
 	/**
 	 * 指定されたインデックス値が示すプレイリスト上のMIDIシーケンスを、
 	 * シーケンサへロードして再生します。
 	 * @param index インデックス値（０から始まる）
+	 * @throws InvalidMidiDataException {@link Sequencer#setSequence(Sequence)} を参照
 	 */
-	public void play(int index) { playlistModel.loadToSequencer(index); sequencerModel.start(); }
+	public void play(int index) throws InvalidMidiDataException {
+		playlistModel.loadToSequencer(index); sequencerModel.start();
+	}
 	/**
 	 * シーケンサが実行中かどうかを返します。
 	 * {@link Sequencer#isRunning()} の戻り値をそのまま返します。
@@ -279,7 +285,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public static class VersionInfo {
 		public static final String	NAME = "MIDI Chord Helper";
-		public static final String	VERSION = "Ver.20160528.1";
+		public static final String	VERSION = "Ver.20160529.1";
 		public static final String	COPYRIGHT = "Copyright (C) 2004-2016";
 		public static final String	AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String	URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";
@@ -423,26 +429,26 @@ public class ChordHelperApplet extends JApplet {
 				}
 				public void chordChanged() { chordOn(); }
 			});
+			capoSelecter.checkbox.addItemListener(new ItemListener() {
+				public void itemStateChanged(ItemEvent e) {
+					chordOn();
+					keyboardPanel.keyboardCenterPanel.keyboard.chordDisplay.clear();
+					chordDiagram.clear();
+				}
+			});
+			capoSelecter.valueSelecter.addActionListener(new ActionListener() {
+				public void actionPerformed(ActionEvent e) {
+					chordOn();
+					keyboardPanel.keyboardCenterPanel.keyboard.chordDisplay.clear();
+					chordDiagram.clear();
+				}
+			});
 		}};
 		keysigLabel = new KeySignatureLabel() {{
 			addMouseListener(new MouseAdapter() {
 				public void mousePressed(MouseEvent e) { chordMatrix.setKeySignature(getKey()); }
 			});
 		}};
-		chordMatrix.capoSelecter.checkbox.addItemListener(new ItemListener() {
-			public void itemStateChanged(ItemEvent e) {
-				chordOn();
-				keyboardPanel.keyboardCenterPanel.keyboard.chordDisplay.clear();
-				chordDiagram.clear();
-			}
-		});
-		chordMatrix.capoSelecter.valueSelecter.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				chordOn();
-				keyboardPanel.keyboardCenterPanel.keyboard.chordDisplay.clear();
-				chordDiagram.clear();
-			}
-		});
 		keyboardPanel = new MidiKeyboardPanel(chordMatrix) {{
 			keyboardCenterPanel.keyboard.addPianoKeyboardListener(new PianoKeyboardAdapter() {
 				@Override
@@ -704,7 +710,11 @@ public class ChordHelperApplet extends JApplet {
 		System.gc();
 		if( midi_url != null ) {
 			addToPlaylist(midi_url);
-			play();
+			try {
+				play();
+			} catch (InvalidMidiDataException ex) {
+				ex.printStackTrace();
+			}
 		}
 	}
 	@Override

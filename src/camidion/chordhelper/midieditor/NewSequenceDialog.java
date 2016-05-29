@@ -17,6 +17,7 @@ import java.awt.event.MouseListener;
 import java.util.ArrayList;
 import java.util.Vector;
 
+import javax.sound.midi.InvalidMidiDataException;
 import javax.sound.midi.MidiChannel;
 import javax.sound.midi.Sequence;
 import javax.swing.AbstractAction;
@@ -28,6 +29,7 @@ import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
@@ -99,13 +101,19 @@ public class NewSequenceDialog extends JDialog {
 	 * MIDIシーケンス生成アクション
 	 */
 	public Action generateAction = new AbstractAction(
-		"Generate & Add to PlayList",
-		new ButtonIcon(ButtonIcon.EJECT_ICON)
+		"Generate & Add to PlayList", new ButtonIcon(ButtonIcon.EJECT_ICON)
 	) {
 		@Override
-		public void actionPerformed(ActionEvent e) {
-			playlist.addSequenceAndPlay(getMidiSequence());
-			NewSequenceDialog.this.setVisible(false);
+		public void actionPerformed(ActionEvent event) {
+			try {
+				playlist.addSequenceAndPlay(getMidiSequence());
+			} catch (InvalidMidiDataException ex) {
+				ex.printStackTrace();
+				JOptionPane.showMessageDialog(
+					NewSequenceDialog.this, ex.getMessage(),
+					ChordHelperApplet.VersionInfo.NAME, JOptionPane.ERROR_MESSAGE);
+			}
+			setVisible(false);
 		}
 	};
 	/**

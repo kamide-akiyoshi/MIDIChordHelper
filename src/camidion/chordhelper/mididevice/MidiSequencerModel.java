@@ -257,9 +257,11 @@ public class MidiSequencerModel extends MidiTransceiverListModel implements Boun
 	 * MIDIトラックリストテーブルモデルをこのシーケンサーモデルにセットします。
 	 * nullを指定してアンセットすることもできます。
 	 * @param sequenceTableModel MIDIトラックリストテーブルモデル
-	 * @return 成功したらtrue
+	 * @throws InvalidMidiDataException {@link Sequencer#setSequence(Sequence)} を参照
 	 */
-	public boolean setSequenceTrackListTableModel(SequenceTrackListTableModel sequenceTableModel) {
+	public void setSequenceTrackListTableModel(SequenceTrackListTableModel sequenceTableModel)
+		throws InvalidMidiDataException
+	{
 		// javax.sound.midi:Sequencer.setSequence() のドキュメントにある
 		// 「このメソッドは、Sequencer が閉じている場合でも呼び出すことができます。 」
 		// という記述は、null をセットする場合には当てはまらない。
@@ -267,14 +269,7 @@ public class MidiSequencerModel extends MidiTransceiverListModel implements Boun
 		// この現象を回避するため、あらかじめチェックしてから setSequence() を呼び出している。
 		//
 		if( sequenceTableModel != null || getSequencer().isOpen() ) {
-			Sequence sequence = null;
-			if( sequenceTableModel != null ) sequence = sequenceTableModel.getSequence();
-			try {
-				getSequencer().setSequence(sequence);
-			} catch ( InvalidMidiDataException e ) {
-				e.printStackTrace();
-				return false;
-			}
+			getSequencer().setSequence(sequenceTableModel == null ? null : sequenceTableModel.getSequence());
 		}
 		if( this.sequenceTableModel != null ) {
 			this.sequenceTableModel.fireTableDataChanged();
@@ -284,9 +279,7 @@ public class MidiSequencerModel extends MidiTransceiverListModel implements Boun
 		}
 		this.sequenceTableModel = sequenceTableModel;
 		fireStateChanged();
-		return true;
 	}
-
 	/**
 	 * 小節単位で位置を移動します。
 	 * @param measureOffset 何小節進めるか（戻したいときは負数を指定）

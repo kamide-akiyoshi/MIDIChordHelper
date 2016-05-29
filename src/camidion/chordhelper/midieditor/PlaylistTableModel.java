@@ -18,10 +18,12 @@ import javax.sound.midi.MetaEventListener;
 import javax.sound.midi.MetaMessage;
 import javax.sound.midi.MidiSystem;
 import javax.sound.midi.Sequence;
+import javax.sound.midi.Sequencer;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.DefaultListSelectionModel;
 import javax.swing.Icon;
+import javax.swing.JOptionPane;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
 import javax.swing.event.ChangeEvent;
@@ -31,6 +33,7 @@ import javax.swing.event.ListSelectionListener;
 import javax.swing.table.AbstractTableModel;
 
 import camidion.chordhelper.ButtonIcon;
+import camidion.chordhelper.ChordHelperApplet;
 import camidion.chordhelper.mididevice.MidiSequencerModel;
 import camidion.chordhelper.music.ChordProgression;
 
@@ -113,7 +116,7 @@ public class PlaylistTableModel extends AbstractTableModel {
 	private void goNext() {
 		// とりあえず曲の先頭へ戻る
 		sequencerModel.getSequencer().setMicrosecondPosition(0);
-		if( (Boolean)toggleRepeatAction.getValue(Action.SELECTED_KEY) || loadNext(1)) {
+		if( (Boolean)toggleRepeatAction.getValue(Action.SELECTED_KEY) || loadNext(1) ) {
 			// リピートモードのときはもう一度同じ曲を、
 			// そうでない場合は次の曲を再生開始
 			sequencerModel.start();
@@ -340,9 +343,7 @@ public class PlaylistTableModel extends AbstractTableModel {
 			this.preferredWidth = preferredWidth;
 		}
 		public boolean isCellEditable() { return false; }
-		public Object getValueOf(SequenceTrackListTableModel sequenceModel) {
-			return "";
-		}
+		public Object getValueOf(SequenceTrackListTableModel sequenceModel) { return ""; }
 	}
 
 	@Override
@@ -496,8 +497,9 @@ public class PlaylistTableModel extends AbstractTableModel {
 	 * シーケンサーが停止中の場合、追加したシーケンスから再生を開始します。
 	 * @param sequence MIDIシーケンス
 	 * @return 追加先インデックス（先頭が 0）
+	 * @throws InvalidMidiDataException {@link Sequencer#setSequence(Sequence)} を参照
 	 */
-	public int addSequenceAndPlay(Sequence sequence) {
+	public int addSequenceAndPlay(Sequence sequence) throws InvalidMidiDataException {
 		int lastIndex = addSequence(sequence,"");
 		if( ! sequencerModel.getSequencer().isRunning() ) {
 			loadToSequencer(lastIndex);
@@ -578,26 +580,29 @@ public class PlaylistTableModel extends AbstractTableModel {
 	/**
 	 * 選択されたシーケンスを除去します。
 	 * 除去されたシーケンスがシーケンサーにロード済みの場合、アンロードします。
+	 *
+	 * @throws InvalidMidiDataException {@link Sequencer#setSequence(Sequence)} を参照
 	 */
-	public void removeSelectedSequence() {
+	public void removeSelectedSequence() throws InvalidMidiDataException {
 		if( sequenceListSelectionModel.isSelectionEmpty() ) return;
 		int selectedIndex = sequenceListSelectionModel.getMinSelectionIndex();
-		if( sequenceList.remove(selectedIndex).isOnSequencer() )
-			sequencerModel.setSequenceTrackListTableModel(null);
+		if( ! sequenceList.remove(selectedIndex).isOnSequencer() ) return;
+		sequencerModel.setSequenceTrackListTableModel(null);
 		fireTableRowsDeleted(selectedIndex, selectedIndex);
 	}
 	/**
-	 * 指定したインデックス位置のシーケンスをシーケンサーにロードします。
-	 * すでに同じIDのシーケンスがロードされていた場合はスキップします。
-	 * @param index シーケンスのインデックス位置（-1 を指定するとアンロードされます）
+	 * テーブル内の指定したインデックス位置にあるシーケンスをシーケンサーにロードします。
+	 * インデックスに -1 を指定するとアンロードされます。
+	 * 変更点がある場合、リスナー（テーブルビュー）に通知します。
+	 *
+	 * @param index ロードするシーケンスのインデックス位置、アンロードするときは -1
+	 * @throws InvalidMidiDataException {@link Sequencer#setSequence(Sequence)} を参照
 	 */
-	public void loadToSequencer(int index) {
+	public void loadToSequencer(int index) throws InvalidMidiDataException {
 		SequenceTrackListTableModel oldSeq = sequencerModel.getSequenceTrackListTableModel();
 		SequenceTrackListTableModel newSeq = (index < 0 ? null : sequenceList.get(index));
-		if(oldSeq == newSeq) return;
+		if( oldSeq == newSeq ) return;
 		sequencerModel.setSequenceTrackListTableModel(newSeq);
-		//
-		// 変更点をテーブルビューに通知して再表示してもらう
 		int columnIndices[] = {
 			Column.PLAY.ordinal(),
 			Column.POSITION.ordinal(),
@@ -621,13 +626,22 @@ public class PlaylistTableModel extends AbstractTableModel {
 	/**
 	 * 引数で示された数だけ次へ進めたシーケンスをロードします。
 	 * @param offset 進みたいシーケンス数
-	 * @return 成功したらtrue
+	 * @return true:ロード成功、false:これ以上進めない
+	 * @throws InvalidMidiDataException {@link Sequencer#setSequence(Sequence)} を参照
 	 */
 	public boolean loadNext(int offset) {
 		int loadedIndex = indexOfSequenceOnSequencer();
 		int index = (loadedIndex < 0 ? 0 : loadedIndex + offset);
 		if( index < 0 || index >= sequenceList.size() ) return false;
-		loadToSequencer(index);
+		try {
+			loadToSequencer(index);
+		} catch (InvalidMidiDataException ex) {
+			ex.printStackTrace();
+			JOptionPane.showMessageDialog(
+				null, ex.getMessage(),
+				ChordHelperApplet.VersionInfo.NAME, JOptionPane.ERROR_MESSAGE);
+			return false;
+		}
 		return true;
 	}
 }
