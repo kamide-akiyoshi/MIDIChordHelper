@@ -67,11 +67,7 @@ public class PlaylistTableModel extends AbstractTableModel {
 	 */
 	public PlaylistTableModel(MidiSequencerModel sequencerModel) {
 		this.sequencerModel = sequencerModel;
-		//
-		// 秒位置を監視
 		sequencerModel.addChangeListener(secondPosition = new SecondPosition());
-		//
-		// メタイベントを監視
 		sequencerModel.getSequencer().addMetaEventListener(
 			new MetaEventListener() {
 				/**
@@ -145,9 +141,7 @@ public class PlaylistTableModel extends AbstractTableModel {
 	/**
 	 * 行が選択されているときだけイネーブルになるアクション
 	 */
-	public abstract class SelectedSequenceAction extends AbstractAction
-		implements ListSelectionListener
-	{
+	public abstract class SelectedSequenceAction extends AbstractAction implements ListSelectionListener {
 		public SelectedSequenceAction(String name, Icon icon, String tooltip) {
 			super(name,icon); init(tooltip);
 		}
@@ -217,8 +211,7 @@ public class PlaylistTableModel extends AbstractTableModel {
 			putValue(LARGE_ICON_KEY, new ButtonIcon(ButtonIcon.TOP_ICON));
 		}
 		public void actionPerformed(ActionEvent event) {
-			if( sequencerModel.getSequencer().getTickPosition() <= 40 )
-				loadNext(-1);
+			if( sequencerModel.getSequencer().getTickPosition() <= 40 ) loadNext(-1);
 			sequencerModel.setValue(0);
 		}
 	};
@@ -351,13 +344,9 @@ public class PlaylistTableModel extends AbstractTableModel {
 	@Override
 	public int getColumnCount() { return Column.values().length; }
 	@Override
-	public String getColumnName(int column) {
-		return Column.values()[column].title;
-	}
+	public String getColumnName(int column) { return Column.values()[column].title; }
 	@Override
-	public Class<?> getColumnClass(int column) {
-		return Column.values()[column].columnClass;
-	}
+	public Class<?> getColumnClass(int column) { return Column.values()[column].columnClass; }
 	@Override
 	public boolean isCellEditable(int row, int column) {
 		return Column.values()[column].isCellEditable();
@@ -371,8 +360,7 @@ public class PlaylistTableModel extends AbstractTableModel {
 	}
 	@Override
 	public void setValueAt(Object val, int row, int column) {
-		PlaylistTableModel.Column c = Column.values()[column];
-		switch(c) {
+		switch(Column.values()[column]) {
 		case FILENAME:
 			// ファイル名の変更
 			sequenceList.get(row).setFilename((String)val);
@@ -438,11 +426,9 @@ public class PlaylistTableModel extends AbstractTableModel {
 	 * @return 選択されたMIDIシーケンスのテーブルモデル（非選択時はnull）
 	 */
 	public SequenceTrackListTableModel getSelectedSequenceModel() {
-		if( sequenceListSelectionModel.isSelectionEmpty() )
-			return null;
+		if( sequenceListSelectionModel.isSelectionEmpty() ) return null;
 		int selectedIndex = sequenceListSelectionModel.getMinSelectionIndex();
-		if( selectedIndex >= sequenceList.size() )
-			return null;
+		if( selectedIndex >= sequenceList.size() ) return null;
 		return sequenceList.get(selectedIndex);
 	}
 	/**
@@ -460,8 +446,7 @@ public class PlaylistTableModel extends AbstractTableModel {
 	 * 更新済みフラグをセットし、選択されたシーケンスの全ての列を再表示します。
 	 */
 	public void fireSelectedSequenceModified() {
-		if( sequenceListSelectionModel.isSelectionEmpty() )
-			return;
+		if( sequenceListSelectionModel.isSelectionEmpty() ) return;
 		int minIndex = sequenceListSelectionModel.getMinSelectionIndex();
 		int maxIndex = sequenceListSelectionModel.getMaxSelectionIndex();
 		for( int index = minIndex; index <= maxIndex; index++ ) {
@@ -470,45 +455,7 @@ public class PlaylistTableModel extends AbstractTableModel {
 		fireTableRowsUpdated(minIndex, maxIndex);
 	}
 	/**
-	 * バイト列とファイル名からMIDIシーケンスを追加します。
-	 * バイト列が null の場合、空のMIDIシーケンスを追加します。
-	 * @param data バイト列
-	 * @param filename ファイル名
-	 * @return 追加先インデックス（先頭が 0）
-	 * @throws IOException ファイル読み込みに失敗した場合
-	 * @throws InvalidMidiDataException MIDIデータが正しくない場合
-	 */
-	public int addSequence(byte[] data, String filename)
-		throws IOException, InvalidMidiDataException
-	{
-		if( data == null ) return addDefaultSequence();
-		int lastIndex;
-		try (InputStream in = new ByteArrayInputStream(data)) {
-			Sequence seq = MidiSystem.getSequence(in);
-			lastIndex = addSequence(seq, filename);
-		} catch( IOException|InvalidMidiDataException e ) {
-			throw e;
-		}
-		sequenceListSelectionModel.setSelectionInterval(lastIndex, lastIndex);
-		return lastIndex;
-	}
-	/**
-	 * MIDIシーケンスを追加します。
-	 * シーケンサーが停止中の場合、追加したシーケンスから再生を開始します。
-	 * @param sequence MIDIシーケンス
-	 * @return 追加先インデックス（先頭が 0）
-	 * @throws InvalidMidiDataException {@link Sequencer#setSequence(Sequence)} を参照
-	 */
-	public int addSequenceAndPlay(Sequence sequence) throws InvalidMidiDataException {
-		int lastIndex = addSequence(sequence,"");
-		if( ! sequencerModel.getSequencer().isRunning() ) {
-			loadToSequencer(lastIndex);
-			sequencerModel.start();
-		}
-		return lastIndex;
-	}
-	/**
-	 * MIDIシーケンスを追加します。
+	 * ファイル名つきのMIDIシーケンスを追加します。
 	 * @param sequence MIDIシーケンス
 	 * @param filename ファイル名
 	 * @return 追加されたシーケンスのインデックス（先頭が 0）
@@ -523,20 +470,40 @@ public class PlaylistTableModel extends AbstractTableModel {
 	 * デフォルトの内容でMIDIシーケンスを作成して追加します。
 	 * @return 追加されたMIDIシーケンスのインデックス（先頭が 0）
 	 */
-	public int addDefaultSequence() {
+	public int addSequence() {
 		Sequence seq = (new ChordProgression()).toMidiSequence();
 		return seq == null ? -1 : addSequence(seq,null);
 	}
 	/**
+	 * バイト列とファイル名からMIDIシーケンスを追加します。
+	 * バイト列が null の場合、空のMIDIシーケンスを追加します。
+	 * @param data バイト列
+	 * @param filename ファイル名
+	 * @return 追加先インデックス（先頭が 0）
+	 * @throws IOException ファイル読み込みに失敗した場合
+	 * @throws InvalidMidiDataException MIDIデータが正しくない場合
+	 */
+	public int addSequence(byte[] data, String filename) throws IOException, InvalidMidiDataException {
+		if( data == null ) return addSequence();
+		int lastIndex;
+		try (InputStream in = new ByteArrayInputStream(data)) {
+			lastIndex = addSequence(MidiSystem.getSequence(in), filename);
+		} catch( IOException|InvalidMidiDataException e ) {
+			throw e;
+		}
+		sequenceListSelectionModel.setSelectionInterval(lastIndex, lastIndex);
+		return lastIndex;
+	}
+	/**
 	 * MIDIファイルを追加します。
-	 * ファイルが null の場合、空のMIDIシーケンスを追加します。
+	 * ファイルが null の場合、デフォルトのMIDIシーケンスを追加します。
 	 * @param midiFile MIDIファイル
 	 * @return 追加先インデックス（先頭が 0）
 	 * @throws InvalidMidiDataException ファイル内のMIDIデータが正しくない場合
 	 * @throws IOException ファイル入出力に失敗した場合
 	 */
 	public int addSequence(File midiFile) throws InvalidMidiDataException, IOException {
-		if( midiFile == null ) return addDefaultSequence();
+		if( midiFile == null ) return addSequence();
 		int lastIndex;
 		try (FileInputStream in = new FileInputStream(midiFile)) {
 			Sequence seq = MidiSystem.getSequence(in);
@@ -544,6 +511,20 @@ public class PlaylistTableModel extends AbstractTableModel {
 			lastIndex = addSequence(seq, filename);
 		} catch( InvalidMidiDataException|IOException e ) {
 			throw e;
+		}
+		return lastIndex;
+	}
+	/**
+	 * MIDIシーケンスを追加し、再生されていなかった場合は追加したシーケンスから再生を開始します。
+	 * @param sequence MIDIシーケンス
+	 * @return 追加されたシーケンスのインデックス（先頭が 0）
+	 * @throws InvalidMidiDataException {@link Sequencer#setSequence(Sequence)} を参照
+	 */
+	public int addSequenceAndPlay(Sequence sequence) throws InvalidMidiDataException {
+		int lastIndex = addSequence(sequence,"");
+		if( ! sequencerModel.getSequencer().isRunning() ) {
+			loadToSequencer(lastIndex);
+			sequencerModel.start();
 		}
 		return lastIndex;
 	}
@@ -586,8 +567,8 @@ public class PlaylistTableModel extends AbstractTableModel {
 	public void removeSelectedSequence() throws InvalidMidiDataException {
 		if( sequenceListSelectionModel.isSelectionEmpty() ) return;
 		int selectedIndex = sequenceListSelectionModel.getMinSelectionIndex();
-		if( ! sequenceList.remove(selectedIndex).isOnSequencer() ) return;
-		sequencerModel.setSequenceTrackListTableModel(null);
+		SequenceTrackListTableModel removedSequence = sequenceList.remove(selectedIndex);
+		if( removedSequence.isOnSequencer() ) sequencerModel.setSequenceTrackListTableModel(null);
 		fireTableRowsDeleted(selectedIndex, selectedIndex);
 	}
 	/**
@@ -595,12 +576,12 @@ public class PlaylistTableModel extends AbstractTableModel {
 	 * インデックスに -1 を指定するとアンロードされます。
 	 * 変更点がある場合、リスナー（テーブルビュー）に通知します。
 	 *
-	 * @param index ロードするシーケンスのインデックス位置、アンロードするときは -1
+	 * @param newRowIndex ロードするシーケンスのインデックス位置、アンロードするときは -1
 	 * @throws InvalidMidiDataException {@link Sequencer#setSequence(Sequence)} を参照
 	 */
-	public void loadToSequencer(int index) throws InvalidMidiDataException {
+	public void loadToSequencer(int newRowIndex) throws InvalidMidiDataException {
 		SequenceTrackListTableModel oldSeq = sequencerModel.getSequenceTrackListTableModel();
-		SequenceTrackListTableModel newSeq = (index < 0 ? null : sequenceList.get(index));
+		SequenceTrackListTableModel newSeq = (newRowIndex < 0 ? null : sequenceList.get(newRowIndex));
 		if( oldSeq == newSeq ) return;
 		sequencerModel.setSequenceTrackListTableModel(newSeq);
 		int columnIndices[] = {
@@ -608,11 +589,11 @@ public class PlaylistTableModel extends AbstractTableModel {
 			Column.POSITION.ordinal(),
 		};
 		if( oldSeq != null ) {
-			int oldIndex = sequenceList.indexOf(oldSeq);
-			for( int columnIndex : columnIndices ) fireTableCellUpdated(oldIndex, columnIndex);
+			int oldRowIndex = sequenceList.indexOf(oldSeq);
+			for( int columnIndex : columnIndices ) fireTableCellUpdated(oldRowIndex, columnIndex);
 		}
 		if( newSeq != null ) {
-			for( int columnIndex : columnIndices ) fireTableCellUpdated(index, columnIndex);
+			for( int columnIndex : columnIndices ) fireTableCellUpdated(newRowIndex, columnIndex);
 		}
 	}
 	/**
