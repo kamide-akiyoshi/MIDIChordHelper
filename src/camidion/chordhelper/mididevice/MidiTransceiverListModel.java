@@ -197,14 +197,13 @@ public class MidiTransceiverListModel extends AbstractListModel<AutoCloseable> {
 		if( ! txSupported() || device instanceof Sequencer ) return;
 		//
 		// デバイスを閉じる前に接続相手の情報を保存
-		List<Transmitter> txList = device.getTransmitters();
+		List<Transmitter> myTxList = device.getTransmitters();
 		List<Receiver> peerRxList = new Vector<Receiver>();
-		for( Transmitter tx : txList ) {
-			Receiver rx = tx.getReceiver();
-			if( rx != null ) peerRxList.add(rx);
+		Receiver rx;
+		for( Transmitter tx : myTxList ) {
+			if( (rx = tx.getReceiver()) != null ) peerRxList.add(rx);
 		}
 		List<Transmitter> peerTxList = null;
-		Receiver rx = null;
 		if( rxSupported() ) {
 			rx = device.getReceivers().get(0);
 			peerTxList = new Vector<Transmitter>();

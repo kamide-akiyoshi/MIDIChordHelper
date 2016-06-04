@@ -23,6 +23,7 @@ import javax.swing.event.ListDataListener;
 import camidion.chordhelper.ButtonIcon;
 import camidion.chordhelper.midieditor.SequenceTickIndex;
 import camidion.chordhelper.midieditor.SequenceTrackListTableModel;
+import camidion.chordhelper.midieditor.SequencerSpeedSlider;
 
 /**
  * MIDIシーケンサモデル
@@ -43,10 +44,7 @@ public class MidiSequencerModel extends MidiTransceiverListModel implements Boun
 		addChangeListener(new ChangeListener() {
 			@Override
 			public void stateChanged(ChangeEvent e) {
-				int val = getValue();
-				getSequencer().setTempoFactor((float)(
-					val == 0 ? 1.0 : Math.pow( 2.0, ((double)val)/12.0 )
-				));
+				getSequencer().setTempoFactor(SequencerSpeedSlider.tempoFactorOf(getValue()));
 			}
 		});
 	}};
@@ -92,8 +90,7 @@ public class MidiSequencerModel extends MidiTransceiverListModel implements Boun
 	/**
 	 * シーケンサに合わせてミリ秒位置を更新するタイマー
 	 */
-	private javax.swing.Timer timeRangeUpdater = new javax.swing.Timer(
-		20,
+	private javax.swing.Timer timeRangeUpdater = new javax.swing.Timer( 20,
 		new ActionListener(){
 			@Override
 			public void actionPerformed(ActionEvent e) {
@@ -126,7 +123,7 @@ public class MidiSequencerModel extends MidiTransceiverListModel implements Boun
 		timeRangeUpdater.start();
 		SequenceTrackListTableModel sequenceTableModel = getSequenceTrackListTableModel();
 		if( sequenceTableModel != null && sequenceTableModel.hasRecordChannel() ) {
-			for(MidiTransceiverListModel m : deviceModelList) m.resetMicrosecondPosition();
+			deviceModelList.resetMicrosecondPosition();
 			System.gc();
 			sequencer.startRecording();
 		}
@@ -266,12 +263,8 @@ public class MidiSequencerModel extends MidiTransceiverListModel implements Boun
 		if( sequenceTableModel != null || getSequencer().isOpen() ) {
 			getSequencer().setSequence(sequenceTableModel == null ? null : sequenceTableModel.getSequence());
 		}
-		if( this.sequenceTableModel != null ) {
-			this.sequenceTableModel.fireTableDataChanged();
-		}
-		if( sequenceTableModel != null ) {
-			sequenceTableModel.fireTableDataChanged();
-		}
+		if( this.sequenceTableModel != null ) this.sequenceTableModel.fireTableDataChanged();
+		if( sequenceTableModel != null ) sequenceTableModel.fireTableDataChanged();
 		this.sequenceTableModel = sequenceTableModel;
 		fireStateChanged();
 	}

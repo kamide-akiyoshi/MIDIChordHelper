@@ -118,4 +118,11 @@ public class MidiTransceiverListModelList extends Vector<MidiTransceiverListMode
 			sequencerModel.connectToReceiverOf(firstMidiOutModel);
 		}
 	}
+	/**
+	 * すべてのデバイスについて、{@link MidiTransceiverListModel#resetMicrosecondPosition()}
+	 * でマイクロ秒位置をリセットします。
+	 */
+	public void resetMicrosecondPosition() {
+		for(MidiTransceiverListModel m : this) m.resetMicrosecondPosition();
+	}
 }

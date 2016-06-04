@@ -108,10 +108,11 @@ public class MidiDeviceTreeView extends JTree {
 				return this;
 			}
 		});
-		// 初期状態でツリーノードを開いた状態にする
+		// ツリーノードを開き、ルートを選択した状態にする
 		for( int row = 0; row < getRowCount() ; row++ ) expandRow(row);
 		//
 		// ツリーノードのToolTipを有効化
 		ToolTipManager.sharedInstance().registerComponent(this);
+
 	}
 }
