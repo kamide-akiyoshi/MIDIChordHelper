@@ -285,7 +285,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public static class VersionInfo {
 		public static final String	NAME = "MIDI Chord Helper";
-		public static final String	VERSION = "Ver.20160604.1";
+		public static final String	VERSION = "Ver.20160605.1";
 		public static final String	COPYRIGHT = "Copyright (C) 2004-2016";
 		public static final String	AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String	URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";
@@ -403,6 +403,7 @@ public class ChordHelperApplet extends JApplet {
 	private JLabel songTitleLabel = new JLabel();
 	private AnoGakkiPane anoGakkiPane;
 	private JToggleButton anoGakkiToggleButton;
+	private MidiTransceiverListModelList deviceModelList;
 
 	public void init() {
 		//
@@ -467,7 +468,7 @@ public class ChordHelperApplet extends JApplet {
 		VirtualMidiDevice guiMidiDevice = keyboardPanel.keyboardCenterPanel.keyboard.midiDevice;
 		//
 		// MIDIデバイス一覧を構築
-		MidiTransceiverListModelList deviceModelList = new MidiTransceiverListModelList(Arrays.asList(guiMidiDevice));
+		deviceModelList = new MidiTransceiverListModelList(Arrays.asList(guiMidiDevice));
 		(midiDeviceDialog = new MidiDeviceDialog(deviceModelList)).setIconImage(iconImage);
 		//
 		// MIDIデバイス一覧のシーケンサと連携するプレイリストを構築
@@ -696,6 +697,11 @@ public class ChordHelperApplet extends JApplet {
 			}
 		});
 		setPreferredSize(new Dimension(750,470));
+	}
+	@Override
+	public void destroy() {
+		deviceModelList.closeAllDevices();
+		super.destroy();
 	}
 	@Override
 	public void start() {

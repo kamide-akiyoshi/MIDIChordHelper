@@ -56,10 +56,11 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 			this.preferredWidth = preferredWidth;
 		}
 	}
+	private PlaylistTableModel sequenceListTableModel;
 	/**
-	 * 親のプレイリスト
+	 * このモデルを収容している親のプレイリストを返します。
 	 */
-	PlaylistTableModel sequenceListTableModel;
+	public PlaylistTableModel getParent() { return sequenceListTableModel; }
 	/**
 	 * ラップされたMIDIシーケンス
 	 */
@@ -80,14 +81,15 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 	 * トラックリスト
 	 */
 	private List<TrackEventListTableModel> trackModelList = new ArrayList<>();
-	/**
-	 * 選択されているトラックのインデックス
-	 */
-	ListSelectionModel trackListSelectionModel = new DefaultListSelectionModel(){
+	private ListSelectionModel trackListSelectionModel = new DefaultListSelectionModel(){
 		{
 			setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
 		}
 	};
+	/**
+	 * 選択状態を返します。
+	 */
+	public ListSelectionModel getSelectionModel() { return trackListSelectionModel; }
 	/**
 	 * MIDIシーケンスとファイル名から {@link SequenceTrackListTableModel} を構築します。
 	 * @param sequenceListTableModel 親のプレイリスト
@@ -140,9 +142,9 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 		case TRACK_NUMBER: return row;
 		case EVENTS: return sequence.getTracks()[row].size();
 		case MUTE:
-			return isOnSequencer() ? sequenceListTableModel.sequencerModel.getSequencer().getTrackMute(row) : "";
+			return isOnSequencer() ? sequenceListTableModel.getSequencerModel().getSequencer().getTrackMute(row) : "";
 		case SOLO:
-			return isOnSequencer() ? sequenceListTableModel.sequencerModel.getSequencer().getTrackSolo(row) : "";
+			return isOnSequencer() ? sequenceListTableModel.getSequencerModel().getSequencer().getTrackSolo(row) : "";
 		case RECORD_CHANNEL:
 			return isOnSequencer() ? trackModelList.get(row).getRecordingChannel() : "";
 		case CHANNEL: {
@@ -176,10 +178,10 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 		SequenceTrackListTableModel.Column c = Column.values()[column];
 		switch(c) {
 		case MUTE:
-			sequenceListTableModel.sequencerModel.getSequencer().setTrackMute(row, ((Boolean)val).booleanValue());
+			sequenceListTableModel.getSequencerModel().getSequencer().setTrackMute(row, ((Boolean)val).booleanValue());
 			break;
 		case SOLO:
-			sequenceListTableModel.sequencerModel.getSequencer().setTrackSolo(row, ((Boolean)val).booleanValue());
+			sequenceListTableModel.getSequencerModel().getSequencer().setTrackSolo(row, ((Boolean)val).booleanValue());
 			break;
 		case RECORD_CHANNEL:
 			trackModelList.get(row).setRecordingChannel((String)val);
@@ -229,7 +231,7 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 	private void setSequence(Sequence sequence) {
 		//
 		// 旧シーケンスの録音モードを解除
-		sequenceListTableModel.sequencerModel.getSequencer().recordDisable(null); // The "null" means all tracks
+		sequenceListTableModel.getSequencerModel().getSequencer().recordDisable(null); // The "null" means all tracks
 		//
 		// トラックリストをクリア
 		int oldSize = trackModelList.size();
@@ -411,7 +413,7 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 	 * @return シーケンサーが操作していたらtrue
 	 */
 	public boolean isOnSequencer() {
-		return sequence == sequenceListTableModel.sequencerModel.getSequencer().getSequence();
+		return sequence == sequenceListTableModel.getSequencerModel().getSequencer().getSequence();
 	}
 	/**
 	 * 録音しようとしているチャンネルの設定されたトラックがあるか調べます。

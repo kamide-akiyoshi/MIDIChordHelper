@@ -83,7 +83,10 @@ public class MidiChordHelper {
 					if( ! applet.playlistModel.isModified() || applet.midiEditor.confirm(
 						"MIDI file not saved, exit anyway ?\n"+
 						"保存されていないMIDIファイルがありますが、終了してよろしいですか？"
-					)) System.exit(0);
+					)) {
+						applet.destroy();
+						System.exit(0);
+					}
 				}
 			});
 			applet.sequencerModel.addChangeListener(new ChangeListener() {
@@ -105,7 +108,7 @@ public class MidiChordHelper {
 					int col = event.getColumn();
 					if( col == PlaylistTableModel.Column.FILENAME.ordinal() || col == TableModelEvent.ALL_COLUMNS ) {
 						PlaylistTableModel pl = (PlaylistTableModel) event.getSource();
-						setFilenameToTitle(pl.sequencerModel.getSequenceTrackListTableModel());
+						setFilenameToTitle(pl.getSequencerModel().getSequenceTrackListTableModel());
 					}
 				}
 			});

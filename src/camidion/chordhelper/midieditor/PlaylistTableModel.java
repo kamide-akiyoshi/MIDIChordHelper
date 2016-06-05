@@ -41,10 +41,11 @@ import camidion.chordhelper.music.ChordProgression;
  * プレイリスト（MIDIシーケンスリスト）のテーブルデータモデル
  */
 public class PlaylistTableModel extends AbstractTableModel {
+	private MidiSequencerModel sequencerModel;
 	/**
-	 * MIDIシーケンサモデル
+	 * このプレイリストと連携しているMIDIシーケンサモデルを返します。
 	 */
-	public MidiSequencerModel sequencerModel;
+	public MidiSequencerModel getSequencerModel() { return sequencerModel; }
 	/**
 	 * 空のトラックリストモデル
 	 */
@@ -61,13 +62,32 @@ public class PlaylistTableModel extends AbstractTableModel {
 			setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		}
 	};
+	/** 再生中のシーケンサーの秒位置リスナー */
+	private ChangeListener secondPosition = new ChangeListener() {
+		private int value = 0;
+		@Override
+		public void stateChanged(ChangeEvent event) {
+			Object src = event.getSource();
+			if( src instanceof MidiSequencerModel ) {
+				int newValue = ((MidiSequencerModel)src).getValue() / 1000;
+				if(value == newValue) return;
+				value = newValue;
+				int rowIndex = indexOfSequenceOnSequencer();
+				fireTableCellUpdated(rowIndex, Column.POSITION.ordinal());
+			}
+		}
+		@Override
+		public String toString() {
+			return String.format("%02d:%02d", value/60, value%60);
+		}
+	};
 	/**
 	 * 新しいプレイリストのテーブルモデルを構築します。
 	 * @param sequencerModel 連携するMIDIシーケンサーモデル
 	 */
 	public PlaylistTableModel(MidiSequencerModel sequencerModel) {
 		this.sequencerModel = sequencerModel;
-		sequencerModel.addChangeListener(secondPosition = new SecondPosition());
+		sequencerModel.addChangeListener(secondPosition);
 		sequencerModel.getSequencer().addMetaEventListener(
 			new MetaEventListener() {
 				/**
@@ -176,31 +196,6 @@ public class PlaylistTableModel extends AbstractTableModel {
 		public void actionPerformed(ActionEvent event) { }
 	};
 	/**
-	 * 再生中のシーケンサーの秒位置
-	 */
-	private class SecondPosition implements ChangeListener {
-		private int value = 0;
-		/**
-		 * 再生中のシーケンサーの秒位置が変わったときに表示を更新します。
-		 * @param event 変更イベント
-		 */
-		@Override
-		public void stateChanged(ChangeEvent event) {
-			Object src = event.getSource();
-			if( src instanceof MidiSequencerModel ) {
-				int newValue = ((MidiSequencerModel)src).getValue() / 1000;
-				if(value == newValue) return;
-				value = newValue;
-				int rowIndex = indexOfSequenceOnSequencer();
-				fireTableCellUpdated(rowIndex, Column.POSITION.ordinal());
-			}
-		}
-		@Override
-		public String toString() {
-			return String.format("%02d:%02d", value/60, value%60);
-		}
-	}
-	/**
 	 * 曲の先頭または前の曲へ戻るアクション
 	 */
 	public Action moveToTopAction = new AbstractAction() {
@@ -245,8 +240,7 @@ public class PlaylistTableModel extends AbstractTableModel {
 			public boolean isCellEditable() { return true; } // ダブルクリックだけ有効
 			@Override
 			public Object getValueOf(SequenceTrackListTableModel sequenceModel) {
-				return sequenceModel.isOnSequencer()
-					? sequenceModel.sequenceListTableModel.secondPosition : "";
+				return sequenceModel.isOnSequencer() ? sequenceModel.getParent().secondPosition : "";
 			}
 		},
 		/** シーケンスの時間長（分：秒） */
@@ -351,8 +345,6 @@ public class PlaylistTableModel extends AbstractTableModel {
 	public boolean isCellEditable(int row, int column) {
 		return Column.values()[column].isCellEditable();
 	}
-	/** 再生中のシーケンサーの秒位置 */
-	private SecondPosition secondPosition;
 	@Override
 	public Object getValueAt(int row, int column) {
 		PlaylistTableModel.Column c = Column.values()[column];

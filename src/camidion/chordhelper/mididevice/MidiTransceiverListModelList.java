@@ -125,4 +125,10 @@ public class MidiTransceiverListModelList extends Vector<MidiTransceiverListMode
 	public void resetMicrosecondPosition() {
 		for(MidiTransceiverListModel m : this) m.resetMicrosecondPosition();
 	}
+	/**
+	 * すべてのMIDIデバイスを閉じます。
+	 */
+	public void closeAllDevices() {
+		for(MidiTransceiverListModel m : this) m.device.close();
+	}
 }

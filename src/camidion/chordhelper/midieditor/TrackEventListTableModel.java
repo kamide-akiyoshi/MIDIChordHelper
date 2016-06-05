@@ -105,18 +105,22 @@ public class TrackEventListTableModel extends AbstractTableModel {
 	 * ラップされているMIDIトラック
 	 */
 	private Track track;
+	private SequenceTrackListTableModel sequenceTrackListTableModel;
 	/**
-	 * 親のシーケンスモデル
+	 * このトラックモデルを収容している親のシーケンスモデルを返します。
 	 */
-	SequenceTrackListTableModel sequenceTrackListTableModel;
-	/**
-	 * 選択されているイベントのインデックス
-	 */
-	ListSelectionModel eventSelectionModel = new DefaultListSelectionModel() {
+	public SequenceTrackListTableModel getParent() {
+		return sequenceTrackListTableModel;
+	}
+	private ListSelectionModel eventSelectionModel = new DefaultListSelectionModel() {
 		{
 			setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
 		}
 	};
+	/**
+	 * 選択状態を返します。
+	 */
+	public ListSelectionModel getSelectionModel() { return eventSelectionModel; }
 	/**
 	 * シーケンスを親にして、その特定のトラックに連動する
 	 * MIDIトラックモデルを構築します。
@@ -216,7 +220,7 @@ public class TrackEventListTableModel extends AbstractTableModel {
 		fireTableDataChanged();
 		if( MIDISpec.isEOT(msg) ) {
 			// EOTの場所が変わると曲の長さが変わるので、親モデルへ通知する。
-			sequenceTrackListTableModel.sequenceListTableModel.fireSequenceModified(sequenceTrackListTableModel);
+			sequenceTrackListTableModel.getParent().fireSequenceModified(sequenceTrackListTableModel);
 		}
 	}
 	/**
@@ -248,7 +252,7 @@ public class TrackEventListTableModel extends AbstractTableModel {
 		if( ! MIDISpec.setNameBytesOf(track, b) )
 			return false;
 		sequenceTrackListTableModel.setModified(true);
-		sequenceTrackListTableModel.sequenceListTableModel.fireSequenceModified(sequenceTrackListTableModel);
+		sequenceTrackListTableModel.getParent().fireSequenceModified(sequenceTrackListTableModel);
 		fireTableDataChanged();
 		return true;
 	}
@@ -263,7 +267,7 @@ public class TrackEventListTableModel extends AbstractTableModel {
 	 * @param recordingChannel 録音中のMIDIチャンネル
 	 */
 	public void setRecordingChannel(String recordingChannel) {
-		Sequencer sequencer = sequenceTrackListTableModel.sequenceListTableModel.sequencerModel.getSequencer();
+		Sequencer sequencer = sequenceTrackListTableModel.getParent().getSequencerModel().getSequencer();
 		if( recordingChannel.equals("OFF") ) {
 			sequencer.recordDisable( track );
 		}
@@ -539,7 +543,7 @@ public class TrackEventListTableModel extends AbstractTableModel {
 		int oldLastIndex = lastIndex + midiEvents.length;
 		if(lastIndex < 0) lastIndex = 0;
 		fireTableRowsDeleted(oldLastIndex, lastIndex);
-		sequenceTrackListTableModel.sequenceListTableModel.fireSelectedSequenceModified();
+		sequenceTrackListTableModel.getParent().fireSelectedSequenceModified();
 	}
 	/**
 	 * 引数の選択内容が示すMIDIイベントを除去します。
