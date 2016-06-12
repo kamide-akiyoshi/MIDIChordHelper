@@ -416,7 +416,7 @@ public class MidiMessageForm extends JPanel implements ActionListener {
 					dataText.setVisible(false);
 				}
 				else {
-					dataText.setTitle(MIDISpec.hasMetaText(msgType)?"Text:":"Data:");
+					dataText.setTitle(MIDISpec.hasMetaMessageText(msgType)?"Text:":"Data:");
 				}
 			}
 			else {
@@ -440,7 +440,7 @@ public class MidiMessageForm extends JPanel implements ActionListener {
 			int msgType = data1Text.getValue();
 			if( msgType < 0 ) return null;
 			byte msgData[];
-			if( MIDISpec.hasMetaText(msgType) ) {
+			if( MIDISpec.hasMetaMessageText(msgType) ) {
 				msgData = dataText.getString().getBytes(charset);
 			}
 			else if( msgType == 0x2F ) { // EOT
@@ -532,7 +532,7 @@ public class MidiMessageForm extends JPanel implements ActionListener {
 			case 0x59: keysigSelecter.setKey(new Key(data)); break;
 			default: break;
 			}
-			if( MIDISpec.hasMetaText(msgType) ) {
+			if( MIDISpec.hasMetaMessageText(msgType) ) {
 				dataText.setString(new String(data,charset));
 			}
 			else {

@@ -220,7 +220,7 @@ public class TrackEventListTableModel extends AbstractTableModel {
 		fireTableDataChanged();
 		if( MIDISpec.isEOT(msg) ) {
 			// EOTの場所が変わると曲の長さが変わるので、親モデルへ通知する。
-			sequenceTrackListTableModel.getParent().fireSequenceModified(sequenceTrackListTableModel);
+			sequenceTrackListTableModel.getParent().fireSequenceModified(sequenceTrackListTableModel, true);
 		}
 	}
 	/**
@@ -252,7 +252,7 @@ public class TrackEventListTableModel extends AbstractTableModel {
 		if( ! MIDISpec.setNameBytesOf(track, b) )
 			return false;
 		sequenceTrackListTableModel.setModified(true);
-		sequenceTrackListTableModel.getParent().fireSequenceModified(sequenceTrackListTableModel);
+		sequenceTrackListTableModel.getParent().fireSequenceModified(sequenceTrackListTableModel, true);
 		fireTableDataChanged();
 		return true;
 	}
@@ -543,7 +543,7 @@ public class TrackEventListTableModel extends AbstractTableModel {
 		int oldLastIndex = lastIndex + midiEvents.length;
 		if(lastIndex < 0) lastIndex = 0;
 		fireTableRowsDeleted(oldLastIndex, lastIndex);
-		sequenceTrackListTableModel.getParent().fireSelectedSequenceModified();
+		sequenceTrackListTableModel.getParent().fireSelectedSequenceModified(true);
 	}
 	/**
 	 * 引数の選択内容が示すMIDIイベントを除去します。

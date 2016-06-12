@@ -488,7 +488,8 @@ public class MidiSequenceEditor extends JDialog {
 			) {
 				@Override
 				public void actionPerformed(ActionEvent event) {
-					SequenceTrackListTableModel sequenceModel = getModel().getSelectedSequenceModel();
+					PlaylistTableModel playlistModel = getModel();
+					SequenceTrackListTableModel sequenceModel = playlistModel.getSelectedSequenceModel();
 					String fn = sequenceModel.getFilename();
 					if( fn != null && ! fn.isEmpty() ) setSelectedFile(new File(fn));
 					if( showSaveDialog((Component)event.getSource()) != JFileChooser.APPROVE_OPTION ) return;
@@ -500,6 +501,7 @@ public class MidiSequenceEditor extends JDialog {
 					try ( FileOutputStream out = new FileOutputStream(f) ) {
 						out.write(sequenceModel.getMIDIdata());
 						sequenceModel.setModified(false);
+						playlistModel.fireSequenceModified(sequenceModel, false);
 					}
 					catch( IOException ex ) {
 						showError( ex.getMessage() );
@@ -894,7 +896,7 @@ public class MidiSequenceEditor extends JDialog {
 					scrollToEventAt(tick);
 					// ペーストで曲の長さが変わったことをプレイリストに通知
 					SequenceTrackListTableModel seqModel = trackModel.getParent();
-					seqModel.getParent().fireSequenceModified(seqModel);
+					seqModel.getParent().fireSequenceModified(seqModel, true);
 					eventDialog.setVisible(false);
 					trackModel = null;
 				}
@@ -930,7 +932,7 @@ public class MidiSequenceEditor extends JDialog {
 						scrollToEventAt(partnerTick > tick ? partnerTick : tick);
 					}
 				}
-				seqModel.getParent().fireSequenceModified(seqModel);
+				seqModel.getParent().fireSequenceModified(seqModel, true);
 				eventDialog.setVisible(false);
 				return true;
 			}

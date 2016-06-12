@@ -2,12 +2,9 @@ package camidion.chordhelper.midieditor;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 import javax.sound.midi.MidiSystem;
 import javax.sound.midi.Sequence;
@@ -221,9 +218,7 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 	 * シーケンスtickインデックスを返します。
 	 * @return シーケンスtickインデックス
 	 */
-	public SequenceTickIndex getSequenceTickIndex() {
-		return sequenceTickIndex;
-	}
+	public SequenceTickIndex getSequenceTickIndex() { return sequenceTickIndex; }
 	/**
 	 * MIDIシーケンスを設定します。
 	 * @param sequence MIDIシーケンス（nullを指定するとトラックリストが空になる）
@@ -254,23 +249,9 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 			trackModelList.add(new TrackEventListTableModel(this, track));
 		}
 		// 文字コードの判定
-		byte b[] = MIDISpec.getNameBytesOf(sequence);
-		if( b != null && b.length > 0 ) {
-			try {
-				String autoDetectedName = new String(b, "JISAutoDetect");
-				Set<Map.Entry<String,Charset>> entrySet;
-				entrySet = Charset.availableCharsets().entrySet();
-				for( Map.Entry<String,Charset> entry : entrySet ) {
-					Charset cs = entry.getValue();
-					if( ! autoDetectedName.equals(new String(b, cs)) )
-						continue;
-					charset = cs;
-					break;
-				}
-			} catch (UnsupportedEncodingException e) {
-				e.printStackTrace();
-			}
-		}
+		Charset cs = MIDISpec.getCharsetOf(sequence);
+		charset = cs==null ? Charset.defaultCharset() : cs;
+		//
 		// トラックが挿入されたことを通知
 		fireTableRowsInserted(0, tracks.length-1);
 	}
@@ -312,11 +293,8 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 	 * @return 成功したらtrue
 	 */
 	public boolean setName(String name) {
-		if( name.equals(toString()) )
-			return false;
-		byte b[] = name.getBytes(charset);
-		if( ! MIDISpec.setNameBytesOf(sequence, b) )
-			return false;
+		if( name.equals(toString()) ) return false;
+		if( ! MIDISpec.setNameBytesOf(sequence, name.getBytes(charset)) ) return false;
 		setModified(true);
 		fireTableDataChanged();
 		return true;
@@ -345,7 +323,7 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 		int row = indexOf(track);
 		if( row < 0 ) return;
 		fireTableRowsUpdated(row, row);
-		sequenceListTableModel.fireSequenceModified(this);
+		sequenceListTableModel.fireSequenceModified(this, true);
 	}
 	/**
 	 * 選択されているトラックモデルを返します。
@@ -386,7 +364,7 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 		trackModelList.add(new TrackEventListTableModel(this, newTrack));
 		int lastRow = getRowCount() - 1;
 		fireTableRowsInserted(lastRow, lastRow);
-		sequenceListTableModel.fireSelectedSequenceModified();
+		sequenceListTableModel.fireSelectedSequenceModified(true);
 		trackListSelectionModel.setSelectionInterval(lastRow, lastRow);
 		return lastRow;
 	}
@@ -406,7 +384,7 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 			trackModelList.remove(i);
 		}
 		fireTableRowsDeleted(minIndex, maxIndex);
-		sequenceListTableModel.fireSelectedSequenceModified();
+		sequenceListTableModel.fireSelectedSequenceModified(true);
 	}
 	/**
 	 * このシーケンスモデルのシーケンスをシーケンサーが操作しているか調べます。

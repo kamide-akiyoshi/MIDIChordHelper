@@ -1,7 +1,9 @@
 package camidion.chordhelper.music;
+import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 import javax.sound.midi.InvalidMidiDataException;
 import javax.sound.midi.MetaMessage;
@@ -56,7 +58,7 @@ public class MIDISpec {
 	 * @param metaMessageType メタメッセージタイプ
 	 * @return テキストがつくときtrue
 	 */
-	public static boolean hasMetaText(int metaMessageType) {
+	public static boolean hasMetaMessageText(int metaMessageType) {
 		return (metaMessageType > 0 && metaMessageType < 10);
 	}
 	/**
@@ -73,8 +75,7 @@ public class MIDISpec {
 	 * @return 拍子記号ならtrue
 	 */
 	public static boolean isTimeSignature(MidiMessage midiMessage) {
-		if ( !(midiMessage instanceof MetaMessage) )
-			return false;
+		if ( !(midiMessage instanceof MetaMessage) ) return false;
 		return isTimeSignature( ((MetaMessage)midiMessage).getType() );
 	}
 	/**
@@ -82,17 +83,14 @@ public class MIDISpec {
 	 * @param metaMessageType メタメッセージタイプ
 	 * @return EOTならtrue
 	 */
-	public static boolean isEOT(int metaMessageType) {
-		return metaMessageType == 0x2F;
-	}
+	public static boolean isEOT(int metaMessageType) { return metaMessageType == 0x2F; }
 	/**
 	 * MIDIメッセージが EOT (End Of Track) か調べます。
 	 * @param midiMessage MIDIメッセージ
 	 * @return EOTならtrue
 	 */
 	public static boolean isEOT(MidiMessage midiMessage) {
-		if ( !(midiMessage instanceof MetaMessage) )
-			return false;
+		if ( !(midiMessage instanceof MetaMessage) ) return false;
 		return isEOT( ((MetaMessage)midiMessage).getType() );
 	}
 	/**
@@ -105,8 +103,7 @@ public class MIDISpec {
 	 * @return テンポ[QPM]
 	 */
 	public static int byteArrayToQpmTempo(byte[] b) {
-		int tempoInUsPerQuarter
-			= ((b[0] & 0xFF) << 16) | ((b[1] & 0xFF) << 8) | (b[2] & 0xFF);
+		int tempoInUsPerQuarter = ((b[0] & 0xFF) << 16) | ((b[1] & 0xFF) << 8) | (b[2] & 0xFF);
 		return MICROSECOND_PER_MINUTE / tempoInUsPerQuarter;
 	}
 	/**
@@ -199,8 +196,7 @@ public class MIDISpec {
 		//
 		Track tracks[] = seq.getTracks();
 		byte b[];
-		for( Track track : tracks )
-			if( (b = getNameBytesOf(track)) != null ) return b;
+		for( Track track : tracks ) if( (b = getNameBytesOf(track)) != null ) return b;
 		return null;
 	}
 	/**
@@ -215,9 +211,47 @@ public class MIDISpec {
 	 */
 	public static boolean setNameBytesOf(Sequence seq, byte[] name) {
 		Track tracks[] = seq.getTracks();
-		for( Track track : tracks )
-			if( setNameBytesOf(track,name) ) return true;
+		for( Track track : tracks ) if( setNameBytesOf(track,name) ) return true;
 		return false;
+	}
+	/**
+	 * シーケンスの名前や歌詞など、メタイベントのテキストをもとに文字コードを判定します。
+	 * 判定できなかった場合はnullを返します。
+	 * @param seq MIDIシーケンス
+	 * @return 文字コード判定結果（またはnull）
+	 */
+	public static Charset getCharsetOf(Sequence seq) {
+		Track tracks[] = seq.getTracks();
+		byte[] b = new byte[0];
+		for( Track track : tracks ) {
+			MidiMessage message;
+			MetaMessage metaMessage;
+			for( int i=0; i<track.size(); i++ ) {
+				message = track.get(i).getMessage();
+				if( ! (message instanceof MetaMessage) ) continue;
+				metaMessage = (MetaMessage)message;
+				if( ! hasMetaMessageText(metaMessage.getType()) ) continue;
+				byte[] additional = metaMessage.getData();
+				byte[] concated = new byte[b.length + additional.length];
+				System.arraycopy(b, 0, concated, 0, b.length);
+				System.arraycopy(additional, 0, concated, b.length, additional.length);
+				b = concated;
+			}
+		}
+		if( b.length > 0 ) {
+			try {
+				String autoDetectedName = new String(b, "JISAutoDetect");
+				Set<Map.Entry<String,Charset>> entrySet;
+				entrySet = Charset.availableCharsets().entrySet();
+				for( Map.Entry<String,Charset> entry : entrySet ) {
+					Charset cs = entry.getValue();
+					if( autoDetectedName.equals(new String(b, cs)) ) return cs;
+				}
+			} catch (UnsupportedEncodingException e) {
+				e.printStackTrace();
+			}
+		}
+		return null;
 	}
 	///////////////////////////////////////////////////////////////////
 	//
@@ -756,7 +790,7 @@ public class MIDISpec {
 			str += meta_name;
 			//
 			// Add the text data
-			if( hasMetaText(msgtype) ) {
+			if( hasMetaMessageText(msgtype) ) {
 				str +=" ["+(new String(msgdata,charset))+"]";
 				return str;
 			}

@@ -424,25 +424,26 @@ public class PlaylistTableModel extends AbstractTableModel {
 		return sequenceList.get(selectedIndex);
 	}
 	/**
-	 * 指定されたシーケンスが修正されたことを通知します。
+	 * 指定されたシーケンスの更新済みフラグを変更して全ての列を再表示します。
 	 * @param sequenceTableModel MIDIシーケンスモデル
+	 * @param isModified 更新済みフラグ
 	 */
-	public void fireSequenceModified(SequenceTrackListTableModel sequenceTableModel) {
+	public void fireSequenceModified(SequenceTrackListTableModel sequenceTableModel, boolean isModified) {
 		int index = sequenceList.indexOf(sequenceTableModel);
 		if( index < 0 ) return;
-		sequenceTableModel.setModified(true);
+		sequenceTableModel.setModified(isModified);
 		fireTableRowsUpdated(index, index);
 	}
 	/**
-	 * 指定されている選択範囲のシーケンスが変更されたことを通知します。
-	 * 更新済みフラグをセットし、選択されたシーケンスの全ての列を再表示します。
+	 * 指定されている選択範囲のシーケンスについて、更新済みフラグを変更して全ての列を再表示します。
+	 * @param isModified 更新済みフラグ
 	 */
-	public void fireSelectedSequenceModified() {
+	public void fireSelectedSequenceModified(boolean isModified) {
 		if( sequenceListSelectionModel.isSelectionEmpty() ) return;
 		int minIndex = sequenceListSelectionModel.getMinSelectionIndex();
 		int maxIndex = sequenceListSelectionModel.getMaxSelectionIndex();
 		for( int index = minIndex; index <= maxIndex; index++ ) {
-			sequenceList.get(index).setModified(true);
+			sequenceList.get(index).setModified(isModified);
 		}
 		fireTableRowsUpdated(minIndex, maxIndex);
 	}
