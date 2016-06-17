@@ -34,7 +34,7 @@ import javax.swing.event.ListDataListener;
 public class MidiCablePane extends JComponent implements DragSourceMotionListener {
 	private Point draggingPoint;
 	/**
-	 * {@link MidiTransceiverListModel} の {@link Transmitter}
+	 * {@link MidiDeviceModel} の {@link Transmitter}
 	 * をドラッグしている最中に再描画するためのリスナー
 	 */
 	@Override
@@ -70,14 +70,14 @@ public class MidiCablePane extends JComponent implements DragSourceMotionListene
 			JInternalFrame frame = e.getInternalFrame();
 			if( ! (frame instanceof MidiDeviceFrame) ) return;
 			MidiDeviceFrame f = (MidiDeviceFrame)frame;
-			MidiTransceiverListModel m = f.getMidiTransceiverListView().getModel();
+			MidiDeviceModel m = f.getMidiDeviceModel();
 			List<Receiver> rxList = m.getMidiDevice().getReceivers();
 			for( Receiver rx : rxList ) colorMap.remove(rx);
 			repaint();
 		}
 	};
 	/**
-	 * {@link MidiTransceiverListModel} における {@link Transmitter}
+	 * {@link MidiDeviceModel} における {@link Transmitter}
 	 * の増減や状態変更があった場合にケーブルを再描画するためのリスナー
 	 */
 	public final ListDataListener midiConnecterListDataListener = new ListDataListener() {
@@ -132,13 +132,13 @@ public class MidiCablePane extends JComponent implements DragSourceMotionListene
 		for( JInternalFrame frame : frames ) {
 			if( ! (frame instanceof MidiDeviceFrame) ) continue;
 			MidiDeviceFrame fromFrame = (MidiDeviceFrame)frame;
-			MidiTransceiverListView fromView = fromFrame.getMidiTransceiverListView();
-			MidiDevice fromDevice = fromView.getModel().getMidiDevice();
+			MidiDevice fromDevice = fromFrame.getMidiDeviceModel().getMidiDevice();
 			if( draggingPoint != null ) {
 				// Receiverからドラッグされた線を描画
+				MidiReceiverListView rxView = fromFrame.getMidiReceiverListView();
 				List<Receiver> rxList = fromDevice.getReceivers();
 				for( Receiver rx : rxList ) {
-					if( ! rx.equals(fromView.getDraggingTransceiver()) ) continue;
+					if( ! rx.equals(rxView.getDraggingReceiver()) ) continue;
 					Rectangle rxBounds = fromFrame.getBoundsOf(rx);
 					if( rxBounds == null ) continue;
 					int r = (rxBounds.height - 5) / 2;
@@ -148,6 +148,7 @@ public class MidiCablePane extends JComponent implements DragSourceMotionListene
 					break;
 				}
 			}
+			MidiTransmitterListView txView = fromFrame.getMidiTransmitterListView();
 			List<Transmitter> txList = fromDevice.getTransmitters();
 			for( Transmitter tx : txList ) {
 				// Transmitterの場所を特定
@@ -155,9 +156,9 @@ public class MidiCablePane extends JComponent implements DragSourceMotionListene
 				if( txBounds == null ) continue;
 				int r = (txBounds.height - 5) / 2;
 				txBounds.translate(r+4, r+4);
-				AutoCloseable draggingTrx = fromView.getDraggingTransceiver();
+				Transmitter draggingTx = txView.getDraggingTransmitter();
 				Receiver rx = tx.getReceiver();
-				if( draggingPoint != null && tx.equals(draggingTrx) ) {
+				if( draggingPoint != null && tx.equals(draggingTx) ) {
 					// Transmitterからドラッグされた線を描画
 					g2.setColor(rx == null ? ADDING_CABLE_COLOR : colorOf(rx));
 					g2.drawLine(txBounds.x, txBounds.y, draggingPoint.x, draggingPoint.y);
@@ -169,7 +170,7 @@ public class MidiCablePane extends JComponent implements DragSourceMotionListene
 					if( rxBounds == null ) continue;
 					r = (rxBounds.height - 5) / 2;
 					rxBounds.translate(r+4, r+4);
-					g2.setColor(draggingTrx == tx ? REMOVING_CABLE_COLOR : colorOf(rx));
+					g2.setColor(draggingTx == tx ? REMOVING_CABLE_COLOR : colorOf(rx));
 					g2.drawLine(txBounds.x, txBounds.y, rxBounds.x, rxBounds.y);
 					break;
 				}

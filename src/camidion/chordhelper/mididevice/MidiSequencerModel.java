@@ -17,6 +17,7 @@ import javax.swing.DefaultComboBoxModel;
 import javax.swing.Icon;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
+import javax.swing.event.EventListenerList;
 import javax.swing.event.ListDataEvent;
 import javax.swing.event.ListDataListener;
 
@@ -28,13 +29,13 @@ import camidion.chordhelper.midieditor.SequencerSpeedSlider;
 /**
  * MIDIシーケンサモデル
  */
-public class MidiSequencerModel extends MidiTransceiverListModel implements BoundedRangeModel {
+public class MidiSequencerModel extends MidiDeviceModel implements BoundedRangeModel {
 	/**
 	 * MIDIシーケンサモデルを構築します。
 	 * @param sequencer シーケンサーMIDIデバイス
 	 * @param deviceModelList 親のMIDIデバイスモデルリスト
 	 */
-	public MidiSequencerModel(Sequencer sequencer, MidiTransceiverListModelList deviceModelList) {
+	public MidiSequencerModel(Sequencer sequencer, MidiDeviceModelList deviceModelList) {
 		super(sequencer, deviceModelList);
 	}
 	/**
@@ -199,6 +200,7 @@ public class MidiSequencerModel extends MidiTransceiverListModel implements Boun
 		setValueIsAdjusting(valueIsAdjusting);
 		fireStateChanged();
 	}
+	protected EventListenerList listenerList = new EventListenerList();
 	/**
 	 * {@inheritDoc}
 	 * <p>このシーケンサーの再生時間位置または再生対象ファイルが変更されたときに

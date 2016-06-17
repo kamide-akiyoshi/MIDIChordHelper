@@ -12,21 +12,21 @@ import javax.sound.midi.Synthesizer;
 import camidion.chordhelper.ChordHelperApplet;
 
 /**
- * 仮想MIDIデバイスを含めたすべてのMIDIデバイスモデル {@link MidiTransceiverListModel} を収容するリスト
+ * 仮想MIDIデバイスを含めたすべてのMIDIデバイスモデル {@link MidiDeviceModel} を収容するリスト
  */
-public class MidiTransceiverListModelList extends Vector<MidiTransceiverListModel> {
+public class MidiDeviceModelList extends Vector<MidiDeviceModel> {
 
 	public String toString() { return "MIDI devices"; }
 
 	private MidiSequencerModel sequencerModel;
 	public MidiSequencerModel getSequencerModel() { return sequencerModel; }
 
-	public MidiTransceiverListModelList(List<VirtualMidiDevice> guiVirtualDeviceList) {
+	public MidiDeviceModelList(List<VirtualMidiDevice> guiVirtualDeviceList) {
 		//
 		// GUI仮想MIDIデバイス
-		MidiTransceiverListModel guiModels[] = new MidiTransceiverListModel[guiVirtualDeviceList.size()];
+		MidiDeviceModel guiModels[] = new MidiDeviceModel[guiVirtualDeviceList.size()];
 		for( int i=0; i<guiVirtualDeviceList.size(); i++ ) {
-			addElement(guiModels[i] = new MidiTransceiverListModel(guiVirtualDeviceList.get(i), this));
+			addElement(guiModels[i] = new MidiDeviceModel(guiVirtualDeviceList.get(i), this));
 		}
 		// シーケンサの取得
 		Sequencer sequencer;
@@ -38,9 +38,9 @@ public class MidiTransceiverListModelList extends Vector<MidiTransceiverListMode
 			e.printStackTrace();
 		}
 		// その他のリアルMIDIデバイスの取得
-		MidiTransceiverListModel synthModel = null;
-		MidiTransceiverListModel firstMidiInModel = null;
-		MidiTransceiverListModel firstMidiOutModel = null;
+		MidiDeviceModel synthModel = null;
+		MidiDeviceModel firstMidiInModel = null;
+		MidiDeviceModel firstMidiOutModel = null;
 		MidiDevice.Info[] deviceInfos = MidiSystem.getMidiDeviceInfo();
 		for( MidiDevice.Info info : deviceInfos ) {
 			MidiDevice device;
@@ -55,7 +55,7 @@ public class MidiTransceiverListModelList extends Vector<MidiTransceiverListMode
 			// Java内蔵シンセサイザ
 			if( device instanceof Synthesizer ) {
 				try {
-					addElement(synthModel = new MidiTransceiverListModel(MidiSystem.getSynthesizer(), this));
+					addElement(synthModel = new MidiDeviceModel(MidiSystem.getSynthesizer(), this));
 				} catch( MidiUnavailableException e ) {
 					System.out.println(ChordHelperApplet.VersionInfo.NAME +
 							" : Java internal MIDI synthesizer unavailable");
@@ -64,8 +64,8 @@ public class MidiTransceiverListModelList extends Vector<MidiTransceiverListMode
 				continue;
 			}
 			// その他のMIDIデバイス
-			MidiTransceiverListModel m;
-			addElement(m = new MidiTransceiverListModel(device, this));
+			MidiDeviceModel m;
+			addElement(m = new MidiDeviceModel(device, this));
 			if( m.rxSupported() && firstMidiOutModel == null ) firstMidiOutModel = m;
 			if( m.txSupported() && firstMidiInModel == null ) firstMidiInModel = m;
 		}
@@ -81,17 +81,17 @@ public class MidiTransceiverListModelList extends Vector<MidiTransceiverListMode
 		//   開く順序が逆になると「進みすぎるから遅らせよう」として
 		//   無用なレイテンシーが発生する原因になる。
 		try {
-			MidiTransceiverListModel openModels[] = {
+			MidiDeviceModel openModels[] = {
 				synthModel,
 				firstMidiOutModel,
 				sequencerModel,
 				firstMidiInModel,
 			};
-			for( MidiTransceiverListModel m : openModels ) if( m != null ) {
+			for( MidiDeviceModel m : openModels ) if( m != null ) {
 				m.getMidiDevice().open();
 				m.openReceiver();
 			}
-			for( MidiTransceiverListModel m : guiModels ) {
+			for( MidiDeviceModel m : guiModels ) {
 				m.getMidiDevice().open();
 				m.openReceiver();
 			}
@@ -100,35 +100,35 @@ public class MidiTransceiverListModelList extends Vector<MidiTransceiverListMode
 		}
 		// 初期接続
 		//
-		for( MidiTransceiverListModel mtx : guiModels ) {
-			for( MidiTransceiverListModel mrx : guiModels ) mtx.connectToReceiverOf(mrx);
+		for( MidiDeviceModel mtx : guiModels ) {
+			for( MidiDeviceModel mrx : guiModels ) mtx.connectToReceiverOf(mrx);
 			mtx.connectToReceiverOf(sequencerModel);
 			mtx.connectToReceiverOf(synthModel);
 			mtx.connectToReceiverOf(firstMidiOutModel);
 		}
 		if( firstMidiInModel != null ) {
-			for( MidiTransceiverListModel m : guiModels ) firstMidiInModel.connectToReceiverOf(m);
+			for( MidiDeviceModel m : guiModels ) firstMidiInModel.connectToReceiverOf(m);
 			firstMidiInModel.connectToReceiverOf(sequencerModel);
 			firstMidiInModel.connectToReceiverOf(synthModel);
 			firstMidiInModel.connectToReceiverOf(firstMidiOutModel);
 		}
 		if( sequencerModel != null ) {
-			for( MidiTransceiverListModel m : guiModels ) sequencerModel.connectToReceiverOf(m);
+			for( MidiDeviceModel m : guiModels ) sequencerModel.connectToReceiverOf(m);
 			sequencerModel.connectToReceiverOf(synthModel);
 			sequencerModel.connectToReceiverOf(firstMidiOutModel);
 		}
 	}
 	/**
-	 * すべてのデバイスについて、{@link MidiTransceiverListModel#resetMicrosecondPosition()}
+	 * すべてのデバイスについて、{@link MidiDeviceModel#resetMicrosecondPosition()}
 	 * でマイクロ秒位置をリセットします。
 	 */
 	public void resetMicrosecondPosition() {
-		for(MidiTransceiverListModel m : this) m.resetMicrosecondPosition();
+		for(MidiDeviceModel m : this) m.resetMicrosecondPosition();
 	}
 	/**
 	 * すべてのMIDIデバイスを閉じます。
 	 */
 	public void closeAllDevices() {
-		for(MidiTransceiverListModel m : this) m.device.close();
+		for(MidiDeviceModel m : this) m.device.close();
 	}
 }

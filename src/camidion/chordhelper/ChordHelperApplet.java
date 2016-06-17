@@ -58,8 +58,8 @@ import camidion.chordhelper.chordmatrix.ChordButtonLabel;
 import camidion.chordhelper.chordmatrix.ChordMatrix;
 import camidion.chordhelper.chordmatrix.ChordMatrixListener;
 import camidion.chordhelper.mididevice.MidiDeviceDialog;
+import camidion.chordhelper.mididevice.MidiDeviceModelList;
 import camidion.chordhelper.mididevice.MidiSequencerModel;
-import camidion.chordhelper.mididevice.MidiTransceiverListModelList;
 import camidion.chordhelper.mididevice.SequencerMeasureView;
 import camidion.chordhelper.mididevice.SequencerTimeView;
 import camidion.chordhelper.mididevice.VirtualMidiDevice;
@@ -285,7 +285,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public static class VersionInfo {
 		public static final String	NAME = "MIDI Chord Helper";
-		public static final String	VERSION = "Ver.20160612.1";
+		public static final String	VERSION = "Ver.20160617.1";
 		public static final String	COPYRIGHT = "Copyright (C) 2004-2016";
 		public static final String	AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String	URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";
@@ -403,7 +403,7 @@ public class ChordHelperApplet extends JApplet {
 	private JLabel songTitleLabel = new JLabel();
 	private AnoGakkiPane anoGakkiPane;
 	private JToggleButton anoGakkiToggleButton;
-	private MidiTransceiverListModelList deviceModelList;
+	private MidiDeviceModelList deviceModelList;
 
 	public void init() {
 		//
@@ -468,7 +468,7 @@ public class ChordHelperApplet extends JApplet {
 		VirtualMidiDevice guiMidiDevice = keyboardPanel.keyboardCenterPanel.keyboard.midiDevice;
 		//
 		// MIDIデバイス一覧を構築
-		deviceModelList = new MidiTransceiverListModelList(Arrays.asList(guiMidiDevice));
+		deviceModelList = new MidiDeviceModelList(Arrays.asList(guiMidiDevice));
 		(midiDeviceDialog = new MidiDeviceDialog(deviceModelList)).setIconImage(iconImage);
 		//
 		// MIDIデバイス一覧のシーケンサと連携するプレイリストを構築

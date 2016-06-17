@@ -10,11 +10,9 @@ import java.awt.dnd.DragGestureListener;
 import java.awt.dnd.DragSource;
 import java.awt.dnd.DragSourceAdapter;
 import java.awt.dnd.DragSourceDropEvent;
-import java.awt.dnd.DragSourceListener;
 
 import javax.swing.JInternalFrame;
 import javax.swing.JTree;
-import javax.swing.ListModel;
 import javax.swing.ToolTipManager;
 import javax.swing.event.InternalFrameAdapter;
 import javax.swing.event.InternalFrameEvent;
@@ -26,14 +24,14 @@ import javax.swing.tree.DefaultTreeCellRenderer;
  */
 public class MidiDeviceTreeView extends JTree {
 
-	public static final DataFlavor LIST_MODEL_FLAVOR  = new DataFlavor(ListModel.class,"ListModel");
+	public static final DataFlavor DEVICE_MODEL_FLAVOR  = new DataFlavor(MidiDeviceModel.class,"MidiDeviceModel");
 
-	public class DraggingObject implements Transferable {
-		private DataFlavor flavors[] = {LIST_MODEL_FLAVOR};
-		private MidiTransceiverListModel trxListModel;
+	public class DraggingDevice implements Transferable {
+		private DataFlavor flavors[] = {DEVICE_MODEL_FLAVOR};
+		private MidiDeviceModel midiDeviceModel;
 		@Override
 		public Object getTransferData(DataFlavor flavor) {
-			return flavor.getRepresentationClass().isInstance(trxListModel) ? trxListModel : null;
+			return flavor.getRepresentationClass().isInstance(midiDeviceModel) ? midiDeviceModel : null;
 		}
 		@Override
 		public DataFlavor[] getTransferDataFlavors() { return flavors; }
@@ -42,16 +40,7 @@ public class MidiDeviceTreeView extends JTree {
 			return flavors[0].equals(flavor);
 		}
 	};
-	private DraggingObject draggingObject = new DraggingObject();
-	/**
-	 * このツリーからドラッグしたMIDIデバイスのドロップが成功したときに再描画するためのリスナー
-	 */
-	private DragSourceListener dragSourceListener = new DragSourceAdapter() {
-		@Override
-		public void dragDropEnd(DragSourceDropEvent dsde) {
-			if( dsde.getDropSuccess() ) repaint();
-		}
-	};
+	private DraggingDevice draggingDevice = new DraggingDevice();
 	/**
 	 *	{@link MidiDeviceFrame} が閉じられたり、選択されたりしたときに再描画するリスナー
 	 */
@@ -60,7 +49,7 @@ public class MidiDeviceTreeView extends JTree {
 		public void internalFrameActivated(InternalFrameEvent e) {
 			JInternalFrame frame = e.getInternalFrame();
 			if( ! (frame instanceof MidiDeviceFrame ) ) return;
-			setSelectionPath(((MidiDeviceFrame)frame).getMidiTransceiverListView().getModel().getTreePath());
+			setSelectionPath(((MidiDeviceFrame)frame).getMidiDeviceModel().getTreePath());
 		}
 		@Override
 		public void internalFrameClosing(InternalFrameEvent e) { repaint(); }
@@ -80,9 +69,14 @@ public class MidiDeviceTreeView extends JTree {
 					if( (dge.getDragAction() & DnDConstants.ACTION_COPY_OR_MOVE) == 0 ) return;
 					Point origin = dge.getDragOrigin();
 					Object leaf = getPathForLocation(origin.x, origin.y).getLastPathComponent();
-					if( ! (leaf instanceof MidiTransceiverListModel) ) return;
-					draggingObject.trxListModel = (MidiTransceiverListModel)leaf;
-					dge.startDrag(DragSource.DefaultMoveDrop, draggingObject, dragSourceListener);
+					if( ! (leaf instanceof MidiDeviceModel) ) return;
+					draggingDevice.midiDeviceModel = (MidiDeviceModel)leaf;
+					dge.startDrag(DragSource.DefaultMoveDrop, draggingDevice, new DragSourceAdapter() {
+						@Override
+						public void dragDropEnd(DragSourceDropEvent dsde) {
+							if( dsde.getDropSuccess() ) repaint();
+						}
+					});
 				}
 			}
 		);
@@ -94,13 +88,13 @@ public class MidiDeviceTreeView extends JTree {
 				super.getTreeCellRendererComponent(tree, value, selected, expanded, leaf, row, hasFocus);
 				setToolTipText(value.toString());
 				if(leaf) {
-					MidiTransceiverListModel deviceModel = (MidiTransceiverListModel)value;
+					MidiDeviceModel deviceModel = (MidiDeviceModel)value;
 					if( deviceModel.getMidiDevice().isOpen() ) {
-						setDisabledIcon(MidiTransceiverListView.MIDI_CONNECTER_ICON);
+						setDisabledIcon(MidiDeviceDialog.MIDI_CONNECTER_ICON);
 						setEnabled(false);
 						setToolTipText(getToolTipText()+"はすでに開いています");
 					} else {
-						setIcon(MidiTransceiverListView.MIDI_CONNECTER_ICON);
+						setIcon(MidiDeviceDialog.MIDI_CONNECTER_ICON);
 						setEnabled(true);
 						setToolTipText("ドラッグ＆ドロップで"+getToolTipText()+"が開きます");
 					}

@@ -1,11 +1,15 @@
 package camidion.chordhelper.mididevice;
 
+import java.awt.datatransfer.DataFlavor;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
+import javax.sound.midi.Receiver;
+import javax.sound.midi.Transmitter;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.BoxLayout;
+import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JPanel;
@@ -18,6 +22,9 @@ import camidion.chordhelper.ButtonIcon;
  * MIDIデバイスダイアログ (View)
  */
 public class MidiDeviceDialog extends JDialog {
+	public static final DataFlavor receiverFlavor = new DataFlavor(Receiver.class, "Receiver");
+	public static final DataFlavor transmitterFlavor = new DataFlavor(Transmitter.class, "Transmitter");
+	public static final Icon MIDI_CONNECTER_ICON = new ButtonIcon(ButtonIcon.MIDI_CONNECTOR_ICON);
 	/**
 	 * MIDIデバイスダイアログを開くアクション
 	 */
@@ -25,23 +32,25 @@ public class MidiDeviceDialog extends JDialog {
 		{
 			putValue(NAME, "MIDI device connection");
 			putValue(SHORT_DESCRIPTION, "MIDIデバイス間の接続を編集");
-			putValue(LARGE_ICON_KEY, new ButtonIcon(ButtonIcon.MIDI_CONNECTOR_ICON));
+			putValue(LARGE_ICON_KEY, MIDI_CONNECTER_ICON);
 		}
 		@Override
-		public void actionPerformed(ActionEvent event) { setVisible(true); }
+		public void actionPerformed(ActionEvent event) {
+			setVisible(true);
+		}
 	};
 	/**
 	 * MIDIデバイスダイアログを構築します。
 	 * @param deviceModelList デバイスモデル（MIDIコネクタリストモデル）のリスト
 	 */
-	public MidiDeviceDialog(final MidiTransceiverListModelList deviceModelList) {
+	public MidiDeviceDialog(final MidiDeviceModelList deviceModelList) {
 		setTitle(openAction.getValue(Action.NAME).toString());
 		setBounds( 300, 300, 800, 500 );
 		MidiDeviceTreeModel deviceTreeModel = new MidiDeviceTreeModel(deviceModelList);
 		MidiDeviceTreeView deviceTreeView = new MidiDeviceTreeView(deviceTreeModel);
 		final MidiDeviceInfoPane deviceInfoPane = new MidiDeviceInfoPane();
-		MidiOpenedDevicesView desktopPane = new MidiOpenedDevicesView(deviceTreeView, deviceInfoPane, this);
 		deviceTreeView.addTreeSelectionListener(deviceInfoPane);
+		MidiOpenedDevicesView desktopPane = new MidiOpenedDevicesView(deviceTreeView, deviceInfoPane, this);
 		deviceTreeView.addTreeSelectionListener(desktopPane);
 		deviceTreeView.setSelectionRow(0);
 		add(new JSplitPane(

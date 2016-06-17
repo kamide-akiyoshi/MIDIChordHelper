@@ -18,8 +18,8 @@ import javax.swing.tree.TreePath;
 public class MidiDeviceInfoPane extends JEditorPane implements TreeSelectionListener {
 	private void setTreeNodeText(Object node) {
 		String html = "<html><head></head><body>";
-		if( node instanceof MidiTransceiverListModel ) {
-			MidiTransceiverListModel deviceModel = (MidiTransceiverListModel)node;
+		if( node instanceof MidiDeviceModel ) {
+			MidiDeviceModel deviceModel = (MidiDeviceModel)node;
 			MidiDevice device = deviceModel.getMidiDevice();
 			MidiDevice.Info info = device.getDeviceInfo();
 			html += "<b>"+deviceModel+"</b><br/>"
@@ -53,13 +53,13 @@ public class MidiDeviceInfoPane extends JEditorPane implements TreeSelectionList
 		public void internalFrameActivated(InternalFrameEvent e) {
 			JInternalFrame frame = e.getInternalFrame();
 			if( ! (frame instanceof MidiDeviceFrame ) ) return;
-			setTreeNodeText(((MidiDeviceFrame)frame).getMidiTransceiverListView().getModel());
+			setTreeNodeText(((MidiDeviceFrame)frame).getMidiDeviceModel());
 		}
 		@Override
 		public void internalFrameClosing(InternalFrameEvent e) {
 			JInternalFrame frame = e.getInternalFrame();
 			if( ! (frame instanceof MidiDeviceFrame ) ) return;
-			MidiTransceiverListModel m = ((MidiDeviceFrame)frame).getMidiTransceiverListView().getModel();
+			MidiDeviceModel m = ((MidiDeviceFrame)frame).getMidiDeviceModel();
 			m.closeReceiver();
 			MidiDevice device = m.getMidiDevice();
 			device.close();
