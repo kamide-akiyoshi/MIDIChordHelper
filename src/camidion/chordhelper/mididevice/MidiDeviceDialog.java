@@ -1,11 +1,8 @@
 package camidion.chordhelper.mididevice;
 
-import java.awt.datatransfer.DataFlavor;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
-import javax.sound.midi.Receiver;
-import javax.sound.midi.Transmitter;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.BoxLayout;
@@ -22,8 +19,6 @@ import camidion.chordhelper.ButtonIcon;
  * MIDIデバイスダイアログ (View)
  */
 public class MidiDeviceDialog extends JDialog {
-	public static final DataFlavor receiverFlavor = new DataFlavor(Receiver.class, "Receiver");
-	public static final DataFlavor transmitterFlavor = new DataFlavor(Transmitter.class, "Transmitter");
 	public static final Icon MIDI_CONNECTER_ICON = new ButtonIcon(ButtonIcon.MIDI_CONNECTOR_ICON);
 	/**
 	 * MIDIデバイスダイアログを開くアクション

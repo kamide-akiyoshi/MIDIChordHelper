@@ -36,7 +36,7 @@ public class MidiDeviceModel {
 	/**
 	 * 実体のない新規{@link Transmitter}を表すインターフェース
 	 */
-	public interface NewTransmitter extends Transmitter {};
+	interface NewTransmitter extends Transmitter {};
 	/**
 	 * {@link Transmitter} のリストを表す {@link javax.swing.ListModel}
 	 */
@@ -64,41 +64,123 @@ public class MidiDeviceModel {
 		 * 見つからなかった場合は -1 を返します。
 		 *
 		 * @param element 探したい要素
-		 * @return 位置のインデックス
+		 * @return 位置
 		 */
 		public int indexOf(Transmitter element) {
 			List<Transmitter> txList = device.getTransmitters();
 			return element.equals(newTransmitter) ? txList.size() : txList.indexOf(element);
 		}
 		/**
-		 * レシーバに未接続の最初の{@link Transmitter}を開いて返します。
-		 * ない場合は {@link MidiDevice#getTransmitter} で新たに取得して返します。
+		 * レシーバに未接続の最初の{@link Transmitter}を返します。
+		 * ない場合は{@link MidiDevice#getTransmitter}で新たに取得して返します。
 		 *
-		 * @return 新しく開かれた未接続の{@link Transmitter}
+		 * @return 未接続の{@link Transmitter}
+		 * @throws MidiUnavailableException リソースの制約のためにトランスミッタを使用できない場合にスローされる
 		 */
-		public Transmitter openTransmitter() {
+		public Transmitter getUnconnectedTransmitter() throws MidiUnavailableException {
 			List<Transmitter> txList = device.getTransmitters();
 			for( Transmitter tx : txList ) if( tx.getReceiver() == null ) return tx;
 			Transmitter tx;
-			try {
-				tx = device.getTransmitter();
-			} catch( MidiUnavailableException e ) {
-				e.printStackTrace();
-				return null;
-			}
+			tx = device.getTransmitter();
 			fireIntervalAdded(this, 0, getSize());
+			return tx;
+		}
+		/**
+		 * 指定の位置にある接続可能な{@link Transmitter}を返します。
+		 * 新規Transmitterの場合、{@link #getUnconnectedTransmitter()}からの値を返します。
+		 * @param index 位置（0が先頭、最後が新規）
+		 * @return
+		 * @throws MidiUnavailableException リソースの制約のためにトランスミッタを使用できない場合にスローされる
+		 */
+		public Transmitter getConnectableTransmitterAt(int index) throws MidiUnavailableException {
+			Transmitter tx = getElementAt(index);
+			if( tx instanceof NewTransmitter ) tx = getUnconnectedTransmitter();
 			return tx;
 		}
 		/**
 		 * このリストモデルで開いている指定の{@link Transmitter}があれば、
 		 * それを閉じて表示を更新します。
 		 * ない場合は無視されます。
-		 * @param txToClose このリストモデルで開いている{@link Transmitter}
+		 * @param tx このリストモデルで開いている{@link Transmitter}
 		 */
-		public void closeTransmitter(Transmitter txToClose) {
-			if( ! device.getTransmitters().contains(txToClose) ) return;
-			txToClose.close();
+		public void close(Transmitter tx) {
+			if( ! device.getTransmitters().contains(tx) ) return;
+			tx.close();
 			fireIntervalRemoved(this, 0, getSize());
+		}
+		/**
+		 * このリストモデルの{@link #getUnconnectedTransmitter()}が返した{@link Transmitter}を、
+		 * 相手のMIDIデバイスが持つ最初の{@link Receiver}に接続します。
+		 *
+		 * @param anotherDeviceModel 接続相手のMIDIデバイス
+		 * @throws MidiUnavailableException リソースの制約のためにトランスミッタを使用できない場合にスローされる
+		 */
+		public void connectToFirstReceiverOfDevice(MidiDeviceModel anotherDeviceModel) throws MidiUnavailableException {
+			if( ! anotherDeviceModel.rxSupported() ) return;
+			List<Receiver> rxList = anotherDeviceModel.device.getReceivers();
+			if( rxList.isEmpty() ) return;
+			txListModel.getUnconnectedTransmitter().setReceiver(rxList.get(0));
+		}
+		/**
+		 * このリストモデルにある{@link Transmitter}のうち、
+		 * 引数で指定された{@link Receiver}へデータを送信しているものを全て閉じます。
+		 */
+		private void closePeerTransmitterOf(Receiver rx) {
+			List<Transmitter> originalTxList = device.getTransmitters();
+			List<Transmitter> closingTxList = new Vector<Transmitter>();
+			for( Transmitter tx : originalTxList ) if( tx.getReceiver() == rx ) closingTxList.add(tx);
+			if( closingTxList.isEmpty() ) return;
+			int length = getSize();
+			for( Transmitter tx : closingTxList ) tx.close();
+			fireIntervalRemoved(this, 0, length);
+		}
+		/**
+		 * マイクロ秒位置をリセットします。
+		 * <p>マイクロ秒位置はMIDIデバイスを開いてからの時間で表されます。
+		 * このメソッドではMIDIデバイスをいったん閉じて再び開くことによって
+		 * 時間位置をリセットします。
+		 * 接続相手のデバイスがあった場合、元通りに接続を復元します。
+		 * </p>
+		 * <p>MIDIデバイスからリアルタイムレコーディングを開始するときは、
+		 * 必ずマイクロ秒位置をリセットする必要があります。
+		 * （リセットされていないマイクロ秒位置がそのままシーケンサに記録されると、
+		 * 大幅に後ろのほうにずれて記録されてしまいます）
+		 * </p>
+		 */
+		public void resetMicrosecondPosition() {
+			//
+			// シーケンサはこのメソッドでのリセット対象外
+			if( device instanceof Sequencer ) return;
+			//
+			// デバイスを閉じる前に接続状態を把握
+			List<Transmitter> myTxList = device.getTransmitters();
+			List<Receiver> peerRxList = new Vector<Receiver>();
+			for( Transmitter tx : myTxList ) {
+				Receiver rx = tx.getReceiver();
+				if( rx != null ) peerRxList.add(rx);
+			}
+			List<Receiver> myRxList = device.getReceivers();
+			List<Transmitter> peerTxList = new Vector<Transmitter>();
+			for( Receiver rx : myRxList ) {
+				for( MidiDeviceModel m : deviceModelList ) {
+					if( m == MidiDeviceModel.this ) continue;
+					List<Transmitter> peerSourceTxList = m.getMidiDevice().getTransmitters();
+					for( Transmitter tx : peerSourceTxList ) if( tx.getReceiver() == rx ) peerTxList.add(tx);
+				}
+			}
+			// いったん閉じて開く（ここでマイクロ秒位置がリセットされる）
+			// その後、元通りに接続し直す
+			device.close();
+			try {
+				device.open();
+				for( Receiver peerRx : peerRxList ) getUnconnectedTransmitter().setReceiver(peerRx);
+				if( ! myRxList.isEmpty() ) {
+					Receiver rx = myRxList.get(0);
+					for( Transmitter peerTx : peerTxList ) peerTx.setReceiver(rx);
+				}
+			} catch( MidiUnavailableException e ) {
+				e.printStackTrace();
+			}
 		}
 	}
 
@@ -142,14 +224,14 @@ public class MidiDeviceModel {
 	 * {@link Transmitter} のリストモデルを返します。サポートしていない場合はnullを返します。
 	 * @return リストモデルまたはnull
 	 */
-	public TransmitterListModel getTransmitterList() { return transmitterList; }
-	private TransmitterListModel transmitterList;
+	public TransmitterListModel getTransmitterListModel() { return txListModel; }
+	private TransmitterListModel txListModel;
 	/**
 	 * {@link Receiver} のリストモデルを返します。サポートしていない場合はnullを返します。
 	 * @return リストモデルまたはnull
 	 */
-	public ReceiverListModel getReceiverList() { return receiverList; }
-	private ReceiverListModel receiverList;
+	public ReceiverListModel getReceiverListModel() { return rxListModel; }
+	private ReceiverListModel rxListModel;
 
 	protected MidiDeviceModelList deviceModelList;
 	/**
@@ -162,11 +244,11 @@ public class MidiDeviceModel {
 		this.device = device;
 		this.deviceModelList = deviceModelList;
 		if( txSupported() ) {
-			transmitterList = new TransmitterListModel();
+			txListModel = new TransmitterListModel();
 		}
 		if( rxSupported() ) {
 			ioType = txSupported() ? MidiDeviceInOutType.MIDI_IN_OUT :MidiDeviceInOutType.MIDI_OUT;
-			receiverList = new ReceiverListModel();
+			rxListModel = new ReceiverListModel();
 		}
 		else {
 			ioType = txSupported() ? MidiDeviceInOutType.MIDI_IN :MidiDeviceInOutType.MIDI_NONE;
@@ -174,90 +256,31 @@ public class MidiDeviceModel {
 		treePath = new TreePath(new Object[] {deviceModelList, ioType ,this});
 	}
 	/**
-	 * 未接続の{@link Transmitter}を、引数で指定されたリストモデルの最初の{@link Receiver}に接続します。
-	 * @param anotherDeviceModel 接続可能な{@link Receiver}を持つリストモデル
-	 */
-	public void connectToReceiverOf(MidiDeviceModel anotherDeviceModel) {
-		if( ! txSupported() || anotherDeviceModel == null || ! anotherDeviceModel.rxSupported() ) return;
-		List<Receiver> rxList = anotherDeviceModel.device.getReceivers();
-		if( rxList.isEmpty() ) return;
-		transmitterList.openTransmitter().setReceiver(rxList.get(0));
-	}
-	/**
-	 * {@link Receiver}を1個だけ開きます。サポートしていない場合は無視されます。
+	 * このMIDIデバイスモデルを開きます。
+	 * MIDIデバイスを {@link MidiDevice#open()} で開き、
+	 * レシーバをサポートしている場合は {@link MidiDevice#getReceiver()} でレシーバを1個開きます。
 	 *
-	 * @throws MidiUnavailableException デバイスを開くことができない場合
+	 * @throws MidiUnavailableException リソースの制約のためにデバイス開けない、
+	 * またはレシーバを使用できない場合にスローされる。
 	 */
-	public void openReceiver() throws MidiUnavailableException {
-		if( rxSupported() && device.getReceivers().isEmpty() ) device.getReceiver();
+	public void open() throws MidiUnavailableException {
+		device.open();
+		if( rxListModel != null && device.getReceivers().isEmpty() ) device.getReceiver();
 	}
 	/**
-	 * {@link MidiDevice}を閉じる前に、{@link Receiver}を閉じます。
-	 *
-	 * 閉じようとしている{@link Receiver}を他デバイスの{@link Transmitter}が使用していた場合は、
-	 * その{@link Transmitter}も閉じます。
+	 * このMIDIデバイスを {@link MidiDevice#close()} で閉じます。
+	 * このMIDIデバイスの{@link Receiver}に接続している他デバイスの{@link Transmitter}があれば、
+	 * それらも全て閉じます。
 	 */
-	public void closeReceiver() {
-		List<Receiver> rxList = device.getReceivers();
-		for( Receiver rx : rxList ) {
-			for( MidiDeviceModel m : deviceModelList ) {
-				if( m == this || ! m.txSupported() ) continue;
-				for( int i=0; i<m.transmitterList.getSize(); i++ ) {
-					Transmitter tx = m.transmitterList.getElementAt(i);
-					if( tx.getReceiver() == rx ) m.transmitterList.closeTransmitter(tx);
-				}
-			}
-			rx.close();
-		}
-	}
-	/**
-	 * マイクロ秒位置をリセットします。
-	 * <p>マイクロ秒位置はMIDIデバイスを開いてからの時間で表されます。
-	 * このメソッドではMIDIデバイスをいったん閉じて再び開くことによって
-	 * 時間位置をリセットします。
-	 * 接続相手のデバイスがあった場合、元通りに接続を復元します。
-	 * </p>
-	 * <p>MIDIデバイスからリアルタイムレコーディングを開始するときは、
-	 * 必ずマイクロ秒位置をリセットする必要があります。
-	 * （リセットされていないマイクロ秒位置がそのままシーケンサに記録されると、
-	 * 大幅に後ろのほうにずれて記録されてしまいます）
-	 * </p>
-	 */
-	public void resetMicrosecondPosition() {
-		if( ! txSupported() || device instanceof Sequencer ) return;
-		//
-		// デバイスを閉じる前に接続相手の情報を保存
-		List<Transmitter> myTxList = device.getTransmitters();
-		List<Receiver> peerRxList = new Vector<Receiver>();
-		Receiver rx;
-		for( Transmitter tx : myTxList ) if( (rx = tx.getReceiver()) != null ) peerRxList.add(rx);
-		List<Transmitter> peerTxList = null;
-		if( rxSupported() ) {
-			rx = device.getReceivers().get(0);
-			peerTxList = new Vector<Transmitter>();
-			for( MidiDeviceModel m : deviceModelList ) {
-				if( m == this || ! m.txSupported() ) continue;
-				for( int i=0; i<m.transmitterList.getSize(); i++ ) {
-					Transmitter tx = m.transmitterList.getElementAt(i);
-					if( tx.getReceiver() == rx ) peerTxList.add(tx);
+	public void close() {
+		if( rxListModel != null ) {
+			List<Receiver> rxList = device.getReceivers();
+			for( Receiver rx : rxList ) {
+				for( MidiDeviceModel m : deviceModelList ) {
+					if( m != this && m.txListModel != null ) m.txListModel.closePeerTransmitterOf(rx);
 				}
 			}
 		}
-		// いったん閉じて開く（ここでマイクロ秒位置がリセットされる）
 		device.close();
-		try {
-			device.open();
-		} catch( MidiUnavailableException e ) {
-			e.printStackTrace();
-		}
-		// 元通りに接続し直す
-		for( Receiver peerRx : peerRxList ) {
-			Transmitter tx = transmitterList.openTransmitter();
-			if( tx != null ) tx.setReceiver(peerRx);
-		}
-		if( peerTxList != null ) {
-			rx = device.getReceivers().get(0);
-			for( Transmitter peerTx : peerTxList ) peerTx.setReceiver(rx);
-		}
 	}
 }

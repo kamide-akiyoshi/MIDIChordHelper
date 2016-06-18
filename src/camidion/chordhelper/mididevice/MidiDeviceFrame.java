@@ -78,7 +78,7 @@ public class MidiDeviceFrame extends JInternalFrame {
 		}}, BorderLayout.SOUTH);
 		add(scrollPane = new JScrollPane(trxPanel = new JPanel() {{
 			setLayout(new BorderLayout());
-			MidiDeviceModel.ReceiverListModel rxListModel = getMidiDeviceModel().getReceiverList();
+			MidiDeviceModel.ReceiverListModel rxListModel = getMidiDeviceModel().getReceiverListModel();
 			if( rxListModel != null ) {
 				receiverListView = new MidiReceiverListView(rxListModel, cablePane);
 				add(rxPanel = new JPanel() {{
@@ -87,7 +87,7 @@ public class MidiDeviceFrame extends JInternalFrame {
 					add(receiverListView);
 				}}, BorderLayout.NORTH);
 			}
-			MidiDeviceModel.TransmitterListModel txListModel = getMidiDeviceModel().getTransmitterList();
+			MidiDeviceModel.TransmitterListModel txListModel = getMidiDeviceModel().getTransmitterListModel();
 			if( txListModel != null ) {
 				transmitterListView = new MidiTransmitterListView(txListModel, cablePane);
 				add(txPanel = new JPanel() {{

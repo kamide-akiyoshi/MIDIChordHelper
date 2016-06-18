@@ -92,8 +92,7 @@ public class MidiOpenedDevicesView extends JDesktopPane implements TreeSelection
 				}
 				MidiDeviceModel deviceModel = (MidiDeviceModel)source;
 				try {
-					deviceModel.getMidiDevice().open();
-					deviceModel.openReceiver();
+					deviceModel.open();
 				} catch( MidiUnavailableException e ) {
 					//
 					// デバイスを開くのに失敗した場合
@@ -159,11 +158,11 @@ public class MidiOpenedDevicesView extends JDesktopPane implements TreeSelection
 			//
 			// トランスミッタリストモデルが変化したときにMIDIケーブルを再描画
 			if( deviceModel.txSupported() ) {
-				deviceModel.getTransmitterList().addListDataListener(cablePane.midiConnecterListDataListener);
+				deviceModel.getTransmitterListModel().addListDataListener(cablePane.midiConnecterListDataListener);
 			}
 			// レシーバリストモデルが変化したときにMIDIケーブルを再描画
 			if( deviceModel.rxSupported() ) {
-				deviceModel.getReceiverList().addListDataListener(cablePane.midiConnecterListDataListener);
+				deviceModel.getReceiverListModel().addListDataListener(cablePane.midiConnecterListDataListener);
 			}
 			// デバイスフレームが開閉したときの動作
 			frame.addInternalFrameListener(cablePane.midiDeviceFrameListener);

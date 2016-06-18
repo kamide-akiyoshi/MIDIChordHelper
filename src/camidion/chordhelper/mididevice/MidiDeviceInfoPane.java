@@ -60,10 +60,8 @@ public class MidiDeviceInfoPane extends JEditorPane implements TreeSelectionList
 			JInternalFrame frame = e.getInternalFrame();
 			if( ! (frame instanceof MidiDeviceFrame ) ) return;
 			MidiDeviceModel m = ((MidiDeviceFrame)frame).getMidiDeviceModel();
-			m.closeReceiver();
-			MidiDevice device = m.getMidiDevice();
-			device.close();
-			if( ! device.isOpen() ) {
+			m.close();
+			if( ! m.getMidiDevice().isOpen() ) {
 				try {
 					// 選択されたまま閉じると、次に開いたときにinternalFrameActivatedが
 					// 呼ばれなくなってしまうので、選択を解除する。

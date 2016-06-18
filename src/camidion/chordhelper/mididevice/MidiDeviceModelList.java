@@ -8,6 +8,7 @@ import javax.sound.midi.MidiSystem;
 import javax.sound.midi.MidiUnavailableException;
 import javax.sound.midi.Sequencer;
 import javax.sound.midi.Synthesizer;
+import javax.sound.midi.Transmitter;
 
 import camidion.chordhelper.ChordHelperApplet;
 
@@ -87,48 +88,46 @@ public class MidiDeviceModelList extends Vector<MidiDeviceModel> {
 				sequencerModel,
 				firstMidiInModel,
 			};
-			for( MidiDeviceModel m : openModels ) if( m != null ) {
-				m.getMidiDevice().open();
-				m.openReceiver();
+			for( MidiDeviceModel m : openModels ) if( m != null ) m.open();
+			for( MidiDeviceModel m : guiModels ) m.open();
+			//
+			// 初期接続
+			MidiDeviceModel.TransmitterListModel txListModel;
+			for( MidiDeviceModel mtx : guiModels ) {
+				if( (txListModel = mtx.getTransmitterListModel() ) != null) {
+					for( MidiDeviceModel m : guiModels ) txListModel.connectToFirstReceiverOfDevice(m);
+					txListModel.connectToFirstReceiverOfDevice(sequencerModel);
+					txListModel.connectToFirstReceiverOfDevice(synthModel);
+					txListModel.connectToFirstReceiverOfDevice(firstMidiOutModel);
+				}
 			}
-			for( MidiDeviceModel m : guiModels ) {
-				m.getMidiDevice().open();
-				m.openReceiver();
+			if( firstMidiInModel != null && (txListModel = firstMidiInModel.getTransmitterListModel()) != null) {
+				for( MidiDeviceModel m : guiModels ) txListModel.connectToFirstReceiverOfDevice(m);
+				txListModel.connectToFirstReceiverOfDevice(sequencerModel);
+				txListModel.connectToFirstReceiverOfDevice(synthModel);
+				txListModel.connectToFirstReceiverOfDevice(firstMidiOutModel);
+			}
+			if( sequencerModel != null && (txListModel = sequencerModel.getTransmitterListModel()) != null) {
+				for( MidiDeviceModel m : guiModels ) txListModel.connectToFirstReceiverOfDevice(m);
+				txListModel.connectToFirstReceiverOfDevice(synthModel);
+				txListModel.connectToFirstReceiverOfDevice(firstMidiOutModel);
 			}
 		} catch( MidiUnavailableException ex ) {
 			ex.printStackTrace();
 		}
-		// 初期接続
-		//
-		for( MidiDeviceModel mtx : guiModels ) {
-			for( MidiDeviceModel mrx : guiModels ) mtx.connectToReceiverOf(mrx);
-			mtx.connectToReceiverOf(sequencerModel);
-			mtx.connectToReceiverOf(synthModel);
-			mtx.connectToReceiverOf(firstMidiOutModel);
-		}
-		if( firstMidiInModel != null ) {
-			for( MidiDeviceModel m : guiModels ) firstMidiInModel.connectToReceiverOf(m);
-			firstMidiInModel.connectToReceiverOf(sequencerModel);
-			firstMidiInModel.connectToReceiverOf(synthModel);
-			firstMidiInModel.connectToReceiverOf(firstMidiOutModel);
-		}
-		if( sequencerModel != null ) {
-			for( MidiDeviceModel m : guiModels ) sequencerModel.connectToReceiverOf(m);
-			sequencerModel.connectToReceiverOf(synthModel);
-			sequencerModel.connectToReceiverOf(firstMidiOutModel);
-		}
 	}
 	/**
-	 * すべてのデバイスについて、{@link MidiDeviceModel#resetMicrosecondPosition()}
-	 * でマイクロ秒位置をリセットします。
+	 * {@link Transmitter}を持つすべてのデバイス（例：MIDIキーボードなど）について、
+	 * {@link MidiDeviceModel#resetMicrosecondPosition()}でマイクロ秒位置をリセットします。
 	 */
 	public void resetMicrosecondPosition() {
-		for(MidiDeviceModel m : this) m.resetMicrosecondPosition();
+		for(MidiDeviceModel m : this) {
+			MidiDeviceModel.TransmitterListModel txListModel = m.getTransmitterListModel();
+			if( txListModel != null ) txListModel.resetMicrosecondPosition();
+		}
 	}
 	/**
 	 * すべてのMIDIデバイスを閉じます。
 	 */
-	public void closeAllDevices() {
-		for(MidiDeviceModel m : this) m.device.close();
-	}
+	public void closeAllDevices() { for(MidiDeviceModel m : this) m.getMidiDevice().close(); }
 }
