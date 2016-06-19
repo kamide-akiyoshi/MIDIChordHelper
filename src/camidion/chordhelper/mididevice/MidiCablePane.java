@@ -154,7 +154,7 @@ public class MidiCablePane extends JComponent implements DragSourceMotionListene
 				g2.drawLine(rxBounds.x, rxBounds.y, draggingPoint.x, draggingPoint.y);
 			}
 			// Transmitterを全部スキャン
-			MidiDeviceModel.TransmitterListModel txListModel = fromDeviceModel.getTransmitterListModel();
+			TransmitterListModel txListModel = fromDeviceModel.getTransmitterListModel();
 			int ntx = txListModel == null ? 0 : txListModel.getSize();
 			for( int index=0 ; index < ntx; index++ ) {
 				Transmitter tx = txListModel.getElementAt(index);

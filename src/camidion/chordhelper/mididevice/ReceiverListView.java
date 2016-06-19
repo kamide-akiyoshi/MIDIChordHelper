@@ -23,9 +23,9 @@ import javax.swing.ListSelectionModel;
 /**
  * MIDIレシーバ（{@link Receiver}）のリストビューです。
  * レシーバをこのビューからドラッグし、
- * {@link MidiTransmitterListView} のトランスミッタにドロップして接続できます。
+ * {@link TransmitterListView} のトランスミッタにドロップして接続できます。
  */
-public class MidiReceiverListView extends JList<Receiver> {
+public class ReceiverListView extends JList<Receiver> {
 	/**
 	 * レシーバを描画するクラス
 	 */
@@ -62,15 +62,15 @@ public class MidiReceiverListView extends JList<Receiver> {
 	 * @return 表示される{@link Receiver}のリストを提供するデータモデル
 	 */
 	@Override
-	public MidiDeviceModel.ReceiverListModel getModel() {
-		return (MidiDeviceModel.ReceiverListModel) super.getModel();
+	public ReceiverListModel getModel() {
+		return (ReceiverListModel) super.getModel();
 	}
 	/**
 	 * 仮想MIDI端子リストビューを生成します。
 	 * @param model このビューから参照されるデータモデル
 	 * @param cablePane MIDIケーブル描画面
 	 */
-	public MidiReceiverListView(MidiDeviceModel.ReceiverListModel model, final MidiCablePane cablePane) {
+	public ReceiverListView(ReceiverListModel model, final MidiCablePane cablePane) {
 		super(model);
 		setCellRenderer(new CellRenderer());
 		setSelectionMode(ListSelectionModel.SINGLE_SELECTION);

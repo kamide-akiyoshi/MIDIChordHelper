@@ -22,14 +22,12 @@ import javax.swing.JList;
 import javax.swing.ListCellRenderer;
 import javax.swing.ListSelectionModel;
 
-import camidion.chordhelper.mididevice.MidiDeviceModel.NewTransmitter;
-
 /**
  * MIDIトランスミッタ（{@link Transmitter}）のリストビューです。
  * トランスミッタをこのビューからドラッグし、
- * {@link MidiReceiverListView} のレシーバにドロップして接続できます。
+ * {@link ReceiverListView} のレシーバにドロップして接続できます。
  */
-public class MidiTransmitterListView extends JList<Transmitter> {
+public class TransmitterListView extends JList<Transmitter> {
 	/**
 	 * トランスミッタを描画するクラス
 	 */
@@ -48,7 +46,7 @@ public class MidiTransmitterListView extends JList<Transmitter> {
 				setForeground(list.getForeground());
 			}
 			setIcon(MidiDeviceDialog.MIDI_CONNECTER_ICON);
-			if( value instanceof MidiDeviceModel.NewTransmitter ) {
+			if( value instanceof DummyTransmitter ) {
 				setToolTipText("未接続の送信端子(Tx)：ドラッグ＆ドロップしてRxに接続できます。");
 			} else {
 				setToolTipText("接続済の送信端子(Tx)：ドラッグ＆ドロップして接続先Rxを変更、または切断できます。");
@@ -70,15 +68,15 @@ public class MidiTransmitterListView extends JList<Transmitter> {
 	 * @return 表示される{@link Transmitter}のリストを提供するデータモデル
 	 */
 	@Override
-	public MidiDeviceModel.TransmitterListModel getModel() {
-		return (MidiDeviceModel.TransmitterListModel) super.getModel();
+	public TransmitterListModel getModel() {
+		return (TransmitterListModel) super.getModel();
 	}
 	/**
 	 * 仮想MIDI端子リストビューを生成します。
 	 * @param model このビューから参照されるデータモデル
 	 * @param cablePane MIDIケーブル描画面
 	 */
-	public MidiTransmitterListView(MidiDeviceModel.TransmitterListModel model, final MidiCablePane cablePane) {
+	public TransmitterListView(TransmitterListModel model, final MidiCablePane cablePane) {
 		super(model);
 		setCellRenderer(new CellRenderer());
 		setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
@@ -99,7 +97,7 @@ public class MidiTransmitterListView extends JList<Transmitter> {
 						if( ! event.getDropSuccess() ) {
 							// 所定の場所にドロップされなかったトランスミッタを閉じる
 							getModel().close(droppedTx);
-						} else if( droppedTx instanceof MidiDeviceModel.NewTransmitter ) {
+						} else if( droppedTx instanceof DummyTransmitter ) {
 							// ドロップされたダミートランスミッタに接続されたレシーバを
 							// 新しい本物のトランスミッタに付け替える
 							try {
@@ -143,7 +141,7 @@ public class MidiTransmitterListView extends JList<Transmitter> {
 					Object sourceRx = t.getTransferData(DraggingTransceiver.receiverFlavor);
 					if( sourceRx != null ) {
 						Transmitter tx = getModel().getElementAt(locationToIndex(event.getLocation()));
-						if( tx instanceof NewTransmitter ) tx = getModel().getUnconnectedTransmitter();
+						if( tx instanceof DummyTransmitter ) tx = getModel().getUnconnectedTransmitter();
 						tx.setReceiver((Receiver)sourceRx);
 						event.dropComplete(true);
 						return;

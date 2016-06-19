@@ -67,8 +67,8 @@ public class MidiDeviceModelList extends Vector<MidiDeviceModel> {
 			// その他のMIDIデバイス
 			MidiDeviceModel m;
 			addElement(m = new MidiDeviceModel(device, this));
-			if( m.rxSupported() && firstMidiOutModel == null ) firstMidiOutModel = m;
-			if( m.txSupported() && firstMidiInModel == null ) firstMidiInModel = m;
+			if( firstMidiOutModel == null && m.getReceiverListModel() != null ) firstMidiOutModel = m;
+			if( firstMidiInModel == null && m.getTransmitterListModel() != null ) firstMidiInModel = m;
 		}
 		// MIDIデバイスを開く。
 		//   NOTE: 必ず MIDI OUT Rx デバイスを先に開くこと。
@@ -92,7 +92,7 @@ public class MidiDeviceModelList extends Vector<MidiDeviceModel> {
 			for( MidiDeviceModel m : guiModels ) m.open();
 			//
 			// 初期接続
-			MidiDeviceModel.TransmitterListModel txListModel;
+			TransmitterListModel txListModel;
 			for( MidiDeviceModel mtx : guiModels ) {
 				if( (txListModel = mtx.getTransmitterListModel() ) != null) {
 					for( MidiDeviceModel m : guiModels ) txListModel.connectToFirstReceiverOfDevice(m);
@@ -122,7 +122,7 @@ public class MidiDeviceModelList extends Vector<MidiDeviceModel> {
 	 */
 	public void resetMicrosecondPosition() {
 		for(MidiDeviceModel m : this) {
-			MidiDeviceModel.TransmitterListModel txListModel = m.getTransmitterListModel();
+			TransmitterListModel txListModel = m.getTransmitterListModel();
 			if( txListModel != null ) txListModel.resetMicrosecondPosition();
 		}
 	}

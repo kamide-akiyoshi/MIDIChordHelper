@@ -157,13 +157,13 @@ public class MidiOpenedDevicesView extends JDesktopPane implements TreeSelection
 			modelToFrame.put(deviceModel, frame);
 			//
 			// トランスミッタリストモデルが変化したときにMIDIケーブルを再描画
-			if( deviceModel.txSupported() ) {
-				deviceModel.getTransmitterListModel().addListDataListener(cablePane.midiConnecterListDataListener);
-			}
+			TransmitterListModel txListModel = deviceModel.getTransmitterListModel();
+			if( txListModel != null ) txListModel.addListDataListener(cablePane.midiConnecterListDataListener);
+			//
 			// レシーバリストモデルが変化したときにMIDIケーブルを再描画
-			if( deviceModel.rxSupported() ) {
-				deviceModel.getReceiverListModel().addListDataListener(cablePane.midiConnecterListDataListener);
-			}
+			ReceiverListModel rxListModel = deviceModel.getReceiverListModel();
+			if( rxListModel != null ) rxListModel.addListDataListener(cablePane.midiConnecterListDataListener);
+			//
 			// デバイスフレームが開閉したときの動作
 			frame.addInternalFrameListener(cablePane.midiDeviceFrameListener);
 			frame.addInternalFrameListener(deviceTreeView.midiDeviceFrameListener);

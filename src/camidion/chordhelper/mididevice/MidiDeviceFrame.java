@@ -23,8 +23,8 @@ import javax.swing.Timer;
  */
 public class MidiDeviceFrame extends JInternalFrame {
 	private MidiDeviceModel deviceModel;
-	private MidiTransmitterListView transmitterListView;
-	private MidiReceiverListView receiverListView;
+	private TransmitterListView transmitterListView;
+	private ReceiverListView receiverListView;
 	private JScrollPane scrollPane;
 	private JPanel trxPanel, txPanel, rxPanel;
 	private Timer timer;
@@ -37,12 +37,12 @@ public class MidiDeviceFrame extends JInternalFrame {
 	 * このデバイスフレームに貼り付けられたMIDIトランスミッタリストビューを取得します。
 	 * @return MIDIトランスミッタリストビュー
 	 */
-	public MidiTransmitterListView getMidiTransmitterListView() { return transmitterListView; }
+	public TransmitterListView getMidiTransmitterListView() { return transmitterListView; }
 	/**
 	 * このデバイスフレームに貼り付けられたMIDIトランシーバリストビューを取得します。
 	 * @return MIDIトランシーバリストビュー
 	 */
-	public MidiReceiverListView getMidiReceiverListView() { return receiverListView; }
+	public ReceiverListView getMidiReceiverListView() { return receiverListView; }
 	/**
 	 * ダイアログウィンドウがアクティブなときだけタイムスタンプ更新を有効にするためのリスナー
 	 */
@@ -78,18 +78,18 @@ public class MidiDeviceFrame extends JInternalFrame {
 		}}, BorderLayout.SOUTH);
 		add(scrollPane = new JScrollPane(trxPanel = new JPanel() {{
 			setLayout(new BorderLayout());
-			MidiDeviceModel.ReceiverListModel rxListModel = getMidiDeviceModel().getReceiverListModel();
+			ReceiverListModel rxListModel = getMidiDeviceModel().getReceiverListModel();
 			if( rxListModel != null ) {
-				receiverListView = new MidiReceiverListView(rxListModel, cablePane);
+				receiverListView = new ReceiverListView(rxListModel, cablePane);
 				add(rxPanel = new JPanel() {{
 					setLayout(new BorderLayout());
 					add(new JLabel("Rx") {{ setVerticalAlignment(TOP); }}, BorderLayout.WEST);
 					add(receiverListView);
 				}}, BorderLayout.NORTH);
 			}
-			MidiDeviceModel.TransmitterListModel txListModel = getMidiDeviceModel().getTransmitterListModel();
+			TransmitterListModel txListModel = getMidiDeviceModel().getTransmitterListModel();
 			if( txListModel != null ) {
-				transmitterListView = new MidiTransmitterListView(txListModel, cablePane);
+				transmitterListView = new TransmitterListView(txListModel, cablePane);
 				add(txPanel = new JPanel() {{
 					setLayout(new BorderLayout());
 					add(new JLabel("Tx") {{ setVerticalAlignment(TOP); }}, BorderLayout.WEST);
