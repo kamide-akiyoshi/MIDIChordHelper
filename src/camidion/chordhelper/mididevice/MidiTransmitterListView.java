@@ -22,6 +22,8 @@ import javax.swing.JList;
 import javax.swing.ListCellRenderer;
 import javax.swing.ListSelectionModel;
 
+import camidion.chordhelper.mididevice.MidiDeviceModel.NewTransmitter;
+
 /**
  * MIDIトランスミッタ（{@link Transmitter}）のリストビューです。
  * トランスミッタをこのビューからドラッグし、
@@ -89,16 +91,24 @@ public class MidiTransmitterListView extends JList<Transmitter> {
 			public void dragGestureRecognized(DragGestureEvent event) {
 				if( (event.getDragAction() & DnDConstants.ACTION_COPY_OR_MOVE) == 0 ) return;
 				int draggingIndex = locationToIndex(event.getDragOrigin());
-				try {
-					MidiCablePane.dragging.setData(getModel().getConnectableTransmitterAt(draggingIndex));
-				} catch (Exception exception) {
-					exception.printStackTrace();
-					return;
-				}
+				MidiCablePane.dragging.setData(getModel().getElementAt(draggingIndex));
 				event.startDrag(DragSource.DefaultLinkDrop, MidiCablePane.dragging, new DragSourceAdapter() {
 					@Override
 					public void dragDropEnd(DragSourceDropEvent event) {
-						if( ! event.getDropSuccess() ) getModel().close((Transmitter)MidiCablePane.dragging.getData());
+						Transmitter droppedTx = (Transmitter)MidiCablePane.dragging.getData();
+						if( ! event.getDropSuccess() ) {
+							// 所定の場所にドロップされなかったトランスミッタを閉じる
+							getModel().close(droppedTx);
+						} else if( droppedTx instanceof MidiDeviceModel.NewTransmitter ) {
+							// ドロップされたダミートランスミッタに接続されたレシーバを
+							// 新しい本物のトランスミッタに付け替える
+							try {
+								getModel().getUnconnectedTransmitter().setReceiver(droppedTx.getReceiver());
+							} catch (Exception exception) {
+								exception.printStackTrace();
+							}
+							droppedTx.setReceiver(null);
+						}
 						cablePane.dragSourceListener.dragDropEnd(event);
 					}
 				});
@@ -108,7 +118,7 @@ public class MidiTransmitterListView extends JList<Transmitter> {
 		dragSource.createDefaultDragGestureRecognizer(this, DnDConstants.ACTION_COPY_OR_MOVE, dgl);
 		dragSource.addDragSourceMotionListener(cablePane);
 		//
-		// レシーバのドロップを受け付ける
+		// 外からドラッグされたレシーバを、ドロップした場所のトランスミッタに接続する
 		DropTargetListener dtl = new DropTargetAdapter() {
 			@Override
 			public void dragEnter(DropTargetDragEvent event) {
@@ -132,8 +142,9 @@ public class MidiTransmitterListView extends JList<Transmitter> {
 				try {
 					Object sourceRx = t.getTransferData(DraggingTransceiver.receiverFlavor);
 					if( sourceRx != null ) {
-						int targetTxIndex = locationToIndex(event.getLocation());
-						getModel().getConnectableTransmitterAt(targetTxIndex).setReceiver((Receiver)sourceRx);
+						Transmitter tx = getModel().getElementAt(locationToIndex(event.getLocation()));
+						if( tx instanceof NewTransmitter ) tx = getModel().getUnconnectedTransmitter();
+						tx.setReceiver((Receiver)sourceRx);
 						event.dropComplete(true);
 						return;
 					}

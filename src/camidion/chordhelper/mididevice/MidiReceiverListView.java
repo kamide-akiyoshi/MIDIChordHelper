@@ -92,7 +92,7 @@ public class MidiReceiverListView extends JList<Receiver> {
 		dragSource.createDefaultDragGestureRecognizer(this, DnDConstants.ACTION_COPY_OR_MOVE, dgl);
 		dragSource.addDragSourceMotionListener(cablePane);
 		//
-		// トランスミッタのドロップを受け付ける
+		// 外からドラッグされたトランスミッタを、ドロップした場所のレシーバに接続する
 		DropTargetListener dtl = new DropTargetAdapter() {
 			@Override
 			public void dragEnter(DropTargetDragEvent event) {
@@ -116,8 +116,7 @@ public class MidiReceiverListView extends JList<Receiver> {
 				try {
 					Object sourceTx = t.getTransferData(DraggingTransceiver.transmitterFlavor);
 					if( sourceTx != null ) {
-						int targetRxIndex = locationToIndex(event.getLocation());
-						((Transmitter)sourceTx).setReceiver(getModel().getElementAt(targetRxIndex));
+						((Transmitter)sourceTx).setReceiver(getModel().getElementAt(locationToIndex(event.getLocation())));
 						event.dropComplete(true);
 						return;
 					}

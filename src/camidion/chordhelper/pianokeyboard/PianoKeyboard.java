@@ -30,6 +30,7 @@ import javax.swing.event.ListDataEvent;
 import javax.swing.event.ListDataListener;
 
 import camidion.chordhelper.ChordDisplayLabel;
+import camidion.chordhelper.ChordHelperApplet;
 import camidion.chordhelper.anogakki.AnoGakkiPane;
 import camidion.chordhelper.chordmatrix.ChordMatrix;
 import camidion.chordhelper.mididevice.AbstractMidiChannelStatus;
@@ -250,7 +251,10 @@ public class PianoKeyboard extends JComponent {
 	public VirtualMidiDevice midiDevice = new AbstractVirtualMidiDevice() {
 		class MyInfo extends Info {
 			protected MyInfo() {
-				super("Virtual MIDI Keyboard","Unknown vendor","Software MIDI keyboard","");
+				super(ChordHelperApplet.VersionInfo.NAME,
+						ChordHelperApplet.VersionInfo.AUTHER,
+						"Software MIDI keyboard with indicator",
+						ChordHelperApplet.VersionInfo.VERSION);
 			}
 		}
 		/**

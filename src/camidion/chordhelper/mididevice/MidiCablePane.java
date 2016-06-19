@@ -19,7 +19,6 @@ import java.util.Arrays;
 import java.util.Hashtable;
 import java.util.List;
 
-import javax.sound.midi.MidiDevice;
 import javax.sound.midi.Receiver;
 import javax.sound.midi.Transmitter;
 import javax.swing.JComponent;
@@ -142,10 +141,10 @@ public class MidiCablePane extends JComponent implements DragSourceMotionListene
 		for( JInternalFrame frame : frames ) {
 			if( ! (frame instanceof MidiDeviceFrame) ) continue;
 			MidiDeviceFrame fromFrame = (MidiDeviceFrame)frame;
-			MidiDevice fromDevice = fromFrame.getMidiDeviceModel().getMidiDevice();
+			MidiDeviceModel fromDeviceModel = fromFrame.getMidiDeviceModel();
 			//
 			// Receiverからドラッグされている線を描画
-			if( draggingPoint != null && fromDevice.getReceivers().indexOf(dragging.getData()) >= 0 ) {
+			if( draggingPoint != null && fromDeviceModel.getMidiDevice().getReceivers().contains(dragging.getData()) ) {
 				Receiver rx = (Receiver)dragging.getData();
 				Rectangle rxBounds = fromFrame.getBoundsOf(rx);
 				if( rxBounds == null ) continue;
@@ -155,8 +154,10 @@ public class MidiCablePane extends JComponent implements DragSourceMotionListene
 				g2.drawLine(rxBounds.x, rxBounds.y, draggingPoint.x, draggingPoint.y);
 			}
 			// Transmitterを全部スキャン
-			List<Transmitter> txList = fromDevice.getTransmitters();
-			for( Transmitter tx : txList ) {
+			MidiDeviceModel.TransmitterListModel txListModel = fromDeviceModel.getTransmitterListModel();
+			int ntx = txListModel == null ? 0 : txListModel.getSize();
+			for( int index=0 ; index < ntx; index++ ) {
+				Transmitter tx = txListModel.getElementAt(index);
 				//
 				// Transmitterの場所を特定
 				Rectangle txBounds = fromFrame.getBoundsOf(tx);
