@@ -70,7 +70,7 @@ public class ReceiverListView extends JList<Receiver> {
 	 * @param model このビューから参照されるデータモデル
 	 * @param cablePane MIDIケーブル描画面
 	 */
-	public ReceiverListView(ReceiverListModel model, final MidiCablePane cablePane) {
+	public ReceiverListView(ReceiverListModel model, MidiCablePane cablePane) {
 		super(model);
 		setCellRenderer(new CellRenderer());
 		setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
@@ -82,15 +82,13 @@ public class ReceiverListView extends JList<Receiver> {
 			@Override
 			public void dragGestureRecognized(DragGestureEvent event) {
 				if( (event.getDragAction() & DnDConstants.ACTION_COPY_OR_MOVE) == 0 ) return;
-				int draggingIndex = locationToIndex(event.getDragOrigin());
-				MidiCablePane.dragging.setData(getModel().getElementAt(draggingIndex));
-				event.startDrag(DragSource.DefaultLinkDrop,
-						MidiCablePane.dragging, cablePane.dragSourceListener);
+				MidiCablePane.dragging.setData(getModel().getElementAt(locationToIndex(event.getDragOrigin())));
+				event.startDrag(DragSource.DefaultLinkDrop, MidiCablePane.dragging, cablePane.dragSourceListener);
 			}
 		};
 		DragSource dragSource = new DragSource();
 		dragSource.createDefaultDragGestureRecognizer(this, DnDConstants.ACTION_COPY_OR_MOVE, dgl);
-		dragSource.addDragSourceMotionListener(cablePane);
+		dragSource.addDragSourceMotionListener(cablePane.dragSourceMotionListener);
 		//
 		// 外からドラッグされたトランスミッタを、ドロップした場所のレシーバに接続する
 		DropTargetListener dtl = new DropTargetAdapter() {
@@ -114,9 +112,9 @@ public class ReceiverListView extends JList<Receiver> {
 					return;
 				}
 				try {
-					Object sourceTx = t.getTransferData(DraggingTransceiver.transmitterFlavor);
-					if( sourceTx != null ) {
-						((Transmitter)sourceTx).setReceiver(getModel().getElementAt(locationToIndex(event.getLocation())));
+					Object tx = t.getTransferData(DraggingTransceiver.transmitterFlavor);
+					if( tx != null ) {
+						((Transmitter)tx).setReceiver(getModel().getElementAt(locationToIndex(event.getLocation())));
 						event.dropComplete(true);
 						return;
 					}

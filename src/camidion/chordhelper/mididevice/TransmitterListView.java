@@ -76,7 +76,7 @@ public class TransmitterListView extends JList<Transmitter> {
 	 * @param model このビューから参照されるデータモデル
 	 * @param cablePane MIDIケーブル描画面
 	 */
-	public TransmitterListView(TransmitterListModel model, final MidiCablePane cablePane) {
+	public TransmitterListView(TransmitterListModel model, MidiCablePane cablePane) {
 		super(model);
 		setCellRenderer(new CellRenderer());
 		setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
@@ -88,8 +88,7 @@ public class TransmitterListView extends JList<Transmitter> {
 			@Override
 			public void dragGestureRecognized(DragGestureEvent event) {
 				if( (event.getDragAction() & DnDConstants.ACTION_COPY_OR_MOVE) == 0 ) return;
-				int draggingIndex = locationToIndex(event.getDragOrigin());
-				MidiCablePane.dragging.setData(getModel().getElementAt(draggingIndex));
+				MidiCablePane.dragging.setData(getModel().getElementAt(locationToIndex(event.getDragOrigin())));
 				event.startDrag(DragSource.DefaultLinkDrop, MidiCablePane.dragging, new DragSourceAdapter() {
 					@Override
 					public void dragDropEnd(DragSourceDropEvent event) {
@@ -101,7 +100,7 @@ public class TransmitterListView extends JList<Transmitter> {
 							// ドロップされたダミートランスミッタに接続されたレシーバを
 							// 新しい本物のトランスミッタに付け替える
 							try {
-								getModel().getUnconnectedTransmitter().setReceiver(droppedTx.getReceiver());
+								getModel().getTransmitter().setReceiver(droppedTx.getReceiver());
 							} catch (Exception exception) {
 								exception.printStackTrace();
 							}
@@ -114,7 +113,7 @@ public class TransmitterListView extends JList<Transmitter> {
 		};
 		DragSource dragSource = new DragSource();
 		dragSource.createDefaultDragGestureRecognizer(this, DnDConstants.ACTION_COPY_OR_MOVE, dgl);
-		dragSource.addDragSourceMotionListener(cablePane);
+		dragSource.addDragSourceMotionListener(cablePane.dragSourceMotionListener);
 		//
 		// 外からドラッグされたレシーバを、ドロップした場所のトランスミッタに接続する
 		DropTargetListener dtl = new DropTargetAdapter() {
@@ -138,11 +137,11 @@ public class TransmitterListView extends JList<Transmitter> {
 					return;
 				}
 				try {
-					Object sourceRx = t.getTransferData(DraggingTransceiver.receiverFlavor);
-					if( sourceRx != null ) {
+					Object rx = t.getTransferData(DraggingTransceiver.receiverFlavor);
+					if( rx != null ) {
 						Transmitter tx = getModel().getElementAt(locationToIndex(event.getLocation()));
-						if( tx instanceof DummyTransmitter ) tx = getModel().getUnconnectedTransmitter();
-						tx.setReceiver((Receiver)sourceRx);
+						if( tx instanceof DummyTransmitter ) tx = getModel().getTransmitter();
+						tx.setReceiver((Receiver)rx);
 						event.dropComplete(true);
 						return;
 					}

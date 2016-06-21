@@ -14,16 +14,14 @@ import javax.swing.AbstractListModel;
  * {@link Transmitter} のリストを表す {@link javax.swing.ListModel}
  */
 public class TransmitterListModel extends AbstractListModel<Transmitter> {
-	protected Transmitter dummyTransmitter = new DummyTransmitter();
 	protected MidiDeviceModel deviceModel;
-	public TransmitterListModel(MidiDeviceModel deviceModel) {
-		this.deviceModel = deviceModel;
-	}
+	public TransmitterListModel(MidiDeviceModel deviceModel) { this.deviceModel = deviceModel; }
+	private Transmitter dummyTx = new DummyTransmitter();
 	@Override
 	public Transmitter getElementAt(int index) {
 		List<Transmitter> txList = deviceModel.getMidiDevice().getTransmitters();
 		int length = txList.size();
-		if( index == length ) return dummyTransmitter;
+		if( index == length ) return dummyTx;
 		if( index > length || index < 0 ) return null;
 		return txList.get(index);
 	}
@@ -33,7 +31,7 @@ public class TransmitterListModel extends AbstractListModel<Transmitter> {
 	}
 	public int indexOf(Object element) {
 		List<Transmitter> txList = deviceModel.getMidiDevice().getTransmitters();
-		return dummyTransmitter.equals(element) ? txList.size() : txList.indexOf(element);
+		return dummyTx.equals(element) ? txList.size() : txList.indexOf(element);
 	}
 	/**
 	 * レシーバに未接続の最初の{@link Transmitter}を返します。
@@ -42,17 +40,16 @@ public class TransmitterListModel extends AbstractListModel<Transmitter> {
 	 * @return 未接続の{@link Transmitter}
 	 * @throws MidiUnavailableException リソースの制約のためにトランスミッタを使用できない場合にスローされる
 	 */
-	public Transmitter getUnconnectedTransmitter() throws MidiUnavailableException {
+	public Transmitter getTransmitter() throws MidiUnavailableException {
 		MidiDevice device = deviceModel.getMidiDevice();
 		List<Transmitter> txList = device.getTransmitters();
 		for( Transmitter tx : txList ) if( tx.getReceiver() == null ) return tx;
-		Transmitter tx;
-		tx = device.getTransmitter();
+		Transmitter tx = device.getTransmitter();
 		fireIntervalAdded(this, 0, getSize());
 		return tx;
 	}
 	/**
-	 * このリストモデルの{@link #getUnconnectedTransmitter()}が返した{@link Transmitter}を、
+	 * このリストモデルの{@link #getTransmitter()}が返した{@link Transmitter}を、
 	 * 相手のMIDIデバイスが持つ最初の{@link Receiver}に接続します。
 	 *
 	 * @param anotherDeviceModel 接続相手のMIDIデバイス
@@ -61,7 +58,7 @@ public class TransmitterListModel extends AbstractListModel<Transmitter> {
 	public void connectToFirstReceiverOfDevice(MidiDeviceModel anotherDeviceModel) throws MidiUnavailableException {
 		List<Receiver> rxList = anotherDeviceModel.getMidiDevice().getReceivers();
 		if( ! rxList.isEmpty() )
-			deviceModel.getTransmitterListModel().getUnconnectedTransmitter().setReceiver(rxList.get(0));
+			deviceModel.getTransmitterListModel().getTransmitter().setReceiver(rxList.get(0));
 	}
 	/**
 	 * 指定の{@link Transmitter}がリストにあれば、それを閉じます。
@@ -114,10 +111,10 @@ public class TransmitterListModel extends AbstractListModel<Transmitter> {
 			Receiver rx = tx.getReceiver();
 			if( rx != null ) peerRxList.add(rx);
 		}
-		List<Receiver> myRxList = device.getReceivers();
 		List<Transmitter> peerTxList = new Vector<Transmitter>();
 		MidiDeviceModelList deviceModelList = deviceModel.getDeviceModelList();
-		for( Receiver rx : myRxList ) {
+		List<Receiver> rxList = device.getReceivers();
+		for( Receiver rx : rxList ) {
 			for( MidiDeviceModel m : deviceModelList ) {
 				if( m == deviceModel ) continue;
 				List<Transmitter> peerSourceTxList = m.getMidiDevice().getTransmitters();
@@ -129,9 +126,9 @@ public class TransmitterListModel extends AbstractListModel<Transmitter> {
 		device.close();
 		try {
 			device.open();
-			for( Receiver peerRx : peerRxList ) getUnconnectedTransmitter().setReceiver(peerRx);
-			if( ! myRxList.isEmpty() ) {
-				Receiver rx = myRxList.get(0);
+			for( Receiver peerRx : peerRxList ) getTransmitter().setReceiver(peerRx);
+			if( ! rxList.isEmpty() ) {
+				Receiver rx = rxList.get(0);
 				for( Transmitter peerTx : peerTxList ) peerTx.setReceiver(rx);
 			}
 		} catch( MidiUnavailableException e ) {

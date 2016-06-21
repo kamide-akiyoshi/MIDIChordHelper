@@ -4,7 +4,7 @@ import javax.sound.midi.Receiver;
 import javax.sound.midi.Transmitter;
 
 /**
- * 実体のない新規{@link Transmitter}
+ * レシーバを保持するだけのダミートランスミッタを表すクラスです。
  */
 public class DummyTransmitter implements Transmitter {
 	private Receiver receiver;
