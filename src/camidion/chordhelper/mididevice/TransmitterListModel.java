@@ -34,40 +34,36 @@ public class TransmitterListModel extends AbstractListModel<Transmitter> {
 		return dummyTx.equals(element) ? txList.size() : txList.indexOf(element);
 	}
 	/**
-	 * レシーバに未接続の最初の{@link Transmitter}を返します。
-	 * ない場合は{@link MidiDevice#getTransmitter}で新たに取得して返します。
+	 * 新しい{@link Transmitter}を{@link MidiDevice#getTransmitter}で生成し、
+	 * このモデルを参照しているビューに通知します。
 	 *
 	 * @return 未接続の{@link Transmitter}
 	 * @throws MidiUnavailableException リソースの制約のためにトランスミッタを使用できない場合にスローされる
 	 */
-	public Transmitter getTransmitter() throws MidiUnavailableException {
-		MidiDevice device = deviceModel.getMidiDevice();
-		List<Transmitter> txList = device.getTransmitters();
-		for( Transmitter tx : txList ) if( tx.getReceiver() == null ) return tx;
-		Transmitter tx = device.getTransmitter();
+	public Transmitter openTransmitter() throws MidiUnavailableException {
+		Transmitter tx = deviceModel.getMidiDevice().getTransmitter();
 		fireIntervalAdded(this, 0, getSize());
 		return tx;
 	}
 	/**
-	 * このリストモデルの{@link #getTransmitter()}が返した{@link Transmitter}を、
-	 * 相手のMIDIデバイスが持つ最初の{@link Receiver}に接続します。
+	 * 相手のMIDIデバイスが持つ最初の{@link Receiver}を、
+	 * このリストモデルの新規{@link Transmitter}に接続します。
 	 *
 	 * @param anotherDeviceModel 接続相手のMIDIデバイス
 	 * @throws MidiUnavailableException リソースの制約のためにトランスミッタを使用できない場合にスローされる
 	 */
 	public void connectToFirstReceiverOfDevice(MidiDeviceModel anotherDeviceModel) throws MidiUnavailableException {
 		List<Receiver> rxList = anotherDeviceModel.getMidiDevice().getReceivers();
-		if( ! rxList.isEmpty() )
-			deviceModel.getTransmitterListModel().getTransmitter().setReceiver(rxList.get(0));
+		if( rxList.isEmpty() ) return;
+		deviceModel.getTransmitterListModel().openTransmitter().setReceiver(rxList.get(0));
 	}
 	/**
-	 * 指定の{@link Transmitter}がリストにあれば、それを閉じます。
-	 * 閉じるとリストから自動的に削除されるので、表示の更新も行います。
+	 * 指定の{@link Transmitter}を閉じ、要素が減ったことを、
+	 * このモデルを参照しているビューに通知します。
 	 *
 	 * @param tx このリストモデルで開いている{@link Transmitter}
 	 */
-	public void close(Transmitter tx) {
-		if( ! deviceModel.getMidiDevice().getTransmitters().contains(tx) ) return;
+	public void closeTransmitter(Transmitter tx) {
 		tx.close();
 		fireIntervalRemoved(this, 0, getSize());
 	}
@@ -126,7 +122,7 @@ public class TransmitterListModel extends AbstractListModel<Transmitter> {
 		device.close();
 		try {
 			device.open();
-			for( Receiver peerRx : peerRxList ) getTransmitter().setReceiver(peerRx);
+			for( Receiver peerRx : peerRxList ) openTransmitter().setReceiver(peerRx);
 			if( ! rxList.isEmpty() ) {
 				Receiver rx = rxList.get(0);
 				for( Transmitter peerTx : peerTxList ) peerTx.setReceiver(rx);

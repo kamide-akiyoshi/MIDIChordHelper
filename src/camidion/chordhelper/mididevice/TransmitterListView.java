@@ -88,23 +88,22 @@ public class TransmitterListView extends JList<Transmitter> {
 			@Override
 			public void dragGestureRecognized(DragGestureEvent event) {
 				if( (event.getDragAction() & DnDConstants.ACTION_COPY_OR_MOVE) == 0 ) return;
-				MidiCablePane.dragging.setData(getModel().getElementAt(locationToIndex(event.getDragOrigin())));
+				Transmitter tx = getModel().getElementAt(locationToIndex(event.getDragOrigin()));
+				MidiCablePane.dragging.setData(tx);
 				event.startDrag(DragSource.DefaultLinkDrop, MidiCablePane.dragging, new DragSourceAdapter() {
 					@Override
 					public void dragDropEnd(DragSourceDropEvent event) {
-						Transmitter droppedTx = (Transmitter)MidiCablePane.dragging.getData();
+						Transmitter tx = (Transmitter)MidiCablePane.dragging.getData();
 						if( ! event.getDropSuccess() ) {
-							// 所定の場所にドロップされなかったトランスミッタを閉じる
-							getModel().close(droppedTx);
-						} else if( droppedTx instanceof DummyTransmitter ) {
-							// ドロップされたダミートランスミッタに接続されたレシーバを
-							// 新しい本物のトランスミッタに付け替える
+							getModel().closeTransmitter(tx);
+						} else if( tx instanceof DummyTransmitter ) {
+							Receiver rx = tx.getReceiver();
+							tx.close();
 							try {
-								getModel().getTransmitter().setReceiver(droppedTx.getReceiver());
+								getModel().openTransmitter().setReceiver(rx);
 							} catch (Exception exception) {
 								exception.printStackTrace();
 							}
-							droppedTx.setReceiver(null);
 						}
 						cablePane.dragSourceListener.dragDropEnd(event);
 					}
@@ -140,7 +139,7 @@ public class TransmitterListView extends JList<Transmitter> {
 					Object rx = t.getTransferData(DraggingTransceiver.receiverFlavor);
 					if( rx != null ) {
 						Transmitter tx = getModel().getElementAt(locationToIndex(event.getLocation()));
-						if( tx instanceof DummyTransmitter ) tx = getModel().getTransmitter();
+						if( tx instanceof DummyTransmitter ) tx = getModel().openTransmitter();
 						tx.setReceiver((Receiver)rx);
 						event.dropComplete(true);
 						return;

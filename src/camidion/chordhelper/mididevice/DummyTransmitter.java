@@ -13,5 +13,5 @@ public class DummyTransmitter implements Transmitter {
 	@Override
 	public Receiver getReceiver() { return receiver; }
 	@Override
-	public void close() { }
+	public void close() { receiver = null; }
 }
