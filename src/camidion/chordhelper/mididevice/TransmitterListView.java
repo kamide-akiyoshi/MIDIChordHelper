@@ -17,9 +17,7 @@ import java.awt.dnd.DropTargetListener;
 
 import javax.sound.midi.Receiver;
 import javax.sound.midi.Transmitter;
-import javax.swing.JLabel;
 import javax.swing.JList;
-import javax.swing.ListCellRenderer;
 import javax.swing.ListSelectionModel;
 
 /**
@@ -29,31 +27,11 @@ import javax.swing.ListSelectionModel;
  */
 public class TransmitterListView extends JList<Transmitter> {
 	/**
-	 * トランスミッタを描画するクラス
+	 * このリストによって表示される{@link Transmitter}のリストを保持するデータモデルを返します。
+	 * @return 表示される{@link Transmitter}のリストを提供するデータモデル
 	 */
-	private static class CellRenderer extends JLabel implements ListCellRenderer<Transmitter> {
-		public Component getListCellRendererComponent(JList<? extends Transmitter> list,
-				Transmitter value, int index, boolean isSelected, boolean cellHasFocus)
-		{
-			setEnabled(list.isEnabled());
-			setFont(list.getFont());
-			setOpaque(true);
-			if (isSelected) {
-				setBackground(list.getSelectionBackground());
-				setForeground(list.getSelectionForeground());
-			} else {
-				setBackground(list.getBackground());
-				setForeground(list.getForeground());
-			}
-			setIcon(MidiDeviceDialog.MIDI_CONNECTER_ICON);
-			if( value instanceof DummyTransmitter ) {
-				setToolTipText("未接続の送信端子(Tx)：ドラッグ＆ドロップしてRxに接続できます。");
-			} else {
-				setToolTipText("接続済の送信端子(Tx)：ドラッグ＆ドロップして接続先Rxを変更、または切断できます。");
-			}
-			return this;
-		}
-	}
+	@Override
+	public TransmitterListModel getModel() { return (TransmitterListModel) super.getModel(); }
 	/**
 	 * 引数で指定された{@link Transmitter}のセル範囲を示す、
 	 * リストの座標系内の境界の矩形を返します。対応するセルがない場合はnullを返します。
@@ -64,26 +42,30 @@ public class TransmitterListView extends JList<Transmitter> {
 		return getCellBounds(index,index);
 	}
 	/**
-	 * このリストによって表示される{@link Transmitter}のリストを保持するデータモデルを返します。
-	 * @return 表示される{@link Transmitter}のリストを提供するデータモデル
-	 */
-	@Override
-	public TransmitterListModel getModel() {
-		return (TransmitterListModel) super.getModel();
-	}
-	/**
 	 * 仮想MIDI端子リストビューを生成します。
 	 * @param model このビューから参照されるデータモデル
 	 * @param cablePane MIDIケーブル描画面
 	 */
 	public TransmitterListView(TransmitterListModel model, MidiCablePane cablePane) {
 		super(model);
-		setCellRenderer(new CellRenderer());
 		setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		setLayoutOrientation(JList.HORIZONTAL_WRAP);
 		setVisibleRowCount(0);
-		//
-		// トランスミッタのドラッグを受け付ける
+		setCellRenderer(new TransceiverListCellRenderer<Transmitter>() {
+			@Override
+			public Component getListCellRendererComponent(JList<? extends Transmitter> list,
+					Transmitter value, int index, boolean isSelected, boolean cellHasFocus)
+			{
+				super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+				if( value instanceof DummyTransmitter ) {
+					setToolTipText("未接続の送信端子(Tx)：ドラッグ＆ドロップしてRxに接続できます。");
+				} else {
+					setToolTipText("接続済の送信端子(Tx)：ドラッグ＆ドロップして接続先Rxを変更、または切断できます。");
+				}
+				return this;
+			}
+		});
+		DragSource dragSource = new DragSource();
 		DragGestureListener dgl = new DragGestureListener() {
 			@Override
 			public void dragGestureRecognized(DragGestureEvent event) {
@@ -110,7 +92,6 @@ public class TransmitterListView extends JList<Transmitter> {
 				});
 			}
 		};
-		DragSource dragSource = new DragSource();
 		dragSource.createDefaultDragGestureRecognizer(this, DnDConstants.ACTION_COPY_OR_MOVE, dgl);
 		dragSource.addDragSourceMotionListener(cablePane.dragSourceMotionListener);
 		//
@@ -125,8 +106,7 @@ public class TransmitterListView extends JList<Transmitter> {
 			@Override
 			public void drop(DropTargetDropEvent event) {
 				event.acceptDrop(DnDConstants.ACTION_COPY_OR_MOVE);
-				int maskedBits = event.getDropAction() & DnDConstants.ACTION_COPY_OR_MOVE;
-				if( maskedBits == 0 ) {
+				if( (event.getDropAction() & DnDConstants.ACTION_COPY_OR_MOVE) == 0 ) {
 					event.dropComplete(false);
 					return;
 				}

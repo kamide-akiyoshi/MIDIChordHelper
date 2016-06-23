@@ -13,9 +13,7 @@ import javax.swing.AbstractListModel;
  */
 public class ReceiverListModel extends AbstractListModel<Receiver> {
 	protected MidiDeviceModel deviceModel;
-	public ReceiverListModel(MidiDeviceModel deviceModel) {
-		this.deviceModel = deviceModel;
-	}
+	public ReceiverListModel(MidiDeviceModel deviceModel) { this.deviceModel = deviceModel; }
 	@Override
 	public Receiver getElementAt(int index) {
 		return deviceModel.getMidiDevice().getReceivers().get(index);
