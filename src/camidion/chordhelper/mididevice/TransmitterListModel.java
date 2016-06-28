@@ -8,29 +8,29 @@ import javax.sound.midi.MidiUnavailableException;
 import javax.sound.midi.Receiver;
 import javax.sound.midi.Sequencer;
 import javax.sound.midi.Transmitter;
-import javax.swing.AbstractListModel;
 
 /**
  * {@link Transmitter} のリストを表す {@link javax.swing.ListModel}
  */
-public class TransmitterListModel extends AbstractListModel<Transmitter> {
-	protected MidiDeviceModel deviceModel;
-	public TransmitterListModel(MidiDeviceModel deviceModel) { this.deviceModel = deviceModel; }
+public class TransmitterListModel extends TransceiverListModel<Transmitter> {
+	public TransmitterListModel(MidiDeviceModel deviceModel) { super(deviceModel); }
+	protected List<Transmitter> getTransceivers() {
+		return deviceModel.getMidiDevice().getTransmitters();
+	}
 	private Transmitter dummyTx = new DummyTransmitter();
 	@Override
 	public Transmitter getElementAt(int index) {
-		List<Transmitter> txList = deviceModel.getMidiDevice().getTransmitters();
+		List<Transmitter> txList = getTransceivers();
 		int length = txList.size();
 		if( index == length ) return dummyTx;
 		if( index > length || index < 0 ) return null;
 		return txList.get(index);
 	}
 	@Override
-	public int getSize() {
-		return deviceModel.getMidiDevice().getTransmitters().size() + 1;
-	}
+	public int getSize() { return super.getSize() + 1; }
+	@Override
 	public int indexOf(Object element) {
-		List<Transmitter> txList = deviceModel.getMidiDevice().getTransmitters();
+		List<Transmitter> txList = getTransceivers();
 		return dummyTx.equals(element) ? txList.size() : txList.indexOf(element);
 	}
 	/**
@@ -74,7 +74,7 @@ public class TransmitterListModel extends AbstractListModel<Transmitter> {
 	 */
 	public void closePeerTransmitterOf(Receiver rx) {
 		List<Transmitter> closingTxList = new Vector<Transmitter>();
-		List<Transmitter> txList = deviceModel.getMidiDevice().getTransmitters();
+		List<Transmitter> txList = getTransceivers();
 		for( Transmitter tx : txList ) if( tx.getReceiver() == rx ) closingTxList.add(tx);
 		if( closingTxList.isEmpty() ) return;
 		int length = getSize();

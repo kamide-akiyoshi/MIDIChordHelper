@@ -42,24 +42,29 @@ public class MidiCablePane extends JComponent {
 	public final DragSourceMotionListener dragSourceMotionListener = new DragSourceMotionListener() {
 		@Override
 		public void dragMouseMoved(DragSourceDragEvent dsde) {
-			Point origin = getLocationOnScreen();
-			draggingPoint = dsde.getLocation();
-			draggingPoint.translate(-origin.x, -origin.y);
-			repaint();
+			setDraggingLocation(dsde.getLocation());
 		}
-
 	};
+	public void setDraggingLocation(Point p) {
+		Point origin = getLocationOnScreen();
+		draggingPoint = p;
+		draggingPoint.translate(-origin.x, -origin.y);
+		repaint();
+	}
 	/**
 	 * ドラッグ終了時に再描画するためのソースリスナー
 	 */
 	public final DragSourceListener dragSourceListener = new DragSourceAdapter() {
 		@Override
 		public void dragDropEnd(DragSourceDropEvent dsde) {
-			dragging.setData(null);
-			draggingPoint = null;
-			repaint();
+			MidiCablePane.this.dragDropEnd();
 		}
 	};
+	public void dragDropEnd() {
+		dragging.setData(null);
+		draggingPoint = null;
+		repaint();
+	}
 	/**
 	 * {@link MidiDeviceFrame} が移動または変形したときにケーブルを再描画するためのリスナー
 	 */
