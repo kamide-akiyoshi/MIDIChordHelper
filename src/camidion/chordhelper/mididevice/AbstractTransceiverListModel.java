@@ -9,8 +9,8 @@ import javax.swing.AbstractListModel;
 /**
  * {@link Transmitter}または{@link Receiver}のリストを表す{@link javax.swing.ListModel}の基底抽象クラス
  */
-public abstract class TransceiverListModel<E> extends AbstractListModel<E> {
-	public TransceiverListModel(MidiDeviceModel deviceModel) {
+public abstract class AbstractTransceiverListModel<E> extends AbstractListModel<E> {
+	public AbstractTransceiverListModel(MidiDeviceModel deviceModel) {
 		this.deviceModel = deviceModel;
 	}
 	protected MidiDeviceModel deviceModel;

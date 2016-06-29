@@ -7,11 +7,6 @@ import java.awt.Graphics2D;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.Stroke;
-import java.awt.dnd.DragSourceAdapter;
-import java.awt.dnd.DragSourceDragEvent;
-import java.awt.dnd.DragSourceDropEvent;
-import java.awt.dnd.DragSourceListener;
-import java.awt.dnd.DragSourceMotionListener;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.ComponentListener;
@@ -37,32 +32,16 @@ public class MidiCablePane extends JComponent {
 	static DraggingTransceiver dragging = new DraggingTransceiver();
 	private Point draggingPoint;
 	/**
-	 * ドラッグしている最中に再描画するためのソースモーションリスナー
+	 * ドラッグ中の場所を更新し、再描画を予約します。
+	 * @param p ドラッグ中の場所（ドラッグ＆ドロップ終了時はnullを指定）
 	 */
-	public final DragSourceMotionListener dragSourceMotionListener = new DragSourceMotionListener() {
-		@Override
-		public void dragMouseMoved(DragSourceDragEvent dsde) {
-			setDraggingLocation(dsde.getLocation());
+	public void updateDraggingLocation(Point p) {
+		if( (draggingPoint = p) == null ) {
+			dragging.setData(null);
+		} else {
+			Point origin = getLocationOnScreen();
+			draggingPoint.translate(-origin.x, -origin.y);
 		}
-	};
-	public void setDraggingLocation(Point p) {
-		Point origin = getLocationOnScreen();
-		draggingPoint = p;
-		draggingPoint.translate(-origin.x, -origin.y);
-		repaint();
-	}
-	/**
-	 * ドラッグ終了時に再描画するためのソースリスナー
-	 */
-	public final DragSourceListener dragSourceListener = new DragSourceAdapter() {
-		@Override
-		public void dragDropEnd(DragSourceDropEvent dsde) {
-			MidiCablePane.this.dragDropEnd();
-		}
-	};
-	public void dragDropEnd() {
-		dragging.setData(null);
-		draggingPoint = null;
 		repaint();
 	}
 	/**

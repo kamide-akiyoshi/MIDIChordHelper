@@ -11,14 +11,14 @@ import javax.swing.ListSelectionModel;
 /**
  * MIDIレシーバ（{@link Receiver}）またはMIDIトランスミッタ（{@link Transmitter}）のリストを表示する基底の抽象リストビューです。
  */
-public abstract class TransceiverListView<E> extends JList<E> {
+public abstract class AbstractTransceiverListView<E> extends JList<E> {
 	/**
 	 * このリストによって表示されるリストを保持するデータモデルを返します。
 	 * @return 表示されるリストを提供するデータモデル
 	 */
 	@Override
-	public TransceiverListModel<E> getModel() {
-		return (TransceiverListModel<E>) super.getModel();
+	public AbstractTransceiverListModel<E> getModel() {
+		return (AbstractTransceiverListModel<E>) super.getModel();
 	}
 	/**
 	 * このリストの座標系内の指定された位置にある要素を返します。
@@ -41,7 +41,7 @@ public abstract class TransceiverListView<E> extends JList<E> {
 	 * 仮想MIDI端子リストビューを生成します。
 	 * @param model このビューから参照されるデータモデル
 	 */
-	public TransceiverListView(TransceiverListModel<E> model) {
+	public AbstractTransceiverListView(AbstractTransceiverListModel<E> model) {
 		super(model);
 		setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		setLayoutOrientation(JList.HORIZONTAL_WRAP);

@@ -10,7 +10,7 @@ import javax.sound.midi.Transmitter;
 /**
  * {@link Receiver} のリストを表す {@link javax.swing.ListModel}
  */
-public class ReceiverListModel extends TransceiverListModel<Receiver> {
+public class ReceiverListModel extends AbstractTransceiverListModel<Receiver> {
 	public ReceiverListModel(MidiDeviceModel deviceModel) { super(deviceModel); }
 	protected List<Receiver> getTransceivers() {
 		return deviceModel.getMidiDevice().getReceivers();

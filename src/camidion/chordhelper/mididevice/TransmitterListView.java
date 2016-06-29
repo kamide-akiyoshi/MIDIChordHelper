@@ -7,7 +7,9 @@ import java.awt.dnd.DragGestureEvent;
 import java.awt.dnd.DragGestureListener;
 import java.awt.dnd.DragSource;
 import java.awt.dnd.DragSourceAdapter;
+import java.awt.dnd.DragSourceDragEvent;
 import java.awt.dnd.DragSourceDropEvent;
+import java.awt.dnd.DragSourceMotionListener;
 import java.awt.dnd.DropTarget;
 import java.awt.dnd.DropTargetAdapter;
 import java.awt.dnd.DropTargetDragEvent;
@@ -20,10 +22,8 @@ import javax.swing.JList;
 
 /**
  * MIDIトランスミッタ（{@link Transmitter}）のリストビューです。
- * トランスミッタをこのビューからドラッグし、
- * {@link ReceiverListView} のレシーバにドロップして接続できます。
  */
-public class TransmitterListView extends TransceiverListView<Transmitter> {
+public class TransmitterListView extends AbstractTransceiverListView<Transmitter> {
 	/**
 	 * このリストによって表示される{@link Transmitter}のリストを保持するデータモデルを返します。
 	 * @return 表示される{@link Transmitter}のリストを提供するデータモデル
@@ -51,6 +51,7 @@ public class TransmitterListView extends TransceiverListView<Transmitter> {
 				return this;
 			}
 		});
+		// ドラッグ
 		DragSource dragSource = new DragSource();
 		DragGestureListener dgl = new DragGestureListener() {
 			@Override
@@ -72,15 +73,19 @@ public class TransmitterListView extends TransceiverListView<Transmitter> {
 								exception.printStackTrace();
 							}
 						}
-						cablePane.dragSourceListener.dragDropEnd(event);
+						cablePane.updateDraggingLocation(null);
 					}
 				});
 			}
 		};
 		dragSource.createDefaultDragGestureRecognizer(this, DnDConstants.ACTION_COPY_OR_MOVE, dgl);
-		dragSource.addDragSourceMotionListener(cablePane.dragSourceMotionListener);
-		//
-		// 外からドラッグされたレシーバを、ドロップした場所のトランスミッタに接続する
+		dragSource.addDragSourceMotionListener(new DragSourceMotionListener() {
+			@Override
+			public void dragMouseMoved(DragSourceDragEvent dsde) {
+				cablePane.updateDraggingLocation(dsde.getLocation());
+			}
+		});
+		// ドロップ
 		DropTargetListener dtl = new DropTargetAdapter() {
 			@Override
 			public void dragEnter(DropTargetDragEvent event) {
