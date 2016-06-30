@@ -35,14 +35,15 @@ public class TransmitterListModel extends AbstractTransceiverListModel<Transmitt
 	}
 	/**
 	 * 新しい{@link Transmitter}を{@link MidiDevice#getTransmitter}で生成し、
-	 * このモデルを参照しているビューに通知します。
+	 * 要素数が1個増えたことをこのモデルを参照しているビューへ通知します。
 	 *
 	 * @return 未接続の{@link Transmitter}
 	 * @throws MidiUnavailableException リソースの制約のためにトランスミッタを使用できない場合にスローされる
 	 */
 	public Transmitter openTransmitter() throws MidiUnavailableException {
+		int index = getTransceivers().size();
 		Transmitter tx = deviceModel.getMidiDevice().getTransmitter();
-		fireIntervalAdded(this, 0, getSize());
+		fireIntervalAdded(this, index, index);
 		return tx;
 	}
 	/**
@@ -58,14 +59,14 @@ public class TransmitterListModel extends AbstractTransceiverListModel<Transmitt
 		deviceModel.getTransmitterListModel().openTransmitter().setReceiver(rxList.get(0));
 	}
 	/**
-	 * 指定の{@link Transmitter}を閉じ、要素が減ったことを、
-	 * このモデルを参照しているビューに通知します。
+	 * 指定の{@link Transmitter}を閉じ、要素数が1個減ったことをこのモデルを参照しているビューへ通知します。
 	 *
 	 * @param tx このリストモデルで開いている{@link Transmitter}
 	 */
 	public void closeTransmitter(Transmitter tx) {
+		int index = indexOf(tx);
 		tx.close();
-		fireIntervalRemoved(this, 0, getSize());
+		fireIntervalRemoved(this, index, index);
 	}
 	/**
 	 * このリストモデルにある{@link Transmitter}のうち、

@@ -1,6 +1,5 @@
 package camidion.chordhelper.mididevice;
 
-import java.awt.Component;
 import java.awt.datatransfer.Transferable;
 import java.awt.dnd.DnDConstants;
 import java.awt.dnd.DragGestureEvent;
@@ -18,18 +17,17 @@ import java.awt.dnd.DropTargetListener;
 
 import javax.sound.midi.Receiver;
 import javax.sound.midi.Transmitter;
-import javax.swing.JList;
 
 /**
- * MIDIレシーバ（{@link Receiver}）のリストビューです。
+ * {@link Receiver}のリストビュー
  */
 public class ReceiverListView extends AbstractTransceiverListView<Receiver> {
-	/**
-	 * このリストによって表示される{@link Receiver}のリストを保持するデータモデルを返します。
-	 * @return 表示される{@link Receiver}のリストを提供するデータモデル
-	 */
 	@Override
 	public ReceiverListModel getModel() { return (ReceiverListModel) super.getModel(); }
+	@Override
+	protected String toolTipTextFor(Receiver rx) {
+		return "受信端子(Rx)：ドラッグ＆ドロップしてTxに接続できます。";
+	}
 	/**
 	 * 仮想MIDI端子リストビューを生成します。
 	 * @param model このビューから参照されるデータモデル
@@ -37,16 +35,14 @@ public class ReceiverListView extends AbstractTransceiverListView<Receiver> {
 	 */
 	public ReceiverListView(ReceiverListModel model, MidiCablePane cablePane) {
 		super(model);
-		setCellRenderer(new TransceiverListCellRenderer<Receiver>() {
-			public Component getListCellRendererComponent(JList<? extends Receiver> list,
-					Receiver value, int index, boolean isSelected, boolean cellHasFocus)
-			{
-				super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-				setToolTipText("受信端子(Rx)：ドラッグ＆ドロップしてTxに接続できます。");
-				return this;
-			}
-		});
-		// ドラッグ
+		setupDrag(cablePane);
+		setupDrop();
+	}
+	/**
+	 * {@link Receiver}をドラッグできるようにします。
+	 * @param cablePane MIDIケーブル描画面
+	 */
+	private void setupDrag(MidiCablePane cablePane) {
 		DragSource dragSource = new DragSource();
 		DragGestureListener dgl = new DragGestureListener() {
 			@Override
@@ -68,7 +64,11 @@ public class ReceiverListView extends AbstractTransceiverListView<Receiver> {
 				cablePane.updateDraggingLocation(dsde.getLocation());
 			}
 		});
-		// ドロップ
+	}
+	/**
+	 * {@link Transmitter}のドロップを受け付けます。
+	 */
+	private void setupDrop() {
 		DropTargetListener dtl = new DropTargetAdapter() {
 			@Override
 			public void dragEnter(DropTargetDragEvent event) {

@@ -1,5 +1,6 @@
 package camidion.chordhelper.mididevice;
 
+import java.awt.Component;
 import java.awt.Point;
 import java.awt.Rectangle;
 
@@ -13,7 +14,7 @@ import javax.swing.ListSelectionModel;
  */
 public abstract class AbstractTransceiverListView<E> extends JList<E> {
 	/**
-	 * このリストによって表示されるリストを保持するデータモデルを返します。
+	 * このビューによって表示されるリストを保持するデータモデルを返します。
 	 * @return 表示されるリストを提供するデータモデル
 	 */
 	@Override
@@ -38,6 +39,12 @@ public abstract class AbstractTransceiverListView<E> extends JList<E> {
 		return getCellBounds(index,index);
 	}
 	/**
+	 * 指定された要素のツールチップに表示する文字列を返します。
+	 * @param element 要素
+	 * @return ツールチップ文字列
+	 */
+	protected abstract String toolTipTextFor(E element);
+	/**
 	 * 仮想MIDI端子リストビューを生成します。
 	 * @param model このビューから参照されるデータモデル
 	 */
@@ -46,5 +53,14 @@ public abstract class AbstractTransceiverListView<E> extends JList<E> {
 		setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		setLayoutOrientation(JList.HORIZONTAL_WRAP);
 		setVisibleRowCount(0);
+		setCellRenderer(new TransceiverListCellRenderer<E>() {
+			public Component getListCellRendererComponent(JList<? extends E> list,
+					E value, int index, boolean isSelected, boolean cellHasFocus)
+			{
+				super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+				setToolTipText(toolTipTextFor(value));
+				return this;
+			}
+		});
 	}
 }

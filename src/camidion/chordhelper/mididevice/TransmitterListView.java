@@ -1,6 +1,5 @@
 package camidion.chordhelper.mididevice;
 
-import java.awt.Component;
 import java.awt.datatransfer.Transferable;
 import java.awt.dnd.DnDConstants;
 import java.awt.dnd.DragGestureEvent;
@@ -18,18 +17,21 @@ import java.awt.dnd.DropTargetListener;
 
 import javax.sound.midi.Receiver;
 import javax.sound.midi.Transmitter;
-import javax.swing.JList;
 
 /**
- * MIDIトランスミッタ（{@link Transmitter}）のリストビューです。
+ * {@link Transmitter}のリストビュー
  */
 public class TransmitterListView extends AbstractTransceiverListView<Transmitter> {
-	/**
-	 * このリストによって表示される{@link Transmitter}のリストを保持するデータモデルを返します。
-	 * @return 表示される{@link Transmitter}のリストを提供するデータモデル
-	 */
 	@Override
 	public TransmitterListModel getModel() { return (TransmitterListModel) super.getModel(); }
+	@Override
+	protected String toolTipTextFor(Transmitter tx) {
+		if( tx instanceof DummyTransmitter ) {
+			return "未接続の送信端子(Tx)：ドラッグ＆ドロップしてRxに接続できます。";
+		} else {
+			return "接続済の送信端子(Tx)：ドラッグ＆ドロップして接続先Rxを変更、または切断できます。";
+		}
+	}
 	/**
 	 * 仮想MIDI端子リストビューを生成します。
 	 * @param model このビューから参照されるデータモデル
@@ -37,21 +39,14 @@ public class TransmitterListView extends AbstractTransceiverListView<Transmitter
 	 */
 	public TransmitterListView(TransmitterListModel model, MidiCablePane cablePane) {
 		super(model);
-		setCellRenderer(new TransceiverListCellRenderer<Transmitter>() {
-			@Override
-			public Component getListCellRendererComponent(JList<? extends Transmitter> list,
-					Transmitter value, int index, boolean isSelected, boolean cellHasFocus)
-			{
-				super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-				if( value instanceof DummyTransmitter ) {
-					setToolTipText("未接続の送信端子(Tx)：ドラッグ＆ドロップしてRxに接続できます。");
-				} else {
-					setToolTipText("接続済の送信端子(Tx)：ドラッグ＆ドロップして接続先Rxを変更、または切断できます。");
-				}
-				return this;
-			}
-		});
-		// ドラッグ
+		setupDrag(cablePane);
+		setupDrop();
+	}
+	/**
+	 * {@link Transmitter}をドラッグできるようにします。
+	 * @param cablePane MIDIケーブル描画面
+	 */
+	private void setupDrag(MidiCablePane cablePane) {
 		DragSource dragSource = new DragSource();
 		DragGestureListener dgl = new DragGestureListener() {
 			@Override
@@ -85,7 +80,11 @@ public class TransmitterListView extends AbstractTransceiverListView<Transmitter
 				cablePane.updateDraggingLocation(dsde.getLocation());
 			}
 		});
-		// ドロップ
+	}
+	/**
+	 * {@link Receiver}のドロップを受け付けます。
+	 */
+	private void setupDrop() {
 		DropTargetListener dtl = new DropTargetAdapter() {
 			@Override
 			public void dragEnter(DropTargetDragEvent event) {
