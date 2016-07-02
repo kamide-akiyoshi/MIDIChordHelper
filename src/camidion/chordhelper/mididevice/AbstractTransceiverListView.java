@@ -6,6 +6,7 @@ import java.awt.Rectangle;
 
 import javax.sound.midi.Receiver;
 import javax.sound.midi.Transmitter;
+import javax.swing.DropMode;
 import javax.swing.JList;
 import javax.swing.ListSelectionModel;
 
@@ -22,7 +23,7 @@ public abstract class AbstractTransceiverListView<E> extends JList<E> {
 		return (AbstractTransceiverListModel<E>) super.getModel();
 	}
 	/**
-	 * このリストの座標系内の指定された位置にある要素を返します。
+	 * このリストの座標系内の指定された位置にある最寄りの要素を返します。
 	 * @param p 位置
 	 */
 	public E getElementAt(Point p) {
@@ -62,5 +63,7 @@ public abstract class AbstractTransceiverListView<E> extends JList<E> {
 				return this;
 			}
 		});
+		setDragEnabled(true);
+		setDropMode(DropMode.ON);
 	}
 }

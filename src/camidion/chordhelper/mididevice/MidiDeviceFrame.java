@@ -13,7 +13,6 @@ import javax.sound.midi.Receiver;
 import javax.sound.midi.Transmitter;
 import javax.swing.JInternalFrame;
 import javax.swing.JLabel;
-import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.Timer;
@@ -106,6 +105,7 @@ public class MidiDeviceFrame extends JInternalFrame {
 	public Rectangle getBoundsOf(Transmitter tx) {
 		if( transmitterListView == null ) return null;
 		Rectangle rect = transmitterListView.getCellBounds(tx);
+		if( rect == null ) return null;
 		translate(rect, txPanel, transmitterListView);
 		return rect;
 	}
@@ -117,11 +117,11 @@ public class MidiDeviceFrame extends JInternalFrame {
 	public Rectangle getBoundsOf(Receiver rx) {
 		if( receiverListView == null ) return null;
 		Rectangle rect = receiverListView.getCellBounds(rx);
+		if( rect == null ) return null;
 		translate(rect, rxPanel, receiverListView);
 		return rect;
 	}
-	private void translate(Rectangle rect, JPanel panel, JList<? extends AutoCloseable> list) {
-		if( rect == null ) return;
+	private void translate(Rectangle rect, JPanel panel, AbstractTransceiverListView<?> list) {
 		int x = getX() + getRootPane().getX() + getContentPane().getX() +
 				scrollPane.getX() + trxPanel.getX() +
 				panel.getX() + list.getX();

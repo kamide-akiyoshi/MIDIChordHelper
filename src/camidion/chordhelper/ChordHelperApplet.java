@@ -5,8 +5,6 @@ import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.Image;
 import java.awt.Insets;
-import java.awt.dnd.DnDConstants;
-import java.awt.dnd.DropTarget;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.ComponentAdapter;
@@ -285,7 +283,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public static class VersionInfo {
 		public static final String	NAME = "MIDI Chord Helper";
-		public static final String	VERSION = "Ver.20160630.1";
+		public static final String	VERSION = "Ver.20160702.1";
 		public static final String	COPYRIGHT = "Copyright (C) 2004-2016";
 		public static final String	AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String	URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";
@@ -478,7 +476,7 @@ public class ChordHelperApplet extends JApplet {
 		(midiEditor = new MidiSequenceEditor(playlistModel, guiMidiDevice)).setIconImage(iconImage);
 		//
 		// メイン画面へのMIDIファイルのドラッグ＆ドロップ受付開始
-		new DropTarget(this, DnDConstants.ACTION_COPY_OR_MOVE, midiEditor.dropTargetListener, true);
+		setTransferHandler(midiEditor.transferHandler);
 		//
 		// MIDIエディタのイベントダイアログを、ピアノ鍵盤のイベント送出ダイアログと共用
 		keyboardPanel.setEventDialog(midiEditor.eventDialog);

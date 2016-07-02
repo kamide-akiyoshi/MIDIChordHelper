@@ -7,6 +7,9 @@ import java.awt.Graphics2D;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.Stroke;
+import java.awt.dnd.DragSource;
+import java.awt.dnd.DragSourceDragEvent;
+import java.awt.dnd.DragSourceMotionListener;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.ComponentListener;
@@ -29,21 +32,36 @@ import javax.swing.event.ListDataListener;
  * MIDI ケーブル描画面
  */
 public class MidiCablePane extends JComponent {
-	static DraggingTransceiver dragging = new DraggingTransceiver();
+	private Object dragSourceTransceiver;
+	private Object dragDestinationTransceiver;
 	private Point draggingPoint;
 	/**
-	 * ドラッグ中の場所を更新し、再描画を予約します。
-	 * @param p ドラッグ中の場所（ドラッグ＆ドロップ終了時はnullを指定）
+	 * ドラッグ元の{@link Transmitter}または{@link Receiver}を設定します。
+	 *
+	 * @param trx ドラッグ元
 	 */
-	public void updateDraggingLocation(Point p) {
-		if( (draggingPoint = p) == null ) {
-			dragging.setData(null);
-		} else {
-			Point origin = getLocationOnScreen();
-			draggingPoint.translate(-origin.x, -origin.y);
+	public void setDragSourceTransceiver(Object trx) {
+		if( (dragSourceTransceiver = trx) == null ) {
+			draggingPoint = null;
+			dragDestinationTransceiver = null;
 		}
 		repaint();
 	}
+	/**
+	 * ドラッグ元の{@link Transmitter}または{@link Receiver}を返します。
+	 */
+	public Object getDragSourceTransceiver() { return dragSourceTransceiver; }
+	/**
+	 * ドラッグ先の{@link Transmitter}または{@link Receiver}を設定します。
+	 * @param dragDestinationTransceiver 設定するドラッグ先
+	 */
+	public void setDragDestinationTransceiver(Object dragDestinationTransceiver) {
+		this.dragDestinationTransceiver = dragDestinationTransceiver;
+	}
+	/**
+	 * ドラッグ先の{@link Transmitter}または{@link Receiver}を返します。
+	 */
+	public Object getDragDestinationTranceiver() { return dragDestinationTransceiver; }
 	/**
 	 * {@link MidiDeviceFrame} が移動または変形したときにケーブルを再描画するためのリスナー
 	 */
@@ -90,10 +108,22 @@ public class MidiCablePane extends JComponent {
 		this.desktopPane = desktopPane;
 		setOpaque(false);
 		setVisible(true);
+		DragSource.getDefaultDragSource().addDragSourceMotionListener(new DragSourceMotionListener() {
+			@Override
+		    public void dragMouseMoved(DragSourceDragEvent dsde) {
+				// OSのスクリーン座標系から、このケーブル画面の座標系に変換する
+		    	Point origin = getLocationOnScreen();
+		    	(draggingPoint = dsde.getLocation()).translate(-origin.x, -origin.y);
+		    	repaint();
+		    }
+		});
 	}
 
 	private static final Stroke CABLE_STROKE = new BasicStroke(
 			3, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
+	private static final float dash[] = {1.0f, 5.0f};
+	private static final Stroke VIRTUAL_CABLE_STROKE = new BasicStroke(
+			3, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 10.0f, dash, 0.0f);
 	private static final List<Color> CABLE_COLORS = Arrays.asList(
 		new Color(255, 0, 0,144),
 		new Color(0, 255, 0,144),
@@ -102,8 +132,7 @@ public class MidiCablePane extends JComponent {
 		new Color(0,191,191,144),
 		new Color(191,0,191,144)
 	);
-	private static final Color ADDING_CABLE_COLOR = new Color(0, 0, 0, 144);
-	private static final Color REMOVING_CABLE_COLOR = new Color(128, 128, 128, 144);
+	private static final Color NEW_CABLE_COLOR = new Color(0, 0, 0, 144);
 	private Hashtable<Receiver,Color> colorMap = new Hashtable<>();
 	private Color colorOf(Receiver rx) {
 		Color color = colorMap.get(rx);
@@ -123,7 +152,6 @@ public class MidiCablePane extends JComponent {
 	public void paint(Graphics g) {
 		super.paint(g);
 		Graphics2D g2 = (Graphics2D)g;
-		g2.setStroke(CABLE_STROKE);
 		JInternalFrame[] frames = desktopPane.getAllFramesInLayer(JLayeredPane.DEFAULT_LAYER);
 		for( JInternalFrame frame : frames ) {
 			if( ! (frame instanceof MidiDeviceFrame) ) continue;
@@ -131,12 +159,17 @@ public class MidiCablePane extends JComponent {
 			MidiDeviceModel fromDeviceModel = fromFrame.getMidiDeviceModel();
 			//
 			// Receiverからドラッグされている線を描画
-			if( draggingPoint != null && fromDeviceModel.getMidiDevice().getReceivers().contains(dragging.getData()) ) {
-				Receiver rx = (Receiver)dragging.getData();
+			if( draggingPoint != null && fromDeviceModel.getMidiDevice().getReceivers().contains(dragSourceTransceiver) ) {
+				Receiver rx = (Receiver)dragSourceTransceiver;
 				Rectangle rxBounds = fromFrame.getBoundsOf(rx);
 				if( rxBounds == null ) continue;
 				int r = (rxBounds.height - 5) / 2;
 				rxBounds.translate(r+4, r+4);
+				if( dragDestinationTransceiver instanceof Transmitter ) {
+					g2.setStroke(CABLE_STROKE);
+				} else {
+					g2.setStroke(VIRTUAL_CABLE_STROKE);
+				}
 				g2.setColor(colorOf(rx));
 				g2.drawLine(rxBounds.x, rxBounds.y, draggingPoint.x, draggingPoint.y);
 			}
@@ -151,27 +184,32 @@ public class MidiCablePane extends JComponent {
 				if( txBounds == null ) continue;
 				int r = (txBounds.height - 5) / 2;
 				txBounds.translate(r+4, r+4);
-				//
-				// Transmitterに現在接続されているReceiverを把握
-				Receiver rx = tx.getReceiver();
-				if( draggingPoint != null && tx.equals(dragging.getData()) ) {
+				if( draggingPoint != null && tx.equals(dragSourceTransceiver) ) {
 					//
 					// Transmitterからドラッグされている線を描画
-					g2.setColor(rx == null ? ADDING_CABLE_COLOR : colorOf(rx));
+					if( dragDestinationTransceiver instanceof Receiver ) {
+						g2.setStroke(CABLE_STROKE);
+						g2.setColor(colorOf((Receiver)dragDestinationTransceiver));
+					} else {
+						g2.setStroke(VIRTUAL_CABLE_STROKE);
+						g2.setColor(NEW_CABLE_COLOR);
+					}
 					g2.drawLine(txBounds.x, txBounds.y, draggingPoint.x, draggingPoint.y);
 				}
+				//
+				// スキャン中のTransmitterに現在接続されているReceiverを把握
+				Receiver rx = tx.getReceiver();
 				if( rx == null ) continue;
 				for( JInternalFrame toFrame : frames ) {
 					if( ! (toFrame instanceof MidiDeviceFrame) ) continue;
-					//
-					// Receiverの場所を特定
 					Rectangle rxBounds = ((MidiDeviceFrame)toFrame).getBoundsOf(rx);
 					if( rxBounds == null ) continue;
 					r = (rxBounds.height - 5) / 2;
 					rxBounds.translate(r+4, r+4);
 					//
 					// Transmitter⇔Receiver間の線を描画
-					g2.setColor(tx.equals(dragging.getData()) ? REMOVING_CABLE_COLOR : colorOf(rx));
+					g2.setStroke(tx.equals(dragSourceTransceiver) ? VIRTUAL_CABLE_STROKE : CABLE_STROKE);
+					g2.setColor(colorOf(rx));
 					g2.drawLine(txBounds.x, txBounds.y, rxBounds.x, rxBounds.y);
 					break;
 				}

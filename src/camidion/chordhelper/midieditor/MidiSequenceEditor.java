@@ -6,13 +6,6 @@ import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Insets;
 import java.awt.datatransfer.DataFlavor;
-import java.awt.datatransfer.Transferable;
-import java.awt.dnd.DnDConstants;
-import java.awt.dnd.DropTarget;
-import java.awt.dnd.DropTargetAdapter;
-import java.awt.dnd.DropTargetDragEvent;
-import java.awt.dnd.DropTargetDropEvent;
-import java.awt.dnd.DropTargetListener;
 import java.awt.event.ActionEvent;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
@@ -58,6 +51,7 @@ import javax.swing.JSplitPane;
 import javax.swing.JTable;
 import javax.swing.JToggleButton;
 import javax.swing.ListSelectionModel;
+import javax.swing.TransferHandler;
 import javax.swing.border.EtchedBorder;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
@@ -122,33 +116,23 @@ public class MidiSequenceEditor extends JDialog {
 	}
 
 	/**
-	 * ドロップされた複数のMIDIファイルを読み込むリスナー
+	 * ドロップされた複数のMIDIファイルを読み込むハンドラー
 	 */
-	public final DropTargetListener dropTargetListener = new DropTargetAdapter() {
+	public final TransferHandler transferHandler = new TransferHandler() {
 		@Override
-		public void dragEnter(DropTargetDragEvent event) {
-			if( event.isDataFlavorSupported(DataFlavor.javaFileListFlavor) ) {
-				event.acceptDrag(DnDConstants.ACTION_COPY_OR_MOVE);
-			}
+		public boolean canImport(TransferSupport support) {
+			return support.isDataFlavorSupported(DataFlavor.javaFileListFlavor);
 		}
-		@Override
 		@SuppressWarnings("unchecked")
-		public void drop(DropTargetDropEvent event) {
-			event.acceptDrop(DnDConstants.ACTION_COPY_OR_MOVE);
+		@Override
+		public boolean importData(TransferSupport support) {
 			try {
-				if ( (event.getDropAction() & DnDConstants.ACTION_COPY_OR_MOVE) != 0 ) {
-					Transferable t = event.getTransferable();
-					if( t.isDataFlavorSupported(DataFlavor.javaFileListFlavor) ) {
-						loadAndPlay((List<File>)t.getTransferData(DataFlavor.javaFileListFlavor));
-						event.dropComplete(true);
-						return;
-					}
-				}
+				loadAndPlay((List<File>)support.getTransferable().getTransferData(DataFlavor.javaFileListFlavor));
+				return true;
+			} catch (Exception e) {
+				e.printStackTrace();
+				return false;
 			}
-			catch (Exception ex) {
-				ex.printStackTrace();
-			}
-			event.dropComplete(false);
 		}
 	};
 
@@ -1155,7 +1139,7 @@ public class MidiSequenceEditor extends JDialog {
 		setTitle("MIDI Editor/Playlist - MIDI Chord Helper");
 		setBounds( 150, 200, 900, 500 );
 		setLayout(new FlowLayout());
-		new DropTarget(this, DnDConstants.ACTION_COPY_OR_MOVE, dropTargetListener, true);
+		setTransferHandler(transferHandler);
 		//
 		// パネルレイアウト
 		JPanel playlistPanel = new JPanel() {{
