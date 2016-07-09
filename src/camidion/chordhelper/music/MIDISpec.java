@@ -1113,7 +1113,7 @@ public class MIDISpec {
 							int b = (msgdata[i] & 0xFF);
 							if( b == 0xF7 ) break;
 							String s = (
-								b < 0 || b >= MIDISpec.nsx39LyricElements.length ?
+								b >= MIDISpec.nsx39LyricElements.length ?
 								"?": MIDISpec.nsx39LyricElements[b]
 							);
 							p.append(s);
