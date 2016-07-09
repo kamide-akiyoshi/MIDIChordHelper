@@ -77,7 +77,7 @@ import camidion.chordhelper.music.MIDISpec;
  *	Copyright (C) 2006-2016 Akiyoshi Kamide
  *	http://www.yk.rim.or.jp/~kamide/music/chordhelper/
  */
-public class MidiSequenceEditor extends JDialog {
+public class MidiSequenceEditorDialog extends JDialog {
 	/**
 	 * このダイアログを表示するアクション
 	 */
@@ -131,6 +131,7 @@ public class MidiSequenceEditor extends JDialog {
 				return true;
 			} catch (Exception e) {
 				e.printStackTrace();
+				showError(e.getMessage());
 				return false;
 			}
 		}
@@ -152,8 +153,8 @@ public class MidiSequenceEditor extends JDialog {
 		} catch(IOException|InvalidMidiDataException e) {
 			showWarning(e.getMessage());
 		} catch(AccessControlException e) {
-			showError(e.getMessage());
 			e.printStackTrace();
+			showError(e.getMessage());
 		}
 		MidiSequencerModel sequencerModel = playlist.getSequencerModel();
 		if( sequencerModel.getSequencer().isRunning() ) {
@@ -434,7 +435,7 @@ public class MidiSequenceEditor extends JDialog {
 		 * シーケンスを削除するアクション
 		 */
 		Action deleteSequenceAction = getModel().new SelectedSequenceAction(
-			"Delete", MidiSequenceEditor.deleteIcon,
+			"Delete", MidiSequenceEditorDialog.deleteIcon,
 			"Delete selected MIDI sequence - 選択した曲をプレイリストから削除"
 		) {
 			@Override
@@ -488,8 +489,8 @@ public class MidiSequenceEditor extends JDialog {
 						playlistModel.fireSequenceModified(sequenceModel, false);
 					}
 					catch( IOException ex ) {
-						showError( ex.getMessage() );
 						ex.printStackTrace();
+						showError( ex.getMessage() );
 					}
 				}
 			};
@@ -1124,11 +1125,11 @@ public class MidiSequenceEditor extends JDialog {
 	}
 
 	/**
-	 * 新しい {@link MidiSequenceEditor} を構築します。
+	 * 新しい {@link MidiSequenceEditorDialog} を構築します。
 	 * @param playlistTableModel このエディタが参照するプレイリストモデル
 	 * @param outputMidiDevice イベントテーブルの操作音出力先MIDIデバイス
 	 */
-	public MidiSequenceEditor(PlaylistTableModel playlistTableModel, VirtualMidiDevice outputMidiDevice) {
+	public MidiSequenceEditorDialog(PlaylistTableModel playlistTableModel, VirtualMidiDevice outputMidiDevice) {
 		this.outputMidiDevice = outputMidiDevice;
 		sequenceListTable = new SequenceListTable(playlistTableModel);
 		trackListTable = new TrackListTable(

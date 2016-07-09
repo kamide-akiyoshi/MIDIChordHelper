@@ -63,7 +63,7 @@ import camidion.chordhelper.mididevice.SequencerTimeView;
 import camidion.chordhelper.mididevice.VirtualMidiDevice;
 import camidion.chordhelper.midieditor.Base64Dialog;
 import camidion.chordhelper.midieditor.KeySignatureLabel;
-import camidion.chordhelper.midieditor.MidiSequenceEditor;
+import camidion.chordhelper.midieditor.MidiSequenceEditorDialog;
 import camidion.chordhelper.midieditor.NewSequenceDialog;
 import camidion.chordhelper.midieditor.PlaylistTableModel;
 import camidion.chordhelper.midieditor.SequenceTickIndex;
@@ -283,7 +283,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public static class VersionInfo {
 		public static final String	NAME = "MIDI Chord Helper";
-		public static final String	VERSION = "Ver.20160702.1";
+		public static final String	VERSION = "Ver.20160709.1";
 		public static final String	COPYRIGHT = "Copyright (C) 2004-2016";
 		public static final String	AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String	URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";
@@ -377,7 +377,7 @@ public class ChordHelperApplet extends JApplet {
 	//
 	private static final String IMAGE_ICON_PATH = "midichordhelper.png";
 	//
-	MidiSequenceEditor midiEditor;
+	MidiSequenceEditorDialog midiEditor;
 	PlaylistTableModel playlistModel;
 	MidiSequencerModel sequencerModel;
 	public ChordMatrix chordMatrix;
@@ -473,7 +473,7 @@ public class ChordHelperApplet extends JApplet {
 		playlistModel = new PlaylistTableModel(sequencerModel = deviceModelList.getSequencerModel());
 		//
 		// MIDIエディタダイアログの構築
-		(midiEditor = new MidiSequenceEditor(playlistModel, guiMidiDevice)).setIconImage(iconImage);
+		(midiEditor = new MidiSequenceEditorDialog(playlistModel, guiMidiDevice)).setIconImage(iconImage);
 		//
 		// メイン画面へのMIDIファイルのドラッグ＆ドロップ受付開始
 		setTransferHandler(midiEditor.transferHandler);

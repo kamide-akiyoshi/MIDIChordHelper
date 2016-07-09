@@ -54,7 +54,7 @@ public class MidiDeviceFrame extends JInternalFrame {
 	/**
 	 * MIDIデバイスモデルからフレームビューを構築します。
 	 */
-	public MidiDeviceFrame(MidiDeviceModel deviceModel, final MidiCablePane cablePane) {
+	public MidiDeviceFrame(MidiDeviceModel deviceModel, MidiCablePane cablePane) {
 		super( null, true, true, false, false );
 		this.deviceModel = deviceModel;
 		setTitle("[" + deviceModel.getMidiDeviceInOutType().getShortName() + "] " + deviceModel);

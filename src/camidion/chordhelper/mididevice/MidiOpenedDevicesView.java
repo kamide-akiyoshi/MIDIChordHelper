@@ -1,5 +1,6 @@
 package camidion.chordhelper.mididevice;
 
+import java.awt.datatransfer.DataFlavor;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.beans.PropertyVetoException;
@@ -11,7 +12,6 @@ import javax.swing.JDesktopPane;
 import javax.swing.JInternalFrame;
 import javax.swing.JLayeredPane;
 import javax.swing.JOptionPane;
-import javax.swing.TransferHandler;
 import javax.swing.event.TreeSelectionEvent;
 import javax.swing.event.TreeSelectionListener;
 import javax.swing.tree.TreePath;
@@ -106,7 +106,7 @@ public class MidiOpenedDevicesView extends JDesktopPane implements TreeSelection
 				toY += 50;
 			}
 		}
-		setTransferHandler(new TransferHandler() {
+		setTransferHandler(cablePane.new TransceiverTransferHandler() {
 			@Override
 			public boolean canImport(TransferSupport support) {
 				if( ! support.isDrop() ) return false;
@@ -114,28 +114,29 @@ public class MidiOpenedDevicesView extends JDesktopPane implements TreeSelection
 					// MIDIデバイスを開くためのドロップを受け付ける
 					return true;
 				}
-				if( support.isDataFlavorSupported(TransmitterListView.elementFlavor) ) {
-					cablePane.setDragDestinationTransceiver(null);
+				if( support.isDataFlavorSupported(TransmitterListView.transmitterFlavor) ) {
+					setDestinationTransceiver(null);
 					// Transmitterの切り離しができるよう、ドロップを容認
 					return true;
 				}
-				if( support.isDataFlavorSupported(ReceiverListView.elementFlavor) ) {
-					cablePane.setDragDestinationTransceiver(null);
+				if( support.isDataFlavorSupported(ReceiverListView.receiverFlavor) ) {
+					setDestinationTransceiver(null);
 					// Receiverはドロップ不可
 				}
 				return false;
 			}
 			@Override
 			public boolean importData(TransferSupport support) {
+				// canImport()がTransmitterを容認しているので、ここにTransmitterが来ることがある。
+				// そこで、DataFlavorをチェックし、MIDIデバイスでなければ拒否する。
+				DataFlavor flavor = MidiDeviceTreeView.deviceModelFlavor;
+				if( ! support.isDataFlavorSupported(flavor) ) return false;
 				MidiDeviceModel deviceModel = null;
-				Object from;
 				try {
-					from = support.getTransferable().getTransferData(MidiDeviceTreeView.deviceModelFlavor);
-					if( ! (from instanceof MidiDeviceModel) ) return false;
-					deviceModel = (MidiDeviceModel)from;
+					deviceModel = (MidiDeviceModel)support.getTransferable().getTransferData(flavor);
 					deviceModel.open();
 					if( ! deviceModel.getMidiDevice().isOpen() ) {
-						throw new MidiUnavailableException("開いたはずなのに、開かれた状態になっていません。");
+						throw new MidiUnavailableException("開いたはずのMIDIデバイスが、開かれた状態になっていません。");
 					}
 					MidiDeviceFrame deviceFrame = modelToFrame.get(deviceModel);
 					if( ! deviceFrame.isVisible() ) {
@@ -155,11 +156,10 @@ public class MidiOpenedDevicesView extends JDesktopPane implements TreeSelection
 						+"他のデバイスが連動して開いている可能性があります。\n\n"
 						+ e.getMessage();
 					JOptionPane.showMessageDialog(null, message, title, JOptionPane.ERROR_MESSAGE);
-					return false;
 				} catch (Exception ex) {
 					ex.printStackTrace();
-					return false;
 				}
+				return false;
 			}
 		});
 	}
