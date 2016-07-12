@@ -3,6 +3,7 @@ package camidion.chordhelper.mididevice;
 import java.awt.Component;
 import java.awt.Point;
 import java.awt.Rectangle;
+import java.awt.datatransfer.DataFlavor;
 
 import javax.sound.midi.Receiver;
 import javax.sound.midi.Transmitter;
@@ -45,6 +46,10 @@ public abstract class AbstractTransceiverListView<E> extends JList<E> {
 	 * @return ツールチップ文字列
 	 */
 	protected abstract String toolTipTextFor(E element);
+	/**
+	 * 要素型を表すデータフレーバーの配列を返します。
+	 */
+	public abstract DataFlavor[] getElementDataFlavorArray();
 	/**
 	 * 仮想MIDI端子リストビューを生成します。
 	 * @param model このビューから参照されるデータモデル

@@ -12,6 +12,9 @@ import javax.swing.JComponent;
  */
 public class TransmitterListView extends AbstractTransceiverListView<Transmitter> {
 	public static final DataFlavor transmitterFlavor = new DataFlavor(Transmitter.class,"Transmitter");
+	public static final DataFlavor[] transmitterFlavorArray = {transmitterFlavor};
+	@Override
+	public DataFlavor[] getElementDataFlavorArray() { return transmitterFlavorArray; }
 	@Override
 	protected String toolTipTextFor(Transmitter tx) {
 		if( tx instanceof DummyTransmitter ) {
@@ -29,11 +32,7 @@ public class TransmitterListView extends AbstractTransceiverListView<Transmitter
 	 */
 	public TransmitterListView(TransmitterListModel model, MidiCablePane cablePane) {
 		super(model);
-		setTransferHandler(cablePane.new TransceiverTransferHandler() {
-			@Override
-			protected Transferable createTransferable(JComponent compo) {
-				return cablePane.new DraggingTransceiver(getSelectedValue(),transmitterFlavor);
-			}
+		setTransferHandler(cablePane.new TransceiverTransferHandler<Transmitter>(this, ReceiverListView.receiverFlavor) {
 			@Override
 			protected void exportDone(JComponent source, Transferable data, int action) {
 				if( data != null ) {
@@ -53,19 +52,9 @@ public class TransmitterListView extends AbstractTransceiverListView<Transmitter
 				super.exportDone(source, data, action);
 			}
 			@Override
-			public boolean canImport(TransferSupport support) {
-				if( ! support.isDrop() ) return false;
-				if( ! support.isDataFlavorSupported(ReceiverListView.receiverFlavor) ) {
-					setDestinationTransceiver(null);
-					return false;
-				}
-				setDestinationTransceiver(getElementAt(support.getDropLocation().getDropPoint()));
-				return true;
-			}
-			@Override
 			public boolean importData(TransferSupport support) {
 				try {
-					Receiver rx = (Receiver)support.getTransferable().getTransferData(ReceiverListView.receiverFlavor);
+					Receiver rx = (Receiver)support.getTransferable().getTransferData(getDestinationDataFlavor());
 					Transmitter tx = getElementAt(support.getDropLocation().getDropPoint());
 					if( tx instanceof DummyTransmitter ) tx = getModel().openTransmitter();
 					tx.setReceiver(rx);

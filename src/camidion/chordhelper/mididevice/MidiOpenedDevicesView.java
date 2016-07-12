@@ -12,6 +12,7 @@ import javax.swing.JDesktopPane;
 import javax.swing.JInternalFrame;
 import javax.swing.JLayeredPane;
 import javax.swing.JOptionPane;
+import javax.swing.TransferHandler;
 import javax.swing.event.TreeSelectionEvent;
 import javax.swing.event.TreeSelectionListener;
 import javax.swing.tree.TreePath;
@@ -106,7 +107,7 @@ public class MidiOpenedDevicesView extends JDesktopPane implements TreeSelection
 				toY += 50;
 			}
 		}
-		setTransferHandler(cablePane.new TransceiverTransferHandler() {
+		setTransferHandler(new TransferHandler() {
 			@Override
 			public boolean canImport(TransferSupport support) {
 				if( ! support.isDrop() ) return false;
@@ -115,12 +116,12 @@ public class MidiOpenedDevicesView extends JDesktopPane implements TreeSelection
 					return true;
 				}
 				if( support.isDataFlavorSupported(TransmitterListView.transmitterFlavor) ) {
-					setDestinationTransceiver(null);
+					cablePane.draggedOutOfDestination();
 					// Transmitterの切り離しができるよう、ドロップを容認
 					return true;
 				}
 				if( support.isDataFlavorSupported(ReceiverListView.receiverFlavor) ) {
-					setDestinationTransceiver(null);
+					cablePane.draggedOutOfDestination();
 					// Receiverはドロップ不可
 				}
 				return false;

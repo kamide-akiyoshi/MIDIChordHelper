@@ -43,11 +43,11 @@ public class MidiCablePane extends JComponent {
 	 * ドラッグ中の{@link Transmitter}または{@link Receiver}を
 	 * {@link Transferable}インターフェースで参照できるようにするクラス
 	 */
-	public class DraggingTransceiver implements Transferable {
+	public class DraggingTransceiver<E> implements Transferable {
 		private DataFlavor[] draggingFlavors;
-		public DraggingTransceiver(Object source, DataFlavor flavor) {
-			(draggingFlavors = new DataFlavor[1])[0] = flavor;
-			draggingSource = source;
+		public DraggingTransceiver(AbstractTransceiverListView<E> listView) {
+			draggingFlavors = listView.getElementDataFlavorArray();
+			draggingSource = listView.getSelectedValue();
 			repaint();
 		}
 		@Override
@@ -66,19 +66,48 @@ public class MidiCablePane extends JComponent {
 	 * ドラッグ＆ドロップ中のケーブル描画情報を
 	 * {@link MidiCablePane}クラスのインスタンスに提供するための{@link TransferHandler}
 	 */
-	public abstract class TransceiverTransferHandler extends TransferHandler {
+	public abstract class TransceiverTransferHandler<E> extends TransferHandler {
+		private AbstractTransceiverListView<E> listView;
+		private DataFlavor destinationDataFlavor;
+		public TransceiverTransferHandler(AbstractTransceiverListView<E> listView, DataFlavor destinationDataFlavor) {
+			this.listView = listView;
+			this.destinationDataFlavor = destinationDataFlavor;
+		}
 		@Override
 		public int getSourceActions(JComponent compo) { return COPY_OR_MOVE; }
+		@Override
+		protected Transferable createTransferable(JComponent compo) {
+			return new DraggingTransceiver<E>(listView);
+		}
 		@Override
 		protected void exportDone(JComponent source, Transferable data, int action) {
 			draggingSource = null;
 			draggingLocation = null;
-			setDestinationTransceiver(null);
-		}
-		protected void setDestinationTransceiver(Object destination) {
-			draggingDestination = destination;
+			draggingDestination = null;
 			repaint();
 		}
+		@Override
+		public boolean canImport(TransferSupport support) {
+			if( ! support.isDrop() ) return false;
+			if( ! support.isDataFlavorSupported(destinationDataFlavor) ) {
+				draggingDestination = null;
+				repaint();
+				return false;
+			}
+			draggingDestination = listView.getElementAt(support.getDropLocation().getDropPoint());
+			repaint();
+			return true;
+		}
+		public DataFlavor getDestinationDataFlavor() {
+			return destinationDataFlavor;
+		}
+	}
+	/**
+	 * ドラッグ中、ドロップできるエリアを外れたとき、この描画面に通知します。
+	 */
+	public void draggedOutOfDestination() {
+		draggingDestination = null;
+		repaint();
 	}
 	/**
 	 * {@link MidiDeviceFrame} が移動または変形したときにケーブルを再描画するためのリスナー
