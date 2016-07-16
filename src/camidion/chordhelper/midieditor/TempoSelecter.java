@@ -1,18 +1,15 @@
 package camidion.chordhelper.midieditor;
 
 import java.awt.Component;
+import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
 
-import javax.sound.midi.MetaEventListener;
-import javax.sound.midi.MetaMessage;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JSpinner;
 import javax.swing.SpinnerNumberModel;
-import javax.swing.SwingUtilities;
 
 import camidion.chordhelper.ButtonIcon;
 import camidion.chordhelper.music.MIDISpec;
@@ -20,7 +17,7 @@ import camidion.chordhelper.music.MIDISpec;
 /**
  * テンポ選択（QPM: Quarter Per Minute）
  */
-public class TempoSelecter extends JPanel implements MouseListener, MetaEventListener {
+public class TempoSelecter extends JPanel {
 	static final int DEFAULT_QPM = 120;
 	protected SpinnerNumberModel tempoSpinnerModel =
 		new SpinnerNumberModel(DEFAULT_QPM, 1, 999, 1);
@@ -41,49 +38,28 @@ public class TempoSelecter extends JPanel implements MouseListener, MetaEventLis
 		add(tempoSpinner);
 		add(tempoValueLabel);
 		setEditable(true);
-		tempoLabel.addMouseListener(this);
+		tempoLabel.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mousePressed(MouseEvent e) {
+				Component obj = e.getComponent();
+				if(obj == tempoLabel && isEditable()) {
+					//
+					// Adjust tempo by interval time between two clicks (tapping)
+					//
+					long currentMicrosecond = System.nanoTime()/1000;
+					// midi_ch_selecter.noteOn( 9, 37, 100 );
+					long interval_us = currentMicrosecond - prevBeatMicrosecondPosition;
+					prevBeatMicrosecondPosition = currentMicrosecond;
+					if( interval_us < 2000000L /* Shorter than 2 sec only */ ) {
+						int tempo_in_bpm = (int)(240000000L / interval_us) >> 2; //  n/4拍子の場合のみを想定
+					int old_tempo_in_bpm = getTempoInQpm();
+					setTempo( ( tempo_in_bpm + old_tempo_in_bpm * 2 ) / 3 );
+					}
+				}
+			}
+		});
 	}
 	private long prevBeatMicrosecondPosition = 0;
-	private class SetTempoRunnable implements Runnable {
-		byte[] qpm;
-		public SetTempoRunnable(byte[] qpm) { this.qpm = qpm; }
-		@Override
-		public void run() { setTempo(qpm);}
-	}
-	@Override
-	public void meta(MetaMessage msg) {
-		switch(msg.getType()) {
-		case 0x51: // Tempo (3 bytes) - テンポ
-			if( SwingUtilities.isEventDispatchThread() ) {
-				setTempo(msg.getData());
-			} else {
-				SwingUtilities.invokeLater(new SetTempoRunnable(msg.getData()));
-			}
-			break;
-		}
-	}
-	@Override
-	public void mousePressed(MouseEvent e) {
-		Component obj = e.getComponent();
-		if(obj == tempoLabel && isEditable()) {
-			//
-			// Adjust tempo by interval time between two clicks
-			//
-			long currentMicrosecond = System.nanoTime()/1000;
-			// midi_ch_selecter.noteOn( 9, 37, 100 );
-			long interval_us = currentMicrosecond - prevBeatMicrosecondPosition;
-			prevBeatMicrosecondPosition = currentMicrosecond;
-			if( interval_us < 2000000L /* Shorter than 2 sec only */ ) {
-				int tempo_in_bpm = (int)(240000000L / interval_us) >> 2; //  n/4拍子の場合のみを想定
-			int old_tempo_in_bpm = getTempoInQpm();
-			setTempo( ( tempo_in_bpm + old_tempo_in_bpm * 2 ) / 3 );
-			}
-		}
-	}
-	public void mouseReleased(MouseEvent e) { }
-	public void mouseEntered(MouseEvent e) { }
-	public void mouseExited(MouseEvent e) { }
-	public void mouseClicked(MouseEvent e) { }
 	private boolean	editable;
 	/**
 	 * 編集可能かどうかを返します。

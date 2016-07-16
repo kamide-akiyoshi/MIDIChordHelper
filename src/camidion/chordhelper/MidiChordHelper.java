@@ -28,7 +28,6 @@ import javax.swing.event.ChangeListener;
 import javax.swing.event.TableModelEvent;
 import javax.swing.event.TableModelListener;
 
-import camidion.chordhelper.mididevice.MidiSequencerModel;
 import camidion.chordhelper.midieditor.PlaylistTableModel;
 import camidion.chordhelper.midieditor.SequenceTrackListTableModel;
 
@@ -95,8 +94,7 @@ public class MidiChordHelper {
 				 */
 				@Override
 				public void stateChanged(ChangeEvent event) {
-					MidiSequencerModel sequencerModel = (MidiSequencerModel) event.getSource();
-					setFilenameToTitle(sequencerModel.getSequenceTrackListTableModel());
+					setFilenameToTitle(applet.sequencerModel.getSequenceTrackListTableModel());
 				}
 			});
 			applet.playlistModel.addTableModelListener(new TableModelListener() {
@@ -107,8 +105,7 @@ public class MidiChordHelper {
 				public void tableChanged(TableModelEvent event) {
 					int col = event.getColumn();
 					if( col == PlaylistTableModel.Column.FILENAME.ordinal() || col == TableModelEvent.ALL_COLUMNS ) {
-						PlaylistTableModel pl = (PlaylistTableModel) event.getSource();
-						setFilenameToTitle(pl.getSequencerModel().getSequenceTrackListTableModel());
+						setFilenameToTitle(applet.sequencerModel.getSequenceTrackListTableModel());
 					}
 				}
 			});

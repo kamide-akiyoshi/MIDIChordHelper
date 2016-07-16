@@ -133,7 +133,7 @@ public class MidiCablePane extends JComponent {
 			MidiDeviceFrame f = (MidiDeviceFrame)frame;
 			MidiDeviceModel m = f.getMidiDeviceModel();
 			List<Receiver> rxList = m.getMidiDevice().getReceivers();
-			for( Receiver rx : rxList ) colorMap.remove(rx);
+			for( Receiver rx : rxList ) rxToColor.remove(rx);
 			repaint();
 		}
 	};
@@ -180,60 +180,69 @@ public class MidiCablePane extends JComponent {
 		new Color(191,0,191,144)
 	);
 	private static final Color NEW_CABLE_COLOR = new Color(0, 0, 0, 144);
-	private Hashtable<Receiver,Color> colorMap = new Hashtable<>();
+	private Hashtable<Receiver,Color> rxToColor = new Hashtable<>();
 	private Color colorOf(Receiver rx) {
-		Color color = colorMap.get(rx);
-		if( color == null ) {
-			for( Color c : CABLE_COLORS ) {
-				if( ! colorMap.containsValue(c) ) {
-					colorMap.put(rx, c);
-					return c;
-				}
-			}
-			color = CABLE_COLORS.get((int)( Math.random() * CABLE_COLORS.size() ));
-			colorMap.put(rx, color);
+		// そのレシーバに割り当て済みの色を探す
+		Color myColor = rxToColor.get(rx);
+		if( myColor != null ) return myColor;
+		// なければ、未使用の色を探して割り当てる
+		for( Color virginColor : CABLE_COLORS ) {
+			if( rxToColor.containsValue(virginColor) ) continue;
+			rxToColor.put(rx, virginColor);
+			return virginColor;
 		}
-		return color;
+		// 全色使われていたら、重複してでもランダムに割り当てる
+		Color randomColor = CABLE_COLORS.get((int)( Math.random() * CABLE_COLORS.size() ));
+		rxToColor.put(rx, randomColor);
+		return randomColor;
 	}
 	@Override
 	public void paint(Graphics g) {
 		super.paint(g);
 		Graphics2D g2 = (Graphics2D)g;
 		JInternalFrame[] frames = desktopPane.getAllFramesInLayer(JLayeredPane.DEFAULT_LAYER);
+		//
+		// 各フレームをスキャン
 		for( JInternalFrame frame : frames ) {
 			if( ! (frame instanceof MidiDeviceFrame) ) continue;
 			MidiDeviceFrame fromFrame = (MidiDeviceFrame)frame;
 			MidiDeviceModel fromDeviceModel = fromFrame.getMidiDeviceModel();
 			//
-			// Receiverからドラッグ中の場合、その線を描画
-			if( draggingLocation != null && fromDeviceModel.getMidiDevice().getReceivers().contains(draggingSource)) {
-				Receiver rx = (Receiver)draggingSource;
-				Rectangle rxBounds = fromFrame.getBoundsOf(rx);
-				if( rxBounds == null ) continue;
-				int r = (rxBounds.height - 5) / 2;
-				rxBounds.translate(r+4, r+4);
-				if( draggingDestination instanceof Transmitter ) {
-					g2.setStroke(CABLE_STROKE);
-				} else {
-					g2.setStroke(VIRTUAL_CABLE_STROKE);
-				}
-				g2.setColor(colorOf(rx));
-				g2.drawLine(rxBounds.x, rxBounds.y, draggingLocation.x, draggingLocation.y);
-			}
-			// Transmitterを全部スキャン
+			// Transmitterをスキャン
 			TransmitterListModel txListModel = fromDeviceModel.getTransmitterListModel();
 			int ntx = txListModel == null ? 0 : txListModel.getSize();
 			for( int index=0 ; index < ntx; index++ ) {
 				Transmitter tx = txListModel.getElementAt(index);
-				//
-				// Transmitterの場所を特定
+				Receiver rx = tx.getReceiver();
+				if( rx == null && (draggingLocation == null || ! tx.equals(draggingSource)) ) {
+					// このTransmitterから描画すべきケーブルはない
+					continue;
+				}
+				// Transmitterの表示場所を特定
 				Rectangle txBounds = fromFrame.getBoundsOf(tx);
 				if( txBounds == null ) continue;
 				int r = (txBounds.height - 5) / 2;
 				txBounds.translate(r+4, r+4);
+				//
+				// TransmitterからReceiverへのケーブルを描画
+				if( rx != null ) {
+					// Receiverの表示場所を探す
+					for( JInternalFrame toFrame : frames ) {
+						if( ! (toFrame instanceof MidiDeviceFrame) ) continue;
+						Rectangle rxBounds = ((MidiDeviceFrame)toFrame).getBoundsOf(rx);
+						if( rxBounds == null ) continue;
+						r = (rxBounds.height - 5) / 2;
+						rxBounds.translate(r+4, r+4);
+						//
+						// 場所が判明したら描画
+						g2.setStroke(tx.equals(draggingSource) ? VIRTUAL_CABLE_STROKE : CABLE_STROKE);
+						g2.setColor(colorOf(rx));
+						g2.drawLine(txBounds.x, txBounds.y, rxBounds.x, rxBounds.y);
+						break;
+					}
+				}
+				// Transmitterからドラッグ中のケーブルを描画
 				if( draggingLocation != null && tx.equals(draggingSource) ) {
-					//
-					// Transmitterからドラッグされている線を描画
 					if( draggingDestination instanceof Receiver ) {
 						g2.setStroke(CABLE_STROKE);
 						g2.setColor(colorOf((Receiver)draggingDestination));
@@ -243,22 +252,21 @@ public class MidiCablePane extends JComponent {
 					}
 					g2.drawLine(txBounds.x, txBounds.y, draggingLocation.x, draggingLocation.y);
 				}
-				//
-				// スキャン中のTransmitterに現在接続されているReceiverを把握
-				Receiver rx = tx.getReceiver();
-				if( rx == null ) continue;
-				for( JInternalFrame toFrame : frames ) {
-					if( ! (toFrame instanceof MidiDeviceFrame) ) continue;
-					Rectangle rxBounds = ((MidiDeviceFrame)toFrame).getBoundsOf(rx);
-					if( rxBounds == null ) continue;
-					r = (rxBounds.height - 5) / 2;
+			}
+			// Receiverからドラッグ中のケーブルを描画
+			if( draggingLocation != null && fromDeviceModel.getMidiDevice().getReceivers().contains(draggingSource) ) {
+				Receiver rx = (Receiver)draggingSource;
+				Rectangle rxBounds = fromFrame.getBoundsOf(rx);
+				if( rxBounds != null ) {
+					int r = (rxBounds.height - 5) / 2;
 					rxBounds.translate(r+4, r+4);
-					//
-					// Transmitter⇔Receiver間の線を描画
-					g2.setStroke(tx.equals(draggingSource) ? VIRTUAL_CABLE_STROKE : CABLE_STROKE);
+					if( draggingDestination instanceof Transmitter ) {
+						g2.setStroke(CABLE_STROKE);
+					} else {
+						g2.setStroke(VIRTUAL_CABLE_STROKE);
+					}
 					g2.setColor(colorOf(rx));
-					g2.drawLine(txBounds.x, txBounds.y, rxBounds.x, rxBounds.y);
-					break;
+					g2.drawLine(rxBounds.x, rxBounds.y, draggingLocation.x, draggingLocation.y);
 				}
 			}
 		}

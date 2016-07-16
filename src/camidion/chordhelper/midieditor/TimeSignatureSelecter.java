@@ -1,22 +1,17 @@
 package camidion.chordhelper.midieditor;
 
-import javax.sound.midi.MetaEventListener;
-import javax.sound.midi.MetaMessage;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JSpinner;
 import javax.swing.SpinnerNumberModel;
-import javax.swing.SwingUtilities;
 
 /**
  * 拍子選択ビュー
  */
-public class TimeSignatureSelecter extends JPanel implements MetaEventListener {
+public class TimeSignatureSelecter extends JPanel {
 	SpinnerNumberModel upperTimesigSpinnerModel = new SpinnerNumberModel(4, 1, 32, 1);
-	private JSpinner upperTimesigSpinner = new JSpinner(
-		upperTimesigSpinnerModel
-	) {
+	private JSpinner upperTimesigSpinner = new JSpinner(upperTimesigSpinnerModel) {
 		{
 			setToolTipText("Time signature (upper digit) - 拍子の分子");
 		}
@@ -28,24 +23,6 @@ public class TimeSignatureSelecter extends JPanel implements MetaEventListener {
 			setSelectedIndex(2);
 		}
 	};
-	private class SetValueRunnable implements Runnable {
-		byte[] timesig;
-		public SetValueRunnable(byte[] timesig) { this.timesig = timesig; }
-		@Override
-		public void run() { setValue(timesig);}
-	}
-	@Override
-	public void meta(MetaMessage msg) {
-		switch(msg.getType()) {
-		case 0x58: // Time signature (4 bytes) - 拍子
-			if( SwingUtilities.isEventDispatchThread() ) {
-				setValue(msg.getData());
-			} else {
-				SwingUtilities.invokeLater(new SetValueRunnable(msg.getData()));
-			}
-			break;
-		}
-	}
 	private class TimeSignatureLabel extends JLabel {
 		private byte upper = -1;
 		private byte lower_index = -1;

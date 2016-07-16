@@ -88,35 +88,30 @@ public class PlaylistTableModel extends AbstractTableModel {
 	public PlaylistTableModel(MidiSequencerModel sequencerModel) {
 		this.sequencerModel = sequencerModel;
 		sequencerModel.addChangeListener(secondPosition);
-		sequencerModel.getSequencer().addMetaEventListener(
-			new MetaEventListener() {
-				/**
-				 * {@inheritDoc}
-				 *
-				 * <p>EOT (End Of Track、type==0x2F) を受信したとき、次の曲へ進みます。
-				 * </p>
-				 * <p>これは MetaEventListener のための実装なので、多くの場合
-				 * Swing EDT ではなく MIDI シーケンサの EDT から起動されます。
-				 * Swing EDT とは違うスレッドで動いていた場合は Swing EDT に振り直されます。
-				 * </p>
-				 */
-				@Override
-				public void meta(MetaMessage msg) {
-					if( msg.getType() == 0x2F ) {
-						if( ! SwingUtilities.isEventDispatchThread() ) {
-							SwingUtilities.invokeLater(
-								new Runnable() {
-									@Override
-									public void run() { goNext(); }
-								}
-							);
-							return;
-						}
+		sequencerModel.getSequencer().addMetaEventListener(new MetaEventListener() {
+			/**
+			 * {@inheritDoc}
+			 *
+			 * <p>EOT (End Of Track、type==0x2F) を受信したとき、次の曲へ進みます。
+			 * </p>
+			 * <p>多くの場合、このメソッドは Swing の EDT(Event Dispatch Thread) ではなく
+			 * MIDI シーケンサの EDT から起動されるので、GUI 処理を Swing EDT に振り直します。
+			 * </p>
+			 */
+			@Override
+			public void meta(MetaMessage msg) {
+				if( msg.getType() == 0x2F ) {
+					if( SwingUtilities.isEventDispatchThread() ) {
 						goNext();
+					} else {
+						SwingUtilities.invokeLater(new Runnable() {
+							@Override
+							public void run() { goNext(); }
+						});
 					}
 				}
 			}
-		);
+		});
 		emptyTrackListTableModel = new SequenceTrackListTableModel(this, null, null);
 		emptyEventListTableModel = new TrackEventListTableModel(emptyTrackListTableModel, null);
 	}

@@ -13,7 +13,7 @@ import camidion.chordhelper.mididevice.MidiSequencerModel;
 import camidion.chordhelper.midieditor.SequenceTrackListTableModel;
 import camidion.chordhelper.music.Chord;
 
-public class ChordTextField extends JTextField implements MetaEventListener {
+public class ChordTextField extends JTextField {
 	private MidiSequencerModel sequencerModel;
 	public ChordTextField(MidiSequencerModel sequencerModel) {
 		super(80);
@@ -25,46 +25,34 @@ public class ChordTextField extends JTextField implements MetaEventListener {
 		//
 		// To reduce resized height, set maximum size to screen size.
 		//
-		setMaximumSize(
-			java.awt.Toolkit.getDefaultToolkit().getScreenSize()
-		);
-		this.sequencerModel = sequencerModel;
-		sequencerModel.getSequencer().addMetaEventListener(this);
-	}
-	@Override
-	public void meta(MetaMessage msg) {
-		int t = msg.getType();
-		switch(t) {
-		case 0x01: // Text（任意のテキスト：コメントなど）
-		case 0x05: // Lyrics（歌詞）
-		case 0x02: // Copyright（著作権表示）
-		case 0x03: // Sequence Name / Track Name（曲名またはトラック名）
-		case 0x06: // Marker
-			byte[] d = msg.getData();
-			if( ! SwingUtilities.isEventDispatchThread() ) {
-				// MIDIシーケンサの EDT から呼ばれた場合、
-				// 表示処理を Swing の EDT に振り直す。
-				SwingUtilities.invokeLater(new AddTextJob(t,d));
-				return;
+		setMaximumSize(java.awt.Toolkit.getDefaultToolkit().getScreenSize());
+		(this.sequencerModel = sequencerModel).getSequencer().addMetaEventListener(new MetaEventListener() {
+			@Override
+			public void meta(MetaMessage msg) {
+				int t = msg.getType();
+				switch(t) {
+				case 0x01: // Text（任意のテキスト：コメントなど）
+				case 0x05: // Lyrics（歌詞）
+				case 0x02: // Copyright（著作権表示）
+				case 0x03: // Sequence Name / Track Name（曲名またはトラック名）
+				case 0x06: // Marker
+					byte[] d = msg.getData();
+					if( SwingUtilities.isEventDispatchThread() ) {
+						addText(t,d);
+					} else {
+						// MIDIシーケンサのEDTから呼ばれた場合
+						// 表示処理をSwingのEDTに振り直す
+						SwingUtilities.invokeLater(new Runnable() {
+							@Override
+							public void run() { addText(t,d); }
+						});
+					}
+					break;
+				default:
+					break;
+				}
 			}
-			addText(t,d);
-			break;
-		default:
-			return;
-		}
-	}
-	/**
-	 * 歌詞を追加するジョブ
-	 */
-	public class AddTextJob implements Runnable {
-		private int type;
-		private byte[] data;
-		public AddTextJob(int type, byte[] data) {
-			this.type = type;
-			this.data = data;
-		}
-		@Override
-		public void run() { addText(type, data); }
+		});
 	}
 	/**
 	 * 前回のタイムスタンプ

@@ -4,8 +4,8 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.event.InputEvent;
+import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
 
 import javax.swing.JLabel;
 
@@ -19,7 +19,7 @@ import camidion.chordhelper.pianokeyboard.PianoKeyboard;
 /**
  * 和音表示ラベル
  */
-public class ChordDisplayLabel extends JLabel implements MouseListener {
+public class ChordDisplayLabel extends JLabel {
 	private String defaultString = null;
 	private Chord chord = null;
 	private int noteNumber = -1;
@@ -33,12 +33,42 @@ public class ChordDisplayLabel extends JLabel implements MouseListener {
 	 */
 	public ChordDisplayLabel(String defaultString, ChordMatrix chordMatrix, PianoKeyboard keyboard) {
 		super(defaultString, JLabel.CENTER);
-		this.defaultString = defaultString;
-		this.keyboard = keyboard;
-		if( (this.chordMatrix = chordMatrix) != null ) {
-			addMouseListener(this);
-			addMouseWheelListener(chordMatrix);
-		}
+		if( chordMatrix == null ) return;
+		addMouseListener(new MouseAdapter() {
+			@Override
+			public void mousePressed(MouseEvent e) {
+				if( chord != null ) { // コードが表示されている場合
+					if( (e.getModifiersEx() & InputEvent.BUTTON3_DOWN_MASK) != 0 ) {
+						// 右クリックでコードを止める
+						chordMatrix.setSelectedChord((Chord)null);
+					}
+					else {
+						// コードを鳴らす。
+						//   キーボードが指定されている場合、オリジナルキー（カポ反映済）のコードを使う。
+						if( keyboard == null )
+							chordMatrix.setSelectedChord(chord);
+						else
+							chordMatrix.setSelectedChordCapo(chord);
+					}
+				}
+				else if( noteNumber >= 0 ) { // 音階が表示されている場合
+					keyboard.noteOn(noteNumber);
+				}
+			}
+			@Override
+			public void mouseReleased(MouseEvent e) {
+				if( noteNumber >= 0 ) keyboard.noteOff(noteNumber);
+			}
+			@Override
+			public void mouseEntered(MouseEvent e) { mouseEntered(true); }
+			@Override
+			public void mouseExited(MouseEvent e) { mouseEntered(false); }
+			private void mouseEntered(boolean isMouseEntered) {
+				ChordDisplayLabel.this.isMouseEntered = isMouseEntered;
+				if( noteNumber >= 0 || chord != null ) repaint();
+			}
+		});
+		addMouseWheelListener(chordMatrix);
 	}
 	@Override
 	public void paint(Graphics g) {
@@ -48,43 +78,6 @@ public class ChordDisplayLabel extends JLabel implements MouseListener {
 			g.setColor(Color.gray);
 			g.drawRect( 0, 0, d.width-1, d.height-1 );
 		}
-	}
-	private PianoKeyboard keyboard = null;
-	private ChordMatrix chordMatrix = null;
-	@Override
-	public void mousePressed(MouseEvent e) {
-		if( chord != null ) { // コードが表示されている場合
-			if( (e.getModifiersEx() & InputEvent.BUTTON3_DOWN_MASK) != 0 ) {
-				// 右クリックでコードを止める
-				chordMatrix.setSelectedChord((Chord)null);
-			}
-			else {
-				// コードを鳴らす。
-				//   キーボードが指定されている場合、オリジナルキー（カポ反映済）のコードを使う。
-				if( keyboard == null )
-					chordMatrix.setSelectedChord(chord);
-				else
-					chordMatrix.setSelectedChordCapo(chord);
-			}
-		}
-		else if( noteNumber >= 0 ) { // 音階が表示されている場合
-			keyboard.noteOn(noteNumber);
-		}
-	}
-	@Override
-	public void mouseReleased(MouseEvent e) {
-		if( noteNumber >= 0 ) keyboard.noteOff(noteNumber);
-	}
-	@Override
-	public void mouseEntered(MouseEvent e) { mouseEntered(true); }
-	@Override
-	public void mouseExited(MouseEvent e) { mouseEntered(false); }
-	@Override
-	public void mouseClicked(MouseEvent e) {
-	}
-	private void mouseEntered(boolean isMouseEntered) {
-		this.isMouseEntered = isMouseEntered;
-		if( noteNumber >= 0 || chord != null ) repaint();
 	}
 	/**
 	 * 音階を表示します。
