@@ -15,10 +15,10 @@ public abstract class AbstractTrackSpec {
 	// 最短の音符の長さ（四分音符を何回半分にするか）
 	public String name = null;
 	Track track = null;
-	FirstTrackSpec first_track_spec = null;
+	FirstTrackSpec firstTrackSpec = null;
 	Sequence sequence = null;
 	long minNoteTicks = 0;
-	int pre_measures = 2;
+	int preMeasures = 2;
 	/**
 	 * トラック名なしでMIDIトラック仕様を構築します。
 	 */
@@ -44,7 +44,7 @@ public abstract class AbstractTrackSpec {
 	 * @return 生成したトラック
 	 */
 	public Track createTrack( Sequence seq, FirstTrackSpec firstTrackSpec ) {
-		this.first_track_spec = firstTrackSpec;
+		this.firstTrackSpec = firstTrackSpec;
 		track = (sequence = seq).createTrack();
 		if( name != null ) addStringTo( 0x03, name, 0 );
 		minNoteTicks = (long)( seq.getResolution() >> 2 );
@@ -79,13 +79,13 @@ public abstract class AbstractTrackSpec {
 		return addMetaEventTo( type, str.getBytes(), tickPos );
 	}
 	public boolean addStringTo( int type, ChordProgression.ChordStroke cs ) {
-		return addStringTo(type, cs.chord.toString(), cs.tick_range.start_tick_pos);
+		return addStringTo(type, cs.chord.toString(), cs.tickRange.startTickPos);
 	}
 	public boolean addStringTo( int type, ChordProgression.Lyrics lyrics ) {
-		return addStringTo(type, lyrics.text, lyrics.start_tick_pos);
+		return addStringTo(type, lyrics.text, lyrics.startTickPos);
 	}
-	public boolean addEOT( long tick_pos ) {
-		return addMetaEventTo( 0x2F, new byte[0], tick_pos );
+	public boolean addEOT( long tickPos ) {
+		return addMetaEventTo( 0x2F, new byte[0], tickPos );
 	}
 	public void setChordSymbolText( ChordProgression cp ) {
 		cp.setChordSymbolTextTo( this );

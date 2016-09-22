@@ -252,26 +252,24 @@ public class MidiSequenceEditorDialog extends JDialog {
 			setAutoCreateColumnsFromModel(false);
 			//
 			// Base64エンコードアクションの生成
-			if( base64Dialog.isBase64Available() ) {
-				base64EncodeAction = new AbstractAction("Base64") {
-					{
-						String tooltip = "Base64 text conversion - Base64テキスト変換";
-						putValue(Action.SHORT_DESCRIPTION, tooltip);
+			base64EncodeAction = new AbstractAction("Base64") {
+				{
+					String tooltip = "Base64 text conversion - Base64テキスト変換";
+					putValue(Action.SHORT_DESCRIPTION, tooltip);
+				}
+				@Override
+				public void actionPerformed(ActionEvent e) {
+					SequenceTrackListTableModel mstm = getModel().getSelectedSequenceModel();
+					byte[] data = null;
+					String filename = null;
+					if( mstm != null ) {
+						data = mstm.getMIDIdata();
+						filename = mstm.getFilename();
 					}
-					@Override
-					public void actionPerformed(ActionEvent e) {
-						SequenceTrackListTableModel mstm = getModel().getSelectedSequenceModel();
-						byte[] data = null;
-						String filename = null;
-						if( mstm != null ) {
-							data = mstm.getMIDIdata();
-							filename = mstm.getFilename();
-						}
-						base64Dialog.setMIDIData(data, filename);
-						base64Dialog.setVisible(true);
-					}
-				};
-			}
+					base64Dialog.setMIDIData(data, filename);
+					base64Dialog.setVisible(true);
+				}
+			};
 			TableColumnModel colModel = getColumnModel();
 			for( PlaylistTableModel.Column c : PlaylistTableModel.Column.values() ) {
 				TableColumn tc = colModel.getColumn(c.ordinal());

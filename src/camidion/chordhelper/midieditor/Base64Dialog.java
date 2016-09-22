@@ -1,10 +1,9 @@
 package camidion.chordhelper.midieditor;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
-import java.io.IOException;
+import java.util.Base64;
 import java.util.regex.Pattern;
 
-import javax.sound.midi.InvalidMidiDataException;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.Box;
@@ -16,8 +15,6 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
-
-import org.apache.commons.codec.binary.Base64;
 
 import camidion.chordhelper.ButtonIcon;
 import camidion.chordhelper.ChordHelperApplet;
@@ -35,36 +32,26 @@ public class Base64Dialog extends JDialog {
 		"Base64 Decode & Add to PlayList",
 		new ButtonIcon(ButtonIcon.EJECT_ICON)
 	) {
-		{
-			putValue(
-				Action.SHORT_DESCRIPTION,
-				"Base64デコードして、プレイリストへ追加"
-			);
-		}
+		{ putValue(Action.SHORT_DESCRIPTION, "Base64デコードして、プレイリストへ追加"); }
 		@Override
 		public void actionPerformed(ActionEvent event) {
-			byte[] data = getMIDIData();
-			if( data == null || data.length == 0 ) {
-				String message = "No data entered - データが入力されていません。";
-				JOptionPane.showMessageDialog(
-					Base64Dialog.this, message,
-					ChordHelperApplet.VersionInfo.NAME,
-					JOptionPane.WARNING_MESSAGE
-				);
-				base64TextArea.requestFocusInWindow();
-				return;
-			}
-			PlaylistTableModel sltm = midiEditor.sequenceListTable.getModel();
+			String message = null;
 			try {
-				sltm.addSequence(data, null);
-			} catch(IOException | InvalidMidiDataException e) {
-				String message = "例外 "+e+" が発生しました。"+e.getMessage();
+				byte[] data = getMIDIData();
+				if( data == null || data.length == 0 ) {
+					message = "No data on textbox - データが入力されていません。";
+				} else {
+					midiEditor.sequenceListTable.getModel().addSequence(data, null);
+					setVisible(false);
+				}
+			} catch(Exception e) {
 				e.printStackTrace();
-				midiEditor.showWarning(message);
-				base64TextArea.requestFocusInWindow();
-				return;
+				message = "Base64デコードまたはMIDIデータの読み込みに失敗しました。\n"+e;
 			}
-			setVisible(false);
+			if( message == null ) return;
+			JOptionPane.showMessageDialog(base64TextArea, (Object)message,
+					ChordHelperApplet.VersionInfo.NAME, JOptionPane.WARNING_MESSAGE);
+			base64TextArea.requestFocusInWindow();
 		}
 	};
 	/**
@@ -77,14 +64,14 @@ public class Base64Dialog extends JDialog {
 		}
 	};
 	private static class Base64TextArea extends JTextArea {
-		private static final Pattern headerLine =
+		private static final Pattern headerLineFormat =
 			Pattern.compile( "^.*:.*$", Pattern.MULTILINE );
 		public Base64TextArea(int rows, int columns) {
 			super(rows,columns);
 		}
 		public byte[] getBinary() {
-			String text = headerLine.matcher(getText()).replaceAll("");
-			return Base64.decodeBase64(text.getBytes());
+			String text = headerLineFormat.matcher(getText()).replaceAll("");
+			return Base64.getMimeDecoder().decode(text.getBytes());
 		}
 		public void setBinary(byte[] binary_data, String content_type, String filename) {
 			if( binary_data != null && binary_data.length > 0 ) {
@@ -94,7 +81,7 @@ public class Base64Dialog extends JDialog {
 					header += "Content-Transfer-Encoding: base64\n";
 					header += "\n";
 				}
-				setText(header + new String(Base64.encodeBase64Chunked(binary_data)) + "\n");
+				setText(header + Base64.getMimeEncoder().encodeToString(binary_data) + "\n");
 			}
 		}
 	}
@@ -105,38 +92,23 @@ public class Base64Dialog extends JDialog {
 	public Base64Dialog(MidiSequenceEditorDialog midiEditor) {
 		this.midiEditor = midiEditor;
 		setTitle("Base64-encoded MIDI sequence - " + ChordHelperApplet.VersionInfo.NAME);
-		try {
-			Base64.decodeBase64("".getBytes());
-			base64Available = true;
-		} catch( NoClassDefFoundError e ) {
-			base64Available = false;
-		}
-		if( base64Available ) {
+		add(new JPanel() {{
+			setLayout(new BoxLayout(this, BoxLayout.PAGE_AXIS));
 			add(new JPanel() {{
-				setLayout(new BoxLayout(this, BoxLayout.PAGE_AXIS));
-				add(new JPanel() {{
-					setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
-					add(new JLabel("Base64-encoded MIDI sequence:"));
-					add(Box.createRigidArea(new Dimension(10, 0)));
-					add(new JButton(addBase64Action){{setMargin(ChordHelperApplet.ZERO_INSETS);}});
-					add(new JButton(clearAction){{setMargin(ChordHelperApplet.ZERO_INSETS);}});
-				}});
-				add(new JScrollPane(base64TextArea));
+				setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
+				add(new JLabel("Base64-encoded MIDI sequence:"));
+				add(Box.createRigidArea(new Dimension(10, 0)));
+				add(new JButton(addBase64Action){{setMargin(ChordHelperApplet.ZERO_INSETS);}});
+				add(new JButton(clearAction){{setMargin(ChordHelperApplet.ZERO_INSETS);}});
 			}});
-		}
+			add(new JScrollPane(base64TextArea));
+		}});
 		setBounds( 300, 250, 660, 300 );
-	}
-	private boolean base64Available;
-	/**
-	 * {@link Base64} が使用できるかどうかを返します。
-	 * @return Apache Commons Codec ライブラリが利用できる状態ならtrue
-	 */
-	public boolean isBase64Available() {
-		return base64Available;
 	}
 	/**
 	 * バイナリー形式でMIDIデータを返します。
 	 * @return バイナリー形式のMIDIデータ
+	 * @throws IllegalArgumentException 入力されているテキストが有効なBase64スキームになっていない場合
 	 */
 	public byte[] getMIDIData() {
 		return base64TextArea.getBinary();

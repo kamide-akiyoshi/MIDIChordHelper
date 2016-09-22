@@ -12,34 +12,34 @@ import javax.sound.midi.Sequence;
 public class ChordProgression {
 
 	public class TickRange implements Cloneable {
-		long start_tick_pos = 0, end_tick_pos = 0;
+		long startTickPos = 0, end_tick_pos = 0;
 		public TickRange( long tick_pos ) {
-			end_tick_pos = start_tick_pos = tick_pos;
+			end_tick_pos = startTickPos = tick_pos;
 		}
 		public TickRange( long start_tick_pos, long end_tick_pos ) {
-			this.start_tick_pos = start_tick_pos;
+			this.startTickPos = start_tick_pos;
 			this.end_tick_pos = end_tick_pos;
 		}
 		protected TickRange clone() {
-			return new TickRange( start_tick_pos, end_tick_pos );
+			return new TickRange( startTickPos, end_tick_pos );
 		}
 		public void moveForward() {
-			start_tick_pos = end_tick_pos;
+			startTickPos = end_tick_pos;
 		}
 		public void moveForward( long duration ) {
-			start_tick_pos = end_tick_pos;
+			startTickPos = end_tick_pos;
 			end_tick_pos += duration;
 		}
 		public long duration() {
-			return end_tick_pos - start_tick_pos;
+			return end_tick_pos - startTickPos;
 		}
 		public boolean contains( long tick ) {
-			return ( tick >= start_tick_pos && tick < end_tick_pos );
+			return ( tick >= startTickPos && tick < end_tick_pos );
 		}
 	}
 
 	class ChordStroke {
-		Chord chord; int beat_length; TickRange tick_range = null;
+		Chord chord; int beat_length; TickRange tickRange = null;
 		public ChordStroke(Chord chord) { this( chord, 1 ); }
 		public ChordStroke(Chord chord, int beat_length) {
 			this.chord = chord;
@@ -55,10 +55,10 @@ public class ChordProgression {
 	// 時間位置付き歌詞
 	public class Lyrics {
 		String text = null;
-		Long start_tick_pos = null;
+		Long startTickPos = null;
 		public Lyrics(String text) { this.text = text; }
 		public Lyrics(String text, long tick_pos) {
-			this.text = text; start_tick_pos = tick_pos;
+			this.text = text; startTickPos = tick_pos;
 		}
 		public String toString() { return text; }
 	}
@@ -127,9 +127,9 @@ public class ChordProgression {
 				= (ChordProgression.ChordStroke)element;
 				// 小節の先頭と末尾の tick を求める
 				if( start_tick_pos < 0 ) {
-					start_tick_pos = chord_stroke.tick_range.start_tick_pos;
+					start_tick_pos = chord_stroke.tickRange.startTickPos;
 				}
-				end_tick_pos = chord_stroke.tick_range.end_tick_pos;
+				end_tick_pos = chord_stroke.tickRange.end_tick_pos;
 			}
 			if( start_tick_pos < 0 || end_tick_pos < 0 ) {
 				return null;
@@ -142,7 +142,7 @@ public class ChordProgression {
 					continue;
 				ChordProgression.ChordStroke chord_stroke
 				= (ChordProgression.ChordStroke)element;
-				if( chord_stroke.tick_range.contains(tick) ) {
+				if( chord_stroke.tickRange.contains(tick) ) {
 					return chord_stroke;
 				}
 			}
@@ -407,9 +407,9 @@ public class ChordProgression {
 	// コード進行の中に時間軸（MIDI tick）を書き込む
 	//
 	public void setTickPositions( FirstTrackSpec first_track ) {
-		ticks_per_measure = first_track.ticks_per_measure;
+		ticks_per_measure = first_track.ticksPerMeasure;
 		TickRange tick_range = new TickRange(
-				first_track.pre_measures * ticks_per_measure
+				first_track.preMeasures * ticks_per_measure
 				);
 		for( Line line : lines ) { // 行単位の処理
 			for( Measure measure : line ) { // 小節単位の処理
@@ -418,13 +418,13 @@ public class ChordProgression {
 				long tpb = measure.ticks_per_beat = ticks_per_measure / n_beats ;
 				for( Object element : measure ) {
 					if( element instanceof Lyrics ) {
-						((Lyrics)element).start_tick_pos = tick_range.start_tick_pos;
+						((Lyrics)element).startTickPos = tick_range.startTickPos;
 						continue;
 					}
 					else if( element instanceof ChordStroke ) {
 						ChordStroke chord_stroke = (ChordStroke)element;
 						tick_range.moveForward( tpb * chord_stroke.beat_length );
-						chord_stroke.tick_range = tick_range.clone();
+						chord_stroke.tickRange = tick_range.clone();
 					}
 				}
 			}

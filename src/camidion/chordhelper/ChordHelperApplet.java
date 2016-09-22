@@ -148,9 +148,9 @@ public class ChordHelperApplet extends JApplet {
 		d.setBase64Data(base64EncodedText);
 		try {
 			return playlistModel.addSequence(d.getMIDIData(), filename);
-		} catch (IOException | InvalidMidiDataException e) {
+		} catch (Exception e) {
 			e.printStackTrace();
-			midiEditor.showWarning(e.getMessage());
+			midiEditor.showWarning(e.toString());
 			return -1;
 		}
 	}
@@ -283,7 +283,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public static class VersionInfo {
 		public static final String	NAME = "MIDI Chord Helper";
-		public static final String	VERSION = "Ver.20160716.1";
+		public static final String	VERSION = "Ver.20160922.1";
 		public static final String	COPYRIGHT = "Copyright (C) 2004-2016";
 		public static final String	AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String	URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";

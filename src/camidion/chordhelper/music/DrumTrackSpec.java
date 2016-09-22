@@ -78,7 +78,7 @@ public class DrumTrackSpec extends AbstractNoteTrackSpec {
 				ChordProgression.TickRange range = measure.getRange();
 				int mask;
 				for(
-						tick = range.start_tick_pos, mask = 0x8000;
+						tick = range.startTickPos, mask = 0x8000;
 						tick < range.end_tick_pos;
 						tick += minNoteTicks, mask >>>= 1
 						) {

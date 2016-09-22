@@ -1,7 +1,5 @@
 package camidion.chordhelper.music;
 
-
-
 /**
  * メロディトラック仕様
  */
@@ -42,8 +40,7 @@ public class MelodyTrackSpec extends AbstractNoteTrackSpec {
 	 */
 	public MelodyTrackSpec(int ch, String name) {
 		super(ch,name);
-		range = new Range(
-			Music.SEMITONES_PER_OCTAVE * 5, Music.SEMITONES_PER_OCTAVE * 6 );
+		range = new Range(Music.SEMITONES_PER_OCTAVE * 5, Music.SEMITONES_PER_OCTAVE * 6 );
 	}
 	/**
 	 * 音域を指定してメロディトラック仕様を構築
@@ -80,7 +77,7 @@ public class MelodyTrackSpec extends AbstractNoteTrackSpec {
 				//
 				// 各ビートごとに繰り返し
 				for(
-					tick = startTickPos = tickRange.start_tick_pos, mask = 0x8000;
+					tick = startTickPos = tickRange.startTickPos, mask = 0x8000;
 					tick < tickRange.end_tick_pos;
 					tick += minNoteTicks, mask >>>= 1
 				) {
@@ -176,37 +173,25 @@ public class MelodyTrackSpec extends AbstractNoteTrackSpec {
 								addSysEx(nsx39SysEx, startTickPos);
 							}
 							// 決定された音符を追加
-							addNote(
-								startTickPos, tick + minNoteTicks,
-								noteNumber, velocity
-							);
+							addNote(startTickPos, tick + minNoteTicks, noteNumber, velocity);
 							// 歌詞をテキストとして追加
 							addStringTo(0x05, MIDISpec.nsx39LyricElements[index], startTickPos);
 						}
 						else {
 							// 決定された音符を追加
-							addNote(
-								startTickPos, tick + minNoteTicks,
-								noteNumber, velocity
-							);
+							addNote(startTickPos, tick + minNoteTicks, noteNumber, velocity);
 						}
 						prevNoteNumber = noteNumber;
 					}
 					else if( isBass ) {
 						// ベース音を追加
 						int note = range.invertedNoteOf(chord.bassNoteSymbol().toNoteNumber());
-						addNote(
-							startTickPos, tick + minNoteTicks,
-							note, velocity
-						);
+						addNote(startTickPos, tick + minNoteTicks, note, velocity);
 					}
 					else {
 						// コード本体の音を追加
 						for( int note : notes ) {
-							addNote(
-								startTickPos, tick + minNoteTicks,
-								note, velocity
-							);
+							addNote(startTickPos, tick + minNoteTicks, note, velocity);
 						}
 					}
 					isNoteOn = false;
