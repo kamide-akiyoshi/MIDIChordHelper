@@ -56,7 +56,7 @@ import camidion.chordhelper.chordmatrix.ChordButtonLabel;
 import camidion.chordhelper.chordmatrix.ChordMatrix;
 import camidion.chordhelper.chordmatrix.ChordMatrixListener;
 import camidion.chordhelper.mididevice.MidiDeviceDialog;
-import camidion.chordhelper.mididevice.MidiDeviceModelList;
+import camidion.chordhelper.mididevice.MidiDeviceModelManager;
 import camidion.chordhelper.mididevice.MidiSequencerModel;
 import camidion.chordhelper.mididevice.SequencerMeasureView;
 import camidion.chordhelper.mididevice.SequencerTimeView;
@@ -283,7 +283,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public static class VersionInfo {
 		public static final String	NAME = "MIDI Chord Helper";
-		public static final String	VERSION = "Ver.20160922.1";
+		public static final String	VERSION = "Ver.20161005.1";
 		public static final String	COPYRIGHT = "Copyright (C) 2004-2016";
 		public static final String	AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String	URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";
@@ -406,7 +406,7 @@ public class ChordHelperApplet extends JApplet {
 	private KeySignatureLabel keysigLabel;
 	private AnoGakkiPane anoGakkiPane;
 	private JToggleButton anoGakkiToggleButton;
-	private MidiDeviceModelList deviceModelList;
+	private MidiDeviceModelManager deviceModelManager;
 
 	public void init() {
 		loadIconImage();
@@ -463,13 +463,13 @@ public class ChordHelperApplet extends JApplet {
 		}};
 		VirtualMidiDevice guiMidiDevice = keyboardPanel.keyboardCenterPanel.keyboard.midiDevice;
 		//
-		// MIDIデバイス一覧を構築
-		deviceModelList = new MidiDeviceModelList(Arrays.asList(guiMidiDevice));
-		MidiDeviceDialog midiDeviceDialog = new MidiDeviceDialog(deviceModelList);
+		// MIDIデバイスマネージャを構築
+		deviceModelManager = new MidiDeviceModelManager(guiMidiDevice);
+		MidiDeviceDialog midiDeviceDialog = new MidiDeviceDialog(deviceModelManager);
 		midiDeviceDialog.setIconImage(iconImage);
 		//
 		// MIDIデバイス一覧のシーケンサと連携するプレイリストを構築
-		playlistModel = new PlaylistTableModel(sequencerModel = deviceModelList.getSequencerModel());
+		playlistModel = new PlaylistTableModel(sequencerModel = deviceModelManager.getSequencerModel());
 		//
 		// MIDIエディタダイアログの構築
 		(midiEditor = new MidiSequenceEditorDialog(playlistModel, guiMidiDevice)).setIconImage(iconImage);
@@ -708,7 +708,7 @@ public class ChordHelperApplet extends JApplet {
 	}
 	@Override
 	public void destroy() {
-		deviceModelList.closeAllDevices();
+		deviceModelManager.close();
 		super.destroy();
 	}
 	@Override

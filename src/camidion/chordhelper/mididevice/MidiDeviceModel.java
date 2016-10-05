@@ -20,8 +20,8 @@ public class MidiDeviceModel {
 	 * このリストのMIDIデバイスの入出力タイプを返します。
 	 * @return このリストのMIDIデバイスの入出力タイプ
 	 */
-	public MidiDeviceInOutType getMidiDeviceInOutType() { return ioType; }
-	private MidiDeviceInOutType ioType;
+	public MidiDeviceInOutType getInOutType() { return ioType; }
+	private MidiDeviceInOutType ioType = MidiDeviceInOutType.MIDI_NONE;
 	/**
 	 * 対象MIDIデバイスを返します。
 	 * @return 対象MIDIデバイス
@@ -32,7 +32,9 @@ public class MidiDeviceModel {
 	 * 対象MIDIデバイスの名前を返します。
 	 */
 	@Override
-	public String toString() { return device.getDeviceInfo().toString(); }
+	public String toString() {
+		return device.getDeviceInfo().toString();
+	}
 	/**
 	 * {@link Transmitter} のリストモデルを返します。サポートしていない場合はnullを返します。
 	 * @return リストモデルまたはnull
@@ -48,18 +50,20 @@ public class MidiDeviceModel {
 	/**
 	 * このMIDIデバイスモデルを収容しているリストを返します。
 	 */
-	public MidiDeviceModelList getDeviceModelList() { return deviceModelList; }
-	protected MidiDeviceModelList deviceModelList;
+	public MidiDeviceModelManager getDeviceModelManager() { return deviceModelManager; }
+	protected MidiDeviceModelManager deviceModelManager;
 	/**
 	 * MIDIデバイスモデルを構築します。
 	 *
 	 * @param device 対象MIDIデバイス
-	 * @param deviceModelList このMIDIデバイスモデルを収容しているリスト（接続相手となりうるMIDIデバイス）
+	 * @param deviceModelManager このMIDIデバイスモデルのマネージャー（接続相手となりうるMIDIデバイス）
 	 */
-	public MidiDeviceModel(MidiDevice device, MidiDeviceModelList deviceModelList) {
+	public MidiDeviceModel(MidiDevice device, MidiDeviceModelManager deviceModelManager) {
+		this.deviceModelManager = deviceModelManager;
 		this.device = device;
-		this.deviceModelList = deviceModelList;
-		if( device.getMaxTransmitters() != 0 ) txListModel = new TransmitterListModel(this);
+		if( device.getMaxTransmitters() != 0 ) {
+			txListModel = new TransmitterListModel(this);
+		}
 		if( device.getMaxReceivers() != 0 ) {
 			rxListModel = new ReceiverListModel(this);
 			ioType = txListModel != null ? MidiDeviceInOutType.MIDI_IN_OUT :MidiDeviceInOutType.MIDI_OUT;
@@ -67,10 +71,10 @@ public class MidiDeviceModel {
 		else {
 			ioType = txListModel != null ? MidiDeviceInOutType.MIDI_IN :MidiDeviceInOutType.MIDI_NONE;
 		}
-		treePath = new TreePath(new Object[] {deviceModelList, ioType ,this});
+		treePath = new TreePath(new Object[] {deviceModelManager, ioType ,this});
 	}
 	/**
-	 * このMIDIデバイスモデルを開きます。
+	 * このMIDIデバイスを開きます。
 	 * MIDIデバイスを {@link MidiDevice#open()} で開き、
 	 * レシーバをサポートしている場合は {@link MidiDevice#getReceiver()} でレシーバを1個開きます。
 	 *

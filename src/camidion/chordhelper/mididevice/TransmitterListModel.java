@@ -50,13 +50,14 @@ public class TransmitterListModel extends AbstractTransceiverListModel<Transmitt
 	 * 相手のMIDIデバイスが持つ最初の{@link Receiver}を、
 	 * このリストモデルの新規{@link Transmitter}に接続します。
 	 *
-	 * @param anotherDeviceModel 接続相手のMIDIデバイス
+	 * @param anotherDeviceModels 接続相手のMIDIデバイス（複数指定可）
 	 * @throws MidiUnavailableException リソースの制約のためにトランスミッタを使用できない場合にスローされる
 	 */
-	public void connectToFirstReceiverOfDevice(MidiDeviceModel anotherDeviceModel) throws MidiUnavailableException {
-		List<Receiver> rxList = anotherDeviceModel.getMidiDevice().getReceivers();
-		if( rxList.isEmpty() ) return;
-		deviceModel.getTransmitterListModel().openTransmitter().setReceiver(rxList.get(0));
+	public void connectToFirstReceiverOfDevices(MidiDeviceModel... anotherDeviceModels) throws MidiUnavailableException {
+		for( MidiDeviceModel anotherDeviceModel : anotherDeviceModels ) {
+			List<Receiver> rxList = anotherDeviceModel.getMidiDevice().getReceivers();
+			if( ! rxList.isEmpty() ) deviceModel.getTransmitterListModel().openTransmitter().setReceiver(rxList.get(0));
+		}
 	}
 	/**
 	 * 指定の{@link Transmitter}を閉じ、要素数が1個減ったことをこのモデルを参照しているビューへ通知します。
@@ -72,15 +73,18 @@ public class TransmitterListModel extends AbstractTransceiverListModel<Transmitt
 	 * このリストモデルにある{@link Transmitter}のうち、
 	 * 引数で指定された{@link Receiver}へデータを送信しているものを全て閉じます。
 	 * 閉じるとリストから自動的に削除されるので、表示の更新も行います。
+	 * @return 閉じた{@link Transmitter}のリスト
 	 */
-	public void closePeerTransmitterOf(Receiver rx) {
-		List<Transmitter> closingTxList = new Vector<Transmitter>();
+	public List<Transmitter> closeTransmittersConnectedTo(Receiver rx) {
+		List<Transmitter> closeTxList = new Vector<Transmitter>();
 		List<Transmitter> txList = getTransceivers();
-		for( Transmitter tx : txList ) if( tx.getReceiver() == rx ) closingTxList.add(tx);
-		if( closingTxList.isEmpty() ) return;
-		int length = getSize();
-		for( Transmitter tx : closingTxList ) tx.close();
-		fireIntervalRemoved(this, 0, length);
+		for( Transmitter tx : txList ) if( tx.getReceiver() == rx ) closeTxList.add(tx);
+		if( ! closeTxList.isEmpty() ) {
+			int length = getSize();
+			for( Transmitter tx : closeTxList ) tx.close();
+			fireIntervalRemoved(this, 0, length);
+		}
+		return closeTxList;
 	}
 	/**
 	 * マイクロ秒位置をリセットします。
@@ -97,9 +101,7 @@ public class TransmitterListModel extends AbstractTransceiverListModel<Transmitt
 	 */
 	public void resetMicrosecondPosition() {
 		MidiDevice device = deviceModel.getMidiDevice();
-		//
-		// シーケンサはこのメソッドでのリセット対象外
-		if( device instanceof Sequencer ) return;
+		if( device instanceof Sequencer || ! device.isOpen() ) return;
 		//
 		// デバイスを閉じる前に接続状態を把握
 		List<Receiver> peerRxList = new Vector<Receiver>();
@@ -109,7 +111,7 @@ public class TransmitterListModel extends AbstractTransceiverListModel<Transmitt
 			if( rx != null ) peerRxList.add(rx);
 		}
 		List<Transmitter> peerTxList = new Vector<Transmitter>();
-		MidiDeviceModelList deviceModelList = deviceModel.getDeviceModelList();
+		List<MidiDeviceModel> deviceModelList = deviceModel.getDeviceModelManager().getDeviceModelList();
 		List<Receiver> rxList = device.getReceivers();
 		for( Receiver rx : rxList ) {
 			for( MidiDeviceModel m : deviceModelList ) {

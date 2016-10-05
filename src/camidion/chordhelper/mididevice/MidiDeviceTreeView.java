@@ -36,6 +36,12 @@ public class MidiDeviceTreeView extends JTree {
 	@Override
 	public MidiDeviceTreeModel getModel() { return (MidiDeviceTreeModel) super.getModel(); }
 	/**
+	 * ツリーノードを開き、ルートを選択した状態にします。
+	 */
+	public void expandAll() {
+		for( int row = 0; row < getRowCount() ; row++ ) expandRow(row);
+	}
+	/**
 	 * MIDIデバイスツリービューを構築します。
 	 * @param model このビューにデータを提供するモデル
 	 */
@@ -63,8 +69,6 @@ public class MidiDeviceTreeView extends JTree {
 				return this;
 			}
 		});
-		// ツリーノードを開き、ルートを選択した状態にする
-		for( int row = 0; row < getRowCount() ; row++ ) expandRow(row);
 		//
 		// ツリーノードのToolTipを有効化
 		ToolTipManager.sharedInstance().registerComponent(this);

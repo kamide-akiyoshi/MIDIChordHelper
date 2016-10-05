@@ -20,6 +20,7 @@ import java.util.Arrays;
 import java.util.Hashtable;
 import java.util.List;
 
+import javax.sound.midi.MidiDevice;
 import javax.sound.midi.Receiver;
 import javax.sound.midi.Transmitter;
 import javax.swing.JComponent;
@@ -132,7 +133,8 @@ public class MidiCablePane extends JComponent {
 			if( ! (frame instanceof MidiDeviceFrame) ) return;
 			MidiDeviceFrame f = (MidiDeviceFrame)frame;
 			MidiDeviceModel m = f.getMidiDeviceModel();
-			List<Receiver> rxList = m.getMidiDevice().getReceivers();
+			MidiDevice d = m.getMidiDevice();
+			List<Receiver> rxList = d.getReceivers();
 			for( Receiver rx : rxList ) rxToColor.remove(rx);
 			repaint();
 		}
@@ -150,8 +152,8 @@ public class MidiCablePane extends JComponent {
 		public void intervalRemoved(ListDataEvent e) { repaint(); }
 	};
 
-	private MidiOpenedDevicesView desktopPane;
-	public MidiCablePane(MidiOpenedDevicesView desktopPane) {
+	private MidiDeviceDesktopPane desktopPane;
+	public MidiCablePane(MidiDeviceDesktopPane desktopPane) {
 		this.desktopPane = desktopPane;
 		setOpaque(false);
 		setVisible(true);
@@ -201,14 +203,10 @@ public class MidiCablePane extends JComponent {
 		super.paint(g);
 		Graphics2D g2 = (Graphics2D)g;
 		JInternalFrame[] frames = desktopPane.getAllFramesInLayer(JLayeredPane.DEFAULT_LAYER);
-		//
-		// 各フレームをスキャン
-		for( JInternalFrame frame : frames ) {
-			if( ! (frame instanceof MidiDeviceFrame) ) continue;
-			MidiDeviceFrame fromFrame = (MidiDeviceFrame)frame;
-			MidiDeviceModel fromDeviceModel = fromFrame.getMidiDeviceModel();
-			//
-			// Transmitterをスキャン
+		for( JInternalFrame fromFrame : frames ) {
+			if( ! (fromFrame instanceof MidiDeviceFrame) || ! fromFrame.isVisible() ) continue;
+			MidiDeviceFrame fromDeviceFrame = (MidiDeviceFrame)fromFrame;
+			MidiDeviceModel fromDeviceModel = fromDeviceFrame.getMidiDeviceModel();
 			TransmitterListModel txListModel = fromDeviceModel.getTransmitterListModel();
 			int ntx = txListModel == null ? 0 : txListModel.getSize();
 			for( int index=0 ; index < ntx; index++ ) {
@@ -219,7 +217,7 @@ public class MidiCablePane extends JComponent {
 					continue;
 				}
 				// Transmitterの表示場所を特定
-				Rectangle txBounds = fromFrame.getBoundsOf(tx);
+				Rectangle txBounds = fromDeviceFrame.getBoundsOf(tx);
 				if( txBounds == null ) continue;
 				int r = (txBounds.height - 5) / 2;
 				txBounds.translate(r+4, r+4);
@@ -228,8 +226,9 @@ public class MidiCablePane extends JComponent {
 				if( rx != null ) {
 					// Receiverの表示場所を探す
 					for( JInternalFrame toFrame : frames ) {
-						if( ! (toFrame instanceof MidiDeviceFrame) ) continue;
-						Rectangle rxBounds = ((MidiDeviceFrame)toFrame).getBoundsOf(rx);
+						if( ! (toFrame instanceof MidiDeviceFrame) || ! toFrame.isVisible()) continue;
+						MidiDeviceFrame toDeviceFrame = (MidiDeviceFrame)toFrame;
+						Rectangle rxBounds = toDeviceFrame.getBoundsOf(rx);
 						if( rxBounds == null ) continue;
 						r = (rxBounds.height - 5) / 2;
 						rxBounds.translate(r+4, r+4);
@@ -256,7 +255,7 @@ public class MidiCablePane extends JComponent {
 			// Receiverからドラッグ中のケーブルを描画
 			if( draggingLocation != null && fromDeviceModel.getMidiDevice().getReceivers().contains(draggingSource) ) {
 				Receiver rx = (Receiver)draggingSource;
-				Rectangle rxBounds = fromFrame.getBoundsOf(rx);
+				Rectangle rxBounds = fromDeviceFrame.getBoundsOf(rx);
 				if( rxBounds != null ) {
 					int r = (rxBounds.height - 5) / 2;
 					rxBounds.translate(r+4, r+4);

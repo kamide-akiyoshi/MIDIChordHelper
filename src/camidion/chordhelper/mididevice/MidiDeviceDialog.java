@@ -20,6 +20,7 @@ import camidion.chordhelper.ButtonIcon;
  */
 public class MidiDeviceDialog extends JDialog {
 	public static final Icon MIDI_CONNECTER_ICON = new ButtonIcon(ButtonIcon.MIDI_CONNECTOR_ICON);
+	public static final String MSGS = "Microsoft GS Wavetable Synth";
 	/**
 	 * MIDIデバイスダイアログを開くアクション
 	 */
@@ -36,16 +37,15 @@ public class MidiDeviceDialog extends JDialog {
 	};
 	/**
 	 * MIDIデバイスダイアログを構築します。
-	 * @param deviceModelList デバイスモデル（MIDIコネクタリストモデル）のリスト
+	 * @param deviceModelManager デバイスモデルマネージャ
 	 */
-	public MidiDeviceDialog(final MidiDeviceModelList deviceModelList) {
+	public MidiDeviceDialog(final MidiDeviceModelManager deviceModelManager) {
 		setTitle(openAction.getValue(Action.NAME).toString());
-		setBounds( 300, 300, 800, 500 );
-		MidiDeviceTreeModel deviceTreeModel = new MidiDeviceTreeModel(deviceModelList);
-		MidiDeviceTreeView deviceTreeView = new MidiDeviceTreeView(deviceTreeModel);
+		setBounds( 300, 300, 820, 540 );
+		MidiDeviceTreeView deviceTreeView = new MidiDeviceTreeView(deviceModelManager.getTreeModel());
 		final MidiDeviceInfoPane deviceInfoPane = new MidiDeviceInfoPane();
 		deviceTreeView.addTreeSelectionListener(deviceInfoPane);
-		MidiOpenedDevicesView desktopPane = new MidiOpenedDevicesView(deviceTreeView, deviceInfoPane, this);
+		MidiDeviceDesktopPane desktopPane = new MidiDeviceDesktopPane(deviceTreeView, deviceInfoPane, this);
 		deviceTreeView.addTreeSelectionListener(desktopPane);
 		deviceTreeView.setSelectionRow(0);
 		add(new JSplitPane(
@@ -54,24 +54,38 @@ public class MidiDeviceDialog extends JDialog {
 				JSplitPane.VERTICAL_SPLIT,
 				new JScrollPane(deviceTreeView),
 				new JPanel() {{
-					add(new JScrollPane(deviceInfoPane));
-					add(new JButton("Reset time on MIDI devices") {{
-						addActionListener(new ActionListener() {
-							@Override
-							public void actionPerformed(ActionEvent e) {
-								deviceModelList.resetMicrosecondPosition();
-							}
-						});
+					add(new JPanel() {{
+						add(new JButton("Detect USB MIDI devices", new ButtonIcon(ButtonIcon.REPEAT_ICON)) {{
+							setToolTipText("Update view for USB MIDI device newly plugged or removed");
+							addActionListener(new ActionListener() {
+								@Override
+								public void actionPerformed(ActionEvent e) {
+									deviceModelManager.updateMidiDeviceList();
+									deviceTreeView.expandAll();
+								}
+							});
+						}});
+						add(new JButton("Reset Tx timestamp", new ButtonIcon(ButtonIcon.TOP_ICON)) {{
+							setToolTipText("Reset timestamp on transmittable MIDI devices");
+							addActionListener(new ActionListener() {
+								@Override
+								public void actionPerformed(ActionEvent e) {
+									deviceModelManager.resetMicrosecondPosition();
+								}
+							});
+						}});
+						setLayout(new BoxLayout(this, BoxLayout.PAGE_AXIS));
 					}});
+					add(new JScrollPane(deviceInfoPane));
 					setLayout(new BoxLayout(this, BoxLayout.PAGE_AXIS));
 				}}
 			){{
-				setDividerLocation(260);
+				setDividerLocation(230);
 			}},
 			desktopPane
 		){{
 			setOneTouchExpandable(true);
-			setDividerLocation(250);
+			setDividerLocation(260);
 		}});
 	}
 }

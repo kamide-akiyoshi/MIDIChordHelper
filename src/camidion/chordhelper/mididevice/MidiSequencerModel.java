@@ -35,7 +35,7 @@ public class MidiSequencerModel extends MidiDeviceModel implements BoundedRangeM
 	 * @param sequencer シーケンサーMIDIデバイス
 	 * @param deviceModelList 親のMIDIデバイスモデルリスト
 	 */
-	public MidiSequencerModel(Sequencer sequencer, MidiDeviceModelList deviceModelList) {
+	public MidiSequencerModel(Sequencer sequencer, MidiDeviceModelManager deviceModelList) {
 		super(sequencer, deviceModelList);
 	}
 	/**
@@ -124,7 +124,7 @@ public class MidiSequencerModel extends MidiDeviceModel implements BoundedRangeM
 		timeRangeUpdater.start();
 		SequenceTrackListTableModel sequenceTableModel = getSequenceTrackListTableModel();
 		if( sequenceTableModel != null && sequenceTableModel.hasRecordChannel() ) {
-			deviceModelList.resetMicrosecondPosition();
+			deviceModelManager.resetMicrosecondPosition();
 			System.gc();
 			sequencer.startRecording();
 		}
