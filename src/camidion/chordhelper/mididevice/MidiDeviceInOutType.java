@@ -25,12 +25,20 @@ public enum MidiDeviceInOutType {
 	 * {@link #MIDI_IN}と{@link #MIDI_OUT}の両方をサポートしたデバイスを表します。
 	 */
 	MIDI_IN_OUT("MIDI input/output devices (MIDI sequencer etc.)", "I/O");
-	private String description;
-	private String shortName;
+
 	private MidiDeviceInOutType(String description, String shortName) {
 		this.description = description;
 		this.shortName = shortName;
 	}
+	public static MidiDeviceInOutType getValueFor(TransmitterListModel txListModel, ReceiverListModel rxListModel) {
+		// tx:IN rx:OUT
+		return rxListModel == null ?
+			(txListModel == null ? MIDI_NONE : MIDI_IN) :
+			(txListModel == null ? MIDI_OUT  : MIDI_IN_OUT);
+	}
 	public String getDescription() { return description; }
+	private String description;
 	public String getShortName() { return shortName; }
+	private String shortName;
+
 }

@@ -1,6 +1,7 @@
 package camidion.chordhelper.mididevice;
 
 import javax.sound.midi.MidiDevice;
+import javax.sound.midi.MidiSystem;
 import javax.sound.midi.MidiUnavailableException;
 import javax.sound.midi.Receiver;
 import javax.sound.midi.Transmitter;
@@ -21,7 +22,7 @@ public class MidiDeviceModel {
 	 * @return このリストのMIDIデバイスの入出力タイプ
 	 */
 	public MidiDeviceInOutType getInOutType() { return ioType; }
-	private MidiDeviceInOutType ioType = MidiDeviceInOutType.MIDI_NONE;
+	private MidiDeviceInOutType ioType;
 	/**
 	 * 対象MIDIデバイスを返します。
 	 * @return 対象MIDIデバイス
@@ -32,9 +33,7 @@ public class MidiDeviceModel {
 	 * 対象MIDIデバイスの名前を返します。
 	 */
 	@Override
-	public String toString() {
-		return device.getDeviceInfo().toString();
-	}
+	public String toString() { return device.getDeviceInfo().toString(); }
 	/**
 	 * {@link Transmitter} のリストモデルを返します。サポートしていない場合はnullを返します。
 	 * @return リストモデルまたはnull
@@ -48,30 +47,33 @@ public class MidiDeviceModel {
 	public ReceiverListModel getReceiverListModel() { return rxListModel; }
 	private ReceiverListModel rxListModel;
 	/**
-	 * このMIDIデバイスモデルを収容しているリストを返します。
+	 * このMIDIデバイスモデルを収容しているツリーモデルを返します。
 	 */
-	public MidiDeviceModelManager getDeviceModelManager() { return deviceModelManager; }
-	protected MidiDeviceModelManager deviceModelManager;
+	public MidiDeviceTreeModel getDeviceTreeModel() { return deviceTreeModel; }
+	protected MidiDeviceTreeModel deviceTreeModel;
 	/**
-	 * MIDIデバイスモデルを構築します。
+	 * MIDIデバイス情報からMIDIデバイスモデルを構築します。
+	 *
+	 * @param deviceInfo 対象MIDIデバイス情報
+	 * @param deviceTreeModel 収容先のMIDIデバイスツリーモデル
+	 * @throws MidiUnavailableException {@link MidiSystem#getMidiDevice(MidiDevice.Info)}からの例外
+	 */
+	public MidiDeviceModel(MidiDevice.Info deviceInfo, MidiDeviceTreeModel deviceTreeModel) throws MidiUnavailableException {
+		this(MidiSystem.getMidiDevice(deviceInfo), deviceTreeModel);
+	}
+	/**
+	 * MIDIデバイスからモデルを構築します。
 	 *
 	 * @param device 対象MIDIデバイス
-	 * @param deviceModelManager このMIDIデバイスモデルのマネージャー（接続相手となりうるMIDIデバイス）
+	 * @param deviceTreeModel このMIDIデバイスモデルのマネージャー（接続相手となりうるMIDIデバイス）
 	 */
-	public MidiDeviceModel(MidiDevice device, MidiDeviceModelManager deviceModelManager) {
-		this.deviceModelManager = deviceModelManager;
+	public MidiDeviceModel(MidiDevice device, MidiDeviceTreeModel deviceTreeModel) {
+		this.deviceTreeModel = deviceTreeModel;
 		this.device = device;
-		if( device.getMaxTransmitters() != 0 ) {
-			txListModel = new TransmitterListModel(this);
-		}
-		if( device.getMaxReceivers() != 0 ) {
-			rxListModel = new ReceiverListModel(this);
-			ioType = txListModel != null ? MidiDeviceInOutType.MIDI_IN_OUT :MidiDeviceInOutType.MIDI_OUT;
-		}
-		else {
-			ioType = txListModel != null ? MidiDeviceInOutType.MIDI_IN :MidiDeviceInOutType.MIDI_NONE;
-		}
-		treePath = new TreePath(new Object[] {deviceModelManager, ioType ,this});
+		if( device.getMaxTransmitters() != 0 ) txListModel = new TransmitterListModel(this);
+		if( device.getMaxReceivers() != 0 ) rxListModel = new ReceiverListModel(this);
+		ioType = MidiDeviceInOutType.getValueFor(txListModel, rxListModel);
+		treePath = new TreePath(new Object[] {deviceTreeModel, ioType ,this});
 	}
 	/**
 	 * このMIDIデバイスを開きます。
@@ -91,7 +93,7 @@ public class MidiDeviceModel {
 	 * それらも全て閉じます。
 	 */
 	public void close() {
-		if( rxListModel != null ) rxListModel.closePeerTransmitters();
+		if( rxListModel != null ) rxListModel.closeTransmitters();
 		device.close();
 	}
 }

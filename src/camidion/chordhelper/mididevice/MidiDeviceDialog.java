@@ -20,7 +20,6 @@ import camidion.chordhelper.ButtonIcon;
  */
 public class MidiDeviceDialog extends JDialog {
 	public static final Icon MIDI_CONNECTER_ICON = new ButtonIcon(ButtonIcon.MIDI_CONNECTOR_ICON);
-	public static final String MSGS = "Microsoft GS Wavetable Synth";
 	/**
 	 * MIDIデバイスダイアログを開くアクション
 	 */
@@ -37,12 +36,12 @@ public class MidiDeviceDialog extends JDialog {
 	};
 	/**
 	 * MIDIデバイスダイアログを構築します。
-	 * @param deviceModelManager デバイスモデルマネージャ
+	 * @param deviceTreeModel デバイスツリーモデル
 	 */
-	public MidiDeviceDialog(final MidiDeviceModelManager deviceModelManager) {
+	public MidiDeviceDialog(MidiDeviceTreeModel deviceTreeModel) {
 		setTitle(openAction.getValue(Action.NAME).toString());
 		setBounds( 300, 300, 820, 540 );
-		MidiDeviceTreeView deviceTreeView = new MidiDeviceTreeView(deviceModelManager.getTreeModel());
+		MidiDeviceTreeView deviceTreeView = new MidiDeviceTreeView(deviceTreeModel);
 		final MidiDeviceInfoPane deviceInfoPane = new MidiDeviceInfoPane();
 		deviceTreeView.addTreeSelectionListener(deviceInfoPane);
 		MidiDeviceDesktopPane desktopPane = new MidiDeviceDesktopPane(deviceTreeView, deviceInfoPane, this);
@@ -60,7 +59,7 @@ public class MidiDeviceDialog extends JDialog {
 							addActionListener(new ActionListener() {
 								@Override
 								public void actionPerformed(ActionEvent e) {
-									deviceModelManager.updateMidiDeviceList();
+									deviceTreeModel.updateMidiDeviceList();
 									deviceTreeView.expandAll();
 								}
 							});
@@ -70,7 +69,7 @@ public class MidiDeviceDialog extends JDialog {
 							addActionListener(new ActionListener() {
 								@Override
 								public void actionPerformed(ActionEvent e) {
-									deviceModelManager.resetMicrosecondPosition();
+									deviceTreeModel.resetMicrosecondPosition();
 								}
 							});
 						}});

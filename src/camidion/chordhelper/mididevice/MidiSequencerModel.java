@@ -33,10 +33,10 @@ public class MidiSequencerModel extends MidiDeviceModel implements BoundedRangeM
 	/**
 	 * MIDIシーケンサモデルを構築します。
 	 * @param sequencer シーケンサーMIDIデバイス
-	 * @param deviceModelList 親のMIDIデバイスモデルリスト
+	 * @param deviceModelTree 親のMIDIデバイスツリーモデル
 	 */
-	public MidiSequencerModel(Sequencer sequencer, MidiDeviceModelManager deviceModelList) {
-		super(sequencer, deviceModelList);
+	public MidiSequencerModel(Sequencer sequencer, MidiDeviceTreeModel deviceModelTree) {
+		super(sequencer, deviceModelTree);
 	}
 	/**
 	 * このシーケンサーの再生スピード調整モデル
@@ -124,7 +124,7 @@ public class MidiSequencerModel extends MidiDeviceModel implements BoundedRangeM
 		timeRangeUpdater.start();
 		SequenceTrackListTableModel sequenceTableModel = getSequenceTrackListTableModel();
 		if( sequenceTableModel != null && sequenceTableModel.hasRecordChannel() ) {
-			deviceModelManager.resetMicrosecondPosition();
+			deviceTreeModel.resetMicrosecondPosition();
 			System.gc();
 			sequencer.startRecording();
 		}

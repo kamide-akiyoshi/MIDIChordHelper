@@ -29,16 +29,6 @@ public class MidiDeviceFrame extends JInternalFrame {
 	 */
 	public MidiDeviceModel getMidiDeviceModel() { return deviceModel; }
 	/**
-	 * このデバイスフレームに貼り付けられたMIDIトランスミッタリストビューを取得します。
-	 * @return MIDIトランスミッタリストビュー
-	 */
-	public TransmitterListView getMidiTransmitterListView() { return transmitterListView; }
-	/**
-	 * このデバイスフレームに貼り付けられたMIDIトランシーバリストビューを取得します。
-	 * @return MIDIトランシーバリストビュー
-	 */
-	public ReceiverListView getMidiReceiverListView() { return receiverListView; }
-	/**
 	 * MIDIデバイスモデルからフレームビューを構築します。
 	 */
 	public MidiDeviceFrame(MidiDeviceModel deviceModel, MidiCablePane cablePane) {
@@ -67,20 +57,18 @@ public class MidiDeviceFrame extends JInternalFrame {
 			setLayout(new BorderLayout());
 			ReceiverListModel rxListModel = getMidiDeviceModel().getReceiverListModel();
 			if( rxListModel != null ) {
-				receiverListView = new ReceiverListView(rxListModel, cablePane);
 				add(rxPanel = new JPanel() {{
 					setLayout(new BorderLayout());
 					add(new JLabel("Rx") {{ setVerticalAlignment(TOP); }}, BorderLayout.WEST);
-					add(receiverListView);
+					add(receiverListView = new ReceiverListView(rxListModel, cablePane));
 				}}, BorderLayout.NORTH);
 			}
 			TransmitterListModel txListModel = getMidiDeviceModel().getTransmitterListModel();
 			if( txListModel != null ) {
-				transmitterListView = new TransmitterListView(txListModel, cablePane);
 				add(txPanel = new JPanel() {{
 					setLayout(new BorderLayout());
 					add(new JLabel("Tx") {{ setVerticalAlignment(TOP); }}, BorderLayout.WEST);
-					add(transmitterListView);
+					add(transmitterListView = new TransmitterListView(txListModel, cablePane));
 				}}, rxListModel == null ? BorderLayout.NORTH : BorderLayout.SOUTH);
 			}
 		}}));

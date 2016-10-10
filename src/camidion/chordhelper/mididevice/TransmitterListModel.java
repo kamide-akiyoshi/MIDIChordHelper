@@ -1,7 +1,8 @@
 package camidion.chordhelper.mididevice;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
-import java.util.Vector;
 
 import javax.sound.midi.MidiDevice;
 import javax.sound.midi.MidiUnavailableException;
@@ -47,20 +48,7 @@ public class TransmitterListModel extends AbstractTransceiverListModel<Transmitt
 		return tx;
 	}
 	/**
-	 * 相手のMIDIデバイスが持つ最初の{@link Receiver}を、
-	 * このリストモデルの新規{@link Transmitter}に接続します。
-	 *
-	 * @param anotherDeviceModels 接続相手のMIDIデバイス（複数指定可）
-	 * @throws MidiUnavailableException リソースの制約のためにトランスミッタを使用できない場合にスローされる
-	 */
-	public void connectToFirstReceiverOfDevices(MidiDeviceModel... anotherDeviceModels) throws MidiUnavailableException {
-		for( MidiDeviceModel anotherDeviceModel : anotherDeviceModels ) {
-			List<Receiver> rxList = anotherDeviceModel.getMidiDevice().getReceivers();
-			if( ! rxList.isEmpty() ) deviceModel.getTransmitterListModel().openTransmitter().setReceiver(rxList.get(0));
-		}
-	}
-	/**
-	 * 指定の{@link Transmitter}を閉じ、要素数が1個減ったことをこのモデルを参照しているビューへ通知します。
+	 * 指定された{@link Transmitter}を閉じ、要素数が1個減ったことをこのモデルを参照しているビューへ通知します。
 	 *
 	 * @param tx このリストモデルで開いている{@link Transmitter}
 	 */
@@ -70,21 +58,28 @@ public class TransmitterListModel extends AbstractTransceiverListModel<Transmitt
 		fireIntervalRemoved(this, index, index);
 	}
 	/**
+	 * 指定された複数の{@link Transmitter}を閉じ、要素数が大きく減ったことをこのモデルを参照しているビューへ通知します。
+	 *
+	 * @param txc このリストモデルで開いている{@link Transmitter}のコレクション
+	 */
+	public void closeTransmitters(Collection<Transmitter> txc) {
+		if( txc.isEmpty() ) return;
+		int length = getSize();
+		for( Transmitter tx : txc ) tx.close();
+		fireIntervalRemoved(this, 0, length);
+	}
+	/**
 	 * このリストモデルにある{@link Transmitter}のうち、
-	 * 引数で指定された{@link Receiver}へデータを送信しているものを全て閉じます。
-	 * 閉じるとリストから自動的に削除されるので、表示の更新も行います。
+	 * 引数で指定された{@link Receiver}へデータを送信しているものを探し、
+	 * それらを{@link #closeTransmitters(Collection)}で閉じます。
+	 *
 	 * @return 閉じた{@link Transmitter}のリスト
 	 */
-	public List<Transmitter> closeTransmittersConnectedTo(Receiver rx) {
-		List<Transmitter> closeTxList = new Vector<Transmitter>();
-		List<Transmitter> txList = getTransceivers();
-		for( Transmitter tx : txList ) if( tx.getReceiver() == rx ) closeTxList.add(tx);
-		if( ! closeTxList.isEmpty() ) {
-			int length = getSize();
-			for( Transmitter tx : closeTxList ) tx.close();
-			fireIntervalRemoved(this, 0, length);
-		}
-		return closeTxList;
+	public List<Transmitter> closeTransmittersFor(Receiver rx) {
+		List<Transmitter> txToClose = new ArrayList<Transmitter>();
+		for( Transmitter tx : getTransceivers() ) if( tx.getReceiver() == rx ) txToClose.add(tx);
+		closeTransmitters(txToClose);
+		return txToClose;
 	}
 	/**
 	 * マイクロ秒位置をリセットします。
@@ -103,32 +98,35 @@ public class TransmitterListModel extends AbstractTransceiverListModel<Transmitt
 		MidiDevice device = deviceModel.getMidiDevice();
 		if( device instanceof Sequencer || ! device.isOpen() ) return;
 		//
-		// デバイスを閉じる前に接続状態を把握
-		List<Receiver> peerRxList = new Vector<Receiver>();
-		List<Transmitter> txList = device.getTransmitters();
-		for( Transmitter tx : txList ) {
+		// 接続状態を保存
+		// 自分Tx → 相手Rx
+		List<Receiver> peerRxList = new ArrayList<Receiver>();
+		for( Transmitter tx : device.getTransmitters() ) {
 			Receiver rx = tx.getReceiver();
 			if( rx != null ) peerRxList.add(rx);
 		}
-		List<Transmitter> peerTxList = new Vector<Transmitter>();
-		List<MidiDeviceModel> deviceModelList = deviceModel.getDeviceModelManager().getDeviceModelList();
+		// 自分Rx ← 相手Tx
+		List<Transmitter> peerTxList = new ArrayList<Transmitter>();
 		List<Receiver> rxList = device.getReceivers();
-		for( Receiver rx : rxList ) {
-			for( MidiDeviceModel m : deviceModelList ) {
-				if( m == deviceModel ) continue;
+		if( ! rxList.isEmpty() ) {
+			for( MidiDeviceModel m : deviceModel.getDeviceTreeModel() ) {
+				if( m == deviceModel ) continue; // 「自分Rx ← 自分Tx」は重複するのでスキップ
 				List<Transmitter> peerSourceTxList = m.getMidiDevice().getTransmitters();
-				for( Transmitter tx : peerSourceTxList ) if( tx.getReceiver() == rx ) peerTxList.add(tx);
+				for( Transmitter tx : peerSourceTxList ) {
+					for( Receiver rx : rxList ) if( tx.getReceiver() == rx ) peerTxList.add(tx);
+				}
 			}
 		}
-		// いったん閉じて開く（ここでマイクロ秒位置がリセットされる）
-		// その後、元通りに接続し直す
-		device.close();
+		device.close(); // 一旦閉じる
 		try {
-			device.open();
+			device.open(); // 再び開くことでマイクロ秒位置がリセットされる
+			//
+			// 接続を復元
+			// 自分Tx → 相手Rx
 			for( Receiver peerRx : peerRxList ) openTransmitter().setReceiver(peerRx);
+			// 自分Rx ← 相手Tx
 			if( ! rxList.isEmpty() ) {
-				Receiver rx = rxList.get(0);
-				for( Transmitter peerTx : peerTxList ) peerTx.setReceiver(rx);
+				for( Transmitter peerTx : peerTxList ) peerTx.setReceiver(rxList.get(0));
 			}
 		} catch( MidiUnavailableException e ) {
 			e.printStackTrace();

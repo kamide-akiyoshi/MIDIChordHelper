@@ -87,7 +87,6 @@ public class MidiDeviceDesktopPane extends JDesktopPane implements TreeSelection
 		});
 		// デバイスツリーが変更されたときの更新処理を予約
 		MidiDeviceTreeModel deviceTreeModel = deviceTreeView.getModel();
-		List<MidiDeviceModel> deviceModelList = deviceTreeModel.getDeviceModelList();
 		TreeModelListener treeModelListener = new TreeModelListener() {
 			@Override
 			public void treeNodesChanged(TreeModelEvent e) { }
@@ -99,18 +98,17 @@ public class MidiDeviceDesktopPane extends JDesktopPane implements TreeSelection
 			public void treeStructureChanged(TreeModelEvent e) {
 				//
 				// 削除されたデバイスモデルに対するデバイスフレームをマップから外す
-				List<MidiDeviceModel> removingDeviceModels = new ArrayList<>();
+				List<MidiDeviceModel> deviceModelsToRemove = new ArrayList<>();
 				for( MidiDeviceModel m : frameMap.keySet() ) {
-					if( ! deviceModelList.contains(m) ) removingDeviceModels.add(m);
+					if( ! deviceTreeModel.contains(m) ) deviceModelsToRemove.add(m);
 				}
-				for( MidiDeviceModel m : removingDeviceModels ) {
+				for( MidiDeviceModel m : deviceModelsToRemove ) {
 					MidiDeviceFrame frame = frameMap.remove(m);
 					if( frame != null ) remove(frame);
 				}
-				removingDeviceModels.clear();
 				//
 				// 新しいデバイスモデルに対するデバイスフレームを生成してマップに登録
-				for( MidiDeviceModel deviceModel : deviceModelList ) {
+				for( MidiDeviceModel deviceModel : deviceTreeModel ) {
 					if( frameMap.containsKey(deviceModel) ) continue;
 					MidiDeviceFrame frame = new MidiDeviceFrame(deviceModel, cablePane);
 					frameMap.put(deviceModel, frame);
@@ -148,11 +146,11 @@ public class MidiDeviceDesktopPane extends JDesktopPane implements TreeSelection
 		// 表示したデバイスフレームを整列
 		int toX = 10;
 		int toY = 10;
-		for( MidiDeviceModel deviceModel : deviceModelList ) {
+		for( MidiDeviceModel deviceModel : deviceTreeModel ) {
 			if( ! deviceModel.getMidiDevice().isOpen() ) continue;
 			frameMap.get(deviceModel).setLocation(toX, toY);
 			toX = (toX == 10 ? 270 : 10);
-			toY += 50;
+			toY += 70;
 		}
 		deviceTreeView.expandAll();
 		//
