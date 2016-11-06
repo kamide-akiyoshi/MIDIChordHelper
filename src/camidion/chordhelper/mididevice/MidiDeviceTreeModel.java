@@ -35,8 +35,11 @@ public class MidiDeviceTreeModel extends AbstractList<MidiDeviceModel> implement
 	@Override
 	public String toString() { return "MIDI devices"; }
 
-	// MIDIデバイスモデルリストとツリー
 	protected List<MidiDeviceModel> deviceModelList = new Vector<>();
+	@Override
+	public int size() { return deviceModelList.size(); }
+	@Override
+	public MidiDeviceModel get(int index) { return deviceModelList.get(index); }
 	protected Map<MidiDeviceInOutType, List<MidiDeviceModel>> deviceModelTree; {
 		deviceModelTree = new EnumMap<>(MidiDeviceInOutType.class);
 		deviceModelTree.put(MidiDeviceInOutType.MIDI_OUT, new ArrayList<>());
@@ -44,68 +47,30 @@ public class MidiDeviceTreeModel extends AbstractList<MidiDeviceModel> implement
 		deviceModelTree.put(MidiDeviceInOutType.MIDI_IN_OUT, new ArrayList<>());
 	};
 	/**
-	 * MIDIデバイスモデルを追加します。
-	 *
+	 * {@link #add()}の非public版です。
 	 * @param dm 追加するMIDIデバイスモデル
-	 * @return 呼出しの結果としてこのリストが変更された場合はtrue
+	 * @return true（{@link AbstractList#add()}と同じ）
 	 */
-	protected boolean addDeviceModel(MidiDeviceModel dm) {
+	protected boolean addInternally(MidiDeviceModel dm) {
 		if( ! deviceModelList.add(dm) ) return false;
-		deviceModelTree.get(dm.getInOutType()).add(dm); return true;
-	}
-	/**
-	 * MIDIデバイス情報をモデルとして追加します。
-	 *
-	 * @param info 追加するMIDIデバイス情報({@link MidiDevice.Info})
-	 * @return 呼出しの結果としてこのリストが変更された場合はtrue
-	 * @throws MidiUnavailableException {@link MidiDeviceModel#MidiDeviceModel(MidiDevice.Info, MidiDeviceTreeModel) MidiDeviceModelコンストラクタ}からの例外
-	 */
-	protected boolean addDeviceModel(MidiDevice.Info info) throws MidiUnavailableException {
-		return addDeviceModel(new MidiDeviceModel(info, this));
-	}
-	/**
-	 * リストとツリーモデルから、指定されたMIDIデバイスモデル（複数指定可）を除去します。
-	 *
-	 * @param deviceModelsToRemove 除去したいMIDIデバイスモデル
-	 * @return 指定されたMIDIデバイスモデルがこのリストに含まれていた場合はtrue
-	 */
-	protected boolean removeDeviceModels(Collection<MidiDeviceModel> deviceModelsToRemove) {
-		if( ! deviceModelList.removeAll(deviceModelsToRemove) ) return false;
-		for( MidiDeviceModel dm : deviceModelsToRemove )
-			deviceModelTree.get(dm.getInOutType()).remove(dm);
+		deviceModelTree.get(dm.getInOutType()).add(dm);
 		return true;
 	}
 	/**
-	 * リスト、ツリーモデル、接続マップから、指定されたMIDIデバイスモデル（複数指定可）を除去します。
-	 *
-	 * @param deviceModelsToRemove 除去したいMIDIデバイスモデル
-	 * @param rxToTxConnections MIDIデバイスモデル接続マップ（{@link #disconnectAllDevices()}の戻り値）
-	 * @return 指定されたMIDIデバイスモデルがこのリストに含まれていた場合はtrue
+	 * {@link #removeAll()}の非public版です。
+	 * @param c 削除する要素のコレクション
+	 * @return {@link AbstractList#removeAll()}と同じ
 	 */
-	protected boolean removeDeviceModels(
-			Collection<MidiDeviceModel> deviceModelsToRemove,
-			Map<MidiDeviceModel, Collection<MidiDeviceModel>> rxToTxConnections) {
-		if( ! removeDeviceModels(deviceModelsToRemove) ) return false;
-		Set<MidiDeviceModel> rxModels = rxToTxConnections.keySet();
-		rxModels.removeAll(deviceModelsToRemove);
-		for( MidiDeviceModel m : rxModels )
-			rxToTxConnections.get(m).removeAll(deviceModelsToRemove);
+	protected boolean removeAllInternally(Collection<?> c) {
+		if( ! deviceModelList.removeAll(c) ) return false;
+		for( Object o : c ) {
+			if( o instanceof MidiDeviceModel ) {
+				MidiDeviceInOutType ioType = ((MidiDeviceModel)o).getInOutType();
+				deviceModelTree.get(ioType).remove(o);
+			}
+		}
 		return true;
 	}
-
-	/**
-	 * このMIDIデバイスツリーモデルに登録されているMIDIシーケンサーモデルを返します。
-	 * @return MIDIシーケンサーモデル
-	 */
-	public MidiSequencerModel getSequencerModel() { return sequencerModel; }
-	protected MidiSequencerModel sequencerModel;
-	//
-	// リスト用インターフェース
-	@Override
-	public MidiDeviceModel get(int index) { return deviceModelList.get(index); }
-	@Override
-	public int size() { return deviceModelList.size(); }
-	//
 	// ツリーモデル用インターフェース
 	@Override
 	public Object getRoot() { return this; }
@@ -183,6 +148,13 @@ public class MidiDeviceTreeModel extends AbstractList<MidiDeviceModel> implement
 	}
 
 	/**
+	 * このMIDIデバイスツリーモデルに登録されているMIDIシーケンサーモデルを返します。
+	 * @return MIDIシーケンサーモデル
+	 */
+	public MidiSequencerModel getSequencerModel() { return sequencerModel; }
+	protected MidiSequencerModel sequencerModel;
+
+	/**
 	 * 引数で与えられたGUI仮想MIDIデバイスと、{@link #getMidiDeviceInfo()}から取得したMIDIデバイス情報から、
 	 * MIDIデバイスツリーモデルを初期構築します。
 	 *
@@ -190,9 +162,9 @@ public class MidiDeviceTreeModel extends AbstractList<MidiDeviceModel> implement
 	 */
 	public MidiDeviceTreeModel(VirtualMidiDevice guiVirtualDevice) {
 		MidiDeviceModel guiModel = new MidiDeviceModel(guiVirtualDevice, this);
-		addDeviceModel(guiModel);
+		addInternally(guiModel);
 		try {
-			addDeviceModel(sequencerModel = new MidiSequencerModel(MidiSystem.getSequencer(false), this));
+			addInternally(sequencerModel = new MidiSequencerModel(MidiSystem.getSequencer(false), this));
 		} catch( MidiUnavailableException e ) {
 			System.out.println(ChordHelperApplet.VersionInfo.NAME +" : MIDI sequencer unavailable");
 			e.printStackTrace();
@@ -211,7 +183,7 @@ public class MidiDeviceTreeModel extends AbstractList<MidiDeviceModel> implement
 			if( device instanceof Sequencer ) continue; // シーケンサはすでに取得済み
 			if( device instanceof Synthesizer ) { // Java内蔵シンセサイザ
 				try {
-					addDeviceModel(synthModel = new MidiDeviceModel(MidiSystem.getSynthesizer(), this));
+					addInternally(synthModel = new MidiDeviceModel(MidiSystem.getSynthesizer(), this));
 				} catch( MidiUnavailableException e ) {
 					System.out.println(ChordHelperApplet.VersionInfo.NAME +
 							" : Java internal MIDI synthesizer unavailable");
@@ -227,7 +199,7 @@ public class MidiDeviceTreeModel extends AbstractList<MidiDeviceModel> implement
 			// 最初の MIDI IN（USB MIDI インターフェースにつながったMIDIキーボードなど）
 			if( firstMidiInModel == null && m.getTransmitterListModel() != null ) firstMidiInModel = m;
 			//
-			addDeviceModel(m);
+			addInternally(m);
 		}
 		// 開くMIDIデバイスモデルの一覧を作成
 		//
@@ -340,12 +312,15 @@ public class MidiDeviceTreeModel extends AbstractList<MidiDeviceModel> implement
 			toRemove.add(m);
 		}
 		// 削除されたデバイスのモデルを除去
-		removeDeviceModels(toRemove, rxToTxConnections);
-		//
+		if( removeAllInternally(toRemove) ) {
+			Set<MidiDeviceModel> rxModels = rxToTxConnections.keySet();
+			rxModels.removeAll(toRemove);
+			for( MidiDeviceModel m : rxModels ) rxToTxConnections.get(m).removeAll(toRemove);
+		}
 		// 追加されたデバイスのモデルを登録
 		for( MidiDevice.Info info : toAdd ) {
 			try {
-				addDeviceModel(info);
+				addInternally(new MidiDeviceModel(info, this));
 			} catch( MidiUnavailableException e ) {
 				e.printStackTrace();
 			}

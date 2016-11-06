@@ -183,9 +183,7 @@ public class ChordDiagram extends JPanel {
 				new AdjustmentListener() {
 					@Override
 					public void adjustmentValueChanged(AdjustmentEvent e) {
-						setToolTipText(
-							diagramDisplay.chordVariations.getIndexDescription()
-						);
+						setToolTipText(diagramDisplay.chordVariations.getIndexDescription());
 					}
 				}
 			);

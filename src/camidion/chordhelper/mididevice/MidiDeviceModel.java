@@ -65,14 +65,14 @@ public class MidiDeviceModel {
 	 * MIDIデバイスからモデルを構築します。
 	 *
 	 * @param device 対象MIDIデバイス
-	 * @param deviceTreeModel このMIDIデバイスモデルのマネージャー（接続相手となりうるMIDIデバイス）
+	 * @param deviceTreeModel このモデルの親ツリー
 	 */
 	public MidiDeviceModel(MidiDevice device, MidiDeviceTreeModel deviceTreeModel) {
 		this.deviceTreeModel = deviceTreeModel;
 		this.device = device;
 		if( device.getMaxTransmitters() != 0 ) txListModel = new TransmitterListModel(this);
 		if( device.getMaxReceivers() != 0 ) rxListModel = new ReceiverListModel(this);
-		ioType = MidiDeviceInOutType.getValueFor(txListModel, rxListModel);
+		ioType = MidiDeviceInOutType.getValueFor(device);
 		treePath = new TreePath(new Object[] {deviceTreeModel, ioType ,this});
 	}
 	/**

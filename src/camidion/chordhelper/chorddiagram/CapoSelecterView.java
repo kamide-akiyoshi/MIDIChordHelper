@@ -50,6 +50,6 @@ public class CapoSelecterView extends JPanel {
 	 * @return カポ位置
 	 */
 	public int getCapo() {
-		return checkbox.isSelected() ? valueSelecter.getSelectedIndex()+1 : 0;
+		return checkbox.isSelected() ? (int) valueSelecter.getModel().getSelectedItem() : 0;
 	}
 }

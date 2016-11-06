@@ -86,7 +86,7 @@ public abstract class AbstractVirtualMidiDevice implements VirtualMidiDevice {
 	@Override
 	public Transmitter getTransmitter() throws MidiUnavailableException {
 		if( maxTransmitters == 0 ) throw new MidiUnavailableException();
-		Transmitter new_tx = new Transmitter() {
+		Transmitter newTx = new Transmitter() {
 			private Receiver rx = null;
 			@Override
 			public void close() { txList.remove(this); }
@@ -95,8 +95,8 @@ public abstract class AbstractVirtualMidiDevice implements VirtualMidiDevice {
 			@Override
 			public void setReceiver(Receiver rx) { this.rx = rx; }
 		};
-		txList.add(new_tx);
-		return new_tx;
+		txList.add(newTx);
+		return newTx;
 	}
 	@Override
 	public void sendMidiMessage(MidiMessage msg) {

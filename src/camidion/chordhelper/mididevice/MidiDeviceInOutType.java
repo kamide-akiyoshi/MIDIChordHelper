@@ -1,5 +1,6 @@
 package camidion.chordhelper.mididevice;
 
+import javax.sound.midi.MidiDevice;
 import javax.sound.midi.MidiEvent;
 import javax.sound.midi.Receiver;
 import javax.sound.midi.Transmitter;
@@ -30,11 +31,11 @@ public enum MidiDeviceInOutType {
 		this.description = description;
 		this.shortName = shortName;
 	}
-	public static MidiDeviceInOutType getValueFor(TransmitterListModel txListModel, ReceiverListModel rxListModel) {
+	public static MidiDeviceInOutType getValueFor(MidiDevice device) {
 		// tx:IN rx:OUT
-		return rxListModel == null ?
-			(txListModel == null ? MIDI_NONE : MIDI_IN) :
-			(txListModel == null ? MIDI_OUT  : MIDI_IN_OUT);
+		return device.getMaxReceivers() == 0 ?
+			(device.getMaxTransmitters() == 0 ? MIDI_NONE : MIDI_IN) :
+			(device.getMaxTransmitters() == 0 ? MIDI_OUT  : MIDI_IN_OUT);
 	}
 	public String getDescription() { return description; }
 	private String description;

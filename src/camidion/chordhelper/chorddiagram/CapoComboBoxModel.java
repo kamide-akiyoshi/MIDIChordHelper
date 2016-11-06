@@ -7,11 +7,11 @@ import javax.swing.event.ListDataListener;
  * カポ選択コンボボックスモデル（選択範囲：1～11）
  */
 public class CapoComboBoxModel implements ComboBoxModel<Integer> {
-	private Integer selectedValue = Integer.valueOf(1);
+	private Integer selectedValue = 1;
 	@Override
 	public int getSize() { return 11; }
 	@Override
-	public Integer getElementAt(int index) { return Integer.valueOf(index + 1); }
+	public Integer getElementAt(int index) { return index + 1; }
 	@Override
 	public void addListDataListener(ListDataListener l) { }
 	@Override

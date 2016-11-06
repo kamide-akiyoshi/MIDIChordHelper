@@ -69,7 +69,6 @@ public class MidiDeviceTreeView extends JTree {
 				return this;
 			}
 		});
-		//
 		// ツリーノードのToolTipを有効化
 		ToolTipManager.sharedInstance().registerComponent(this);
 		//

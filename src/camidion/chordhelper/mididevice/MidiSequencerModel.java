@@ -31,6 +31,10 @@ import camidion.chordhelper.midieditor.SequencerSpeedSlider;
  */
 public class MidiSequencerModel extends MidiDeviceModel implements BoundedRangeModel {
 	/**
+	 * 再生位置スライダーモデルの最小単位 [μ秒]
+	 */
+	public static final long RESOLUTION_MICROSECOND = 1000L;
+	/**
 	 * MIDIシーケンサモデルを構築します。
 	 * @param sequencer シーケンサーMIDIデバイス
 	 * @param deviceModelTree 親のMIDIデバイスツリーモデル
@@ -158,7 +162,7 @@ public class MidiSequencerModel extends MidiDeviceModel implements BoundedRangeM
 		return usLength < 0 ? 0x100000000L + usLength : usLength ;
 	}
 	@Override
-	public int getMaximum() { return (int)(getMicrosecondLength()/1000L); }
+	public int getMaximum() { return (int)(getMicrosecondLength()/RESOLUTION_MICROSECOND); }
 	@Override
 	public void setMaximum(int newMaximum) {}
 	@Override
@@ -178,10 +182,10 @@ public class MidiSequencerModel extends MidiDeviceModel implements BoundedRangeM
 		return usPosition < 0 ? 0x100000000L + usPosition : usPosition ;
 	}
 	@Override
-	public int getValue() { return (int)(getMicrosecondPosition()/1000L); }
+	public int getValue() { return (int)(getMicrosecondPosition()/RESOLUTION_MICROSECOND); }
 	@Override
 	public void setValue(int newValue) {
-		getSequencer().setMicrosecondPosition(1000L * (long)newValue);
+		getSequencer().setMicrosecondPosition(RESOLUTION_MICROSECOND * (long)newValue);
 		fireStateChanged();
 	}
 	/**
@@ -196,7 +200,7 @@ public class MidiSequencerModel extends MidiDeviceModel implements BoundedRangeM
 	}
 	@Override
 	public void setRangeProperties(int value, int extent, int min, int max, boolean valueIsAdjusting) {
-		getSequencer().setMicrosecondPosition(1000L * (long)value);
+		getSequencer().setMicrosecondPosition(RESOLUTION_MICROSECOND * (long)value);
 		setValueIsAdjusting(valueIsAdjusting);
 		fireStateChanged();
 	}
