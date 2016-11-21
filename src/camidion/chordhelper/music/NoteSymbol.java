@@ -164,10 +164,7 @@ public class NoteSymbol implements Cloneable {
 			}
 		}
 		int sharpFlatIndex = co5_s771 / 7;
-		int note_index = co5_s771 - sharpFlatIndex * 7;
-		String note = language.notes.substring( note_index, note_index+1 );
-		String sharp_flat = language.sharpFlatList.get(sharpFlatIndex);
-		return language.preSharpFlat ? sharp_flat + note : note + sharp_flat;
+		return language.toNoteSymbol(co5_s771 - sharpFlatIndex * 7, sharpFlatIndex);
 	}
 	/**
 	 * 指定の最大文字数の範囲で、MIDIノート番号が示す音名を返します。
