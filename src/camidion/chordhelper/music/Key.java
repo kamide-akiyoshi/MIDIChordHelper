@@ -258,7 +258,7 @@ public class Key implements Cloneable {
 	 * @return この調の文字列表現
 	 */
 	public String toStringIn(SymbolLanguage language) {
-		return language.toStringIn(new NoteSymbol(co5), majorMinor);
+		return language.keyOf(new NoteSymbol(co5), majorMinor);
 	}
 	/**
 	 * 調号を表す半角文字列を返します。

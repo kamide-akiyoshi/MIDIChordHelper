@@ -61,23 +61,28 @@ public enum SymbolLanguage {
 		this.majorMinorDelimiter = majorMinorDelimiter;
 	}
 	/**
-	 * 音名を返します。
-	 * @param noteIndex FCGDAEBの音名インデックス（0～6）
-	 * @param sharpFlatIndex 0=ダブルフラット、1=フラット、2=ナチュラル、3=シャープ、4=ダブルシャープ
+	 * 補正した五度圏インデックスに該当する音名を返します。
+	 * 負数を避けるため、C=0ではなく、+15した値、
+	 * すなわちFbb=0になるよう補正したインデックスを使います。
+	 * @param co5index771 補正した五度圏インデックス（範囲：0～34）
+	 * （Fbb=0, Cbb=1, .. F=14, C=15, .. F#=21, C#=22, .. B#=27, Fx=28, .. Bx=34）
 	 * @return 音名（例：Bb、B flat、変ロ）
+	 * @throws IndexOutOfBoundsException 補正した五度圏インデックスが範囲を外れている場合
 	 */
-	public String toNoteSymbol(int noteIndex, int sharpFlatIndex) {
-		String note = notes.substring( noteIndex, noteIndex+1 );
+	public String noteSymbolOf(int co5index771) {
+		int sharpFlatIndex = co5index771 / 7; // 0 1 2 3 4
+		int noteSymbolIndex = co5index771 - sharpFlatIndex * 7; // 0 1 2 3 4 5 6
+		String note = notes.substring(noteSymbolIndex, noteSymbolIndex+1);
 		String sharpFlat = sharpFlatList.get(sharpFlatIndex);
 		return preSharpFlat ? sharpFlat + note : note + sharpFlat;
 	}
 	/**
-	 * 調の文字列表現を返します。
+	 * 調の文字列表現を返します。メジャー／マイナーの区別が不明な場合、両方の表現を返します。
 	 * @param note 音名
 	 * @param majorMinor -1:マイナー 0:不明 1:メジャー
 	 * @return 調の文字列表現
 	 */
-	public String toStringIn(NoteSymbol note, int majorMinor) {
+	public String keyOf(NoteSymbol note, int majorMinor) {
 		String majorString = note.toStringIn(this, false) + major;
 		if( majorMinor > 0 ) {
 			return majorString;

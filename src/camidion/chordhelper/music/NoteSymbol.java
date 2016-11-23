@@ -129,8 +129,7 @@ public class NoteSymbol implements Cloneable {
 	}
 	/**
 	 * 指定した言語モードとメジャーマイナー種別における文字列表現を返します。
-	 * <p>マイナーが指定された場合、
-	 * 五度圏インデックス値を３つ進めた音階として返します。
+	 * <p>マイナーが指定された場合、五度圏インデックス値を３つ進めた音階として返します。
 	 * 例えば、{@link #toCo5()} の戻り値が０の場合、
 	 * メジャーが指定されていれば C を返しますが、
 	 * マイナーが指定されると A を返します。
@@ -141,30 +140,26 @@ public class NoteSymbol implements Cloneable {
 	 * @return 文字列表現
 	 */
 	public String toStringIn(SymbolLanguage language, boolean isMinor) {
-		int co5_s771 = majorCo5 + 15; // Shift 7 + 7 + 1 = 15 steps
-		if( isMinor ) {
-			// When co5 is for minor (key or chord), shift 3 steps more
-			co5_s771 += 3;
-		}
-		if( co5_s771 < 0 || co5_s771 >= 35 ) {
-			//
-			// ３５種類の音名の範囲に入らないような値が来てしまった場合は、
-			// それを調号として見たときに 5b ～ 6# の範囲に収まるような異名同音(enharmonic)に置き換える。
-			//
-			co5_s771 = Music.mod12(co5_s771);  // returns 0(Fbb) ... 7(Fb) 8(Cb) 9(Gb) 10(Db) 11(Ab)
+		int co5index771 = majorCo5 + 15; // 0(Fbb) -> 7(Fb) -> 14(F) -> 15(C)
+		if( isMinor ) co5index771 += 3; // 15(C) -> 18(Am)
+		if( co5index771 < 0 || co5index771 >= 35 ) {
+			// インデックスOB発生の恐れがある場合
+			// 調号 5b ～ 6# の範囲に収まるルート音となるような異名同音(enharmonic)に置き換える
+			co5index771 = Music.mod12(co5index771);  // returns 0(Fbb) ... 7(Fb) 8(Cb) 9(Gb) 10(Db) 11(Ab)
 			if( isMinor ) {
-				if( co5_s771 == 0 )
-					co5_s771 += Music.SEMITONES_PER_OCTAVE * 2; // 0(Fbbm)+24 = 24(D#m)
+				// 18(Am)
+				if( co5index771 == 0 )
+					co5index771 += Music.SEMITONES_PER_OCTAVE * 2; // 0(Fbbm) -> 24(D#m 5#)
 				else
-					co5_s771 += Music.SEMITONES_PER_OCTAVE;  // 1(Cbbm)+12 = 13(Bbm)
+					co5index771 += Music.SEMITONES_PER_OCTAVE;  // 1(Cbbm) -> 13(Bbm 5b)
 			}
 			else {
-				if( co5_s771 < 10 )
-					co5_s771 += Music.SEMITONES_PER_OCTAVE;  // 0(Fbb)+12 = 12(Eb), 9(Gb)+12 = 21(F#)
+				// 15(C)
+				if( co5index771 < 10 )  // 0(Fbb) -> 12(Eb 3b), 9(Gb) -> 21(F# 6#)
+					co5index771 += Music.SEMITONES_PER_OCTAVE;
 			}
 		}
-		int sharpFlatIndex = co5_s771 / 7;
-		return language.toNoteSymbol(co5_s771 - sharpFlatIndex * 7, sharpFlatIndex);
+		return language.noteSymbolOf(co5index771);
 	}
 	/**
 	 * 指定の最大文字数の範囲で、MIDIノート番号が示す音名を返します。
