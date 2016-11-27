@@ -526,9 +526,9 @@ public class Chord implements Cloneable {
 	 * @return コードの説明（英語）
 	 */
 	public String toName() {
-		String chord_name = rootNoteSymbol.toStringIn(SymbolLanguage.NAME) + nameSuffix() ;
+		String chord_name = rootNoteSymbol.toStringIn(NoteSymbolLanguage.NAME) + nameSuffix() ;
 		if( ! rootNoteSymbol.equals(bassNoteSymbol) ) {
-			chord_name += " on " + bassNoteSymbol.toStringIn(SymbolLanguage.NAME);
+			chord_name += " on " + bassNoteSymbol.toStringIn(NoteSymbolLanguage.NAME);
 		}
 		return chord_name;
 	}

@@ -51,9 +51,7 @@ public class Key implements Cloneable {
 	 * @param co5 五度圏インデックス値
 	 * @param majorMinor {@link #MAJOR}、{@link #MINOR}、{@link #MAJOR_OR_MINOR} のいずれか
 	 */
-	public Key(int co5, int majorMinor) {
-		setKey(co5, majorMinor);
-	}
+	public Key(int co5, int majorMinor) { setKey(co5, majorMinor); }
 	/**
 	 * 指定の五度圏インデックス値を持つ、
 	 * メジャー／マイナーの明確な調を構築します。
@@ -61,16 +59,12 @@ public class Key implements Cloneable {
 	 * @param co5 五度圏インデックス値
 	 * @param isMinor true:マイナー、false:メジャー
 	 */
-	public Key(int co5, boolean isMinor) {
-		setKey(co5, isMinor);
-	}
+	public Key(int co5, boolean isMinor) { setKey(co5, isMinor); }
 	/**
 	 * MIDIの調データ（メタメッセージ2byte）から調を構築します。
 	 * @param midiData MIDIの調データ
 	 */
-	public Key(byte midiData[]) {
-		setBytes(midiData);
-	}
+	public Key(byte midiData[]) { setBytes(midiData); }
 	/**
 	 * C、Am のような文字列から調を構築します。
 	 * @param keySymbol 調を表す文字列
@@ -89,13 +83,10 @@ public class Key implements Cloneable {
 		setKey(chord.rootNoteSymbol().toCo5(isMinor), isMinor);
 	}
 	@Override
-	public Key clone() {
-		return new Key(co5, majorMinor);
-	}
+	public Key clone() { return new Key(co5, majorMinor); }
 	@Override
 	public boolean equals(Object anObject) {
-		if( this == anObject )
-			return true;
+		if( this == anObject ) return true;
 		if( anObject instanceof Key ) {
 			Key another = (Key) anObject;
 			return
@@ -105,9 +96,7 @@ public class Key implements Cloneable {
 		return false;
 	}
 	@Override
-	public int hashCode() {
-		return majorMinor * 256 + co5 ;
-	}
+	public int hashCode() { return majorMinor * 256 + co5 ; }
 	private void setKey(int co5, boolean isMinor) {
 		setKey( co5, isMinor ? MINOR : MAJOR );
 	}
@@ -149,9 +138,7 @@ public class Key implements Cloneable {
 	 * 相対ドの音階を返します。
 	 * @return 相対ドの音階（0～11）
 	 */
-	public int relativeDo() {
-		return NoteSymbol.toNoteNumber(co5);
-	}
+	public int relativeDo() { return NoteSymbol.toNoteNumber(co5); }
 	/**
 	 * この調のルート音を返します。
 	 * メジャーキーの場合は相対ド、
@@ -171,9 +158,7 @@ public class Key implements Cloneable {
 	 * @param noteNumber ノート番号
 	 * @return 指定されたノート番号がこのキーのスケールの構成音ならtrue
 	 */
-	public boolean isOnScale(int noteNumber) {
-		return Music.isOnScale(noteNumber, co5);
-	}
+	public boolean isOnScale(int noteNumber) { return Music.isOnScale(noteNumber, co5); }
 	/**
 	 * この調を、指定された半音オフセット値だけ移調します。
 	 *
@@ -192,10 +177,7 @@ public class Key implements Cloneable {
 	 * </p>
 	 */
 	public void toggleEnharmonically() {
-		if( co5 > 4 )
-			co5 -= 12;
-		else if( co5 < -4 )
-			co5 += 12;
+		if( co5 > 4 ) co5 -= 12; else if( co5 < -4 ) co5 += 12;
 	}
 	/**
 	 * この調を正規化します。
@@ -217,9 +199,7 @@ public class Key implements Cloneable {
 	 *
 	 * @return 平行調
 	 */
-	public Key relativeKey() {
-		return new Key(co5, majorMinor * (-1));
-	}
+	public Key relativeKey() { return new Key(co5, -majorMinor); }
 	/**
 	 * 同主調を生成して返します。
 	 * これは元の調とルート音が同じで、メジャーとマイナーが異なる調です。
@@ -242,23 +222,19 @@ public class Key implements Cloneable {
 	 * 五度圏で真裏にあたる調を生成して返します。
 	 * @return 五度圏で真裏にあたる調
 	 */
-	public Key oppositeKey() {
-		return new Key(Music.oppositeCo5(co5), majorMinor);
-	}
+	public Key oppositeKey() { return new Key(Music.oppositeCo5(co5), majorMinor); }
 	/**
 	 * この調の文字列表現を C、Am のような形式で返します。
 	 * @return この調の文字列表現
 	 */
 	@Override
-	public String toString() {
-		return toStringIn(SymbolLanguage.SYMBOL);
-	}
+	public String toString() { return toStringIn(NoteSymbolLanguage.SYMBOL); }
 	/**
 	 * この調の文字列表現を、指定された形式で返します。
 	 * @return この調の文字列表現
 	 */
-	public String toStringIn(SymbolLanguage language) {
-		return language.keyOf(new NoteSymbol(co5), majorMinor);
+	public String toStringIn(NoteSymbolLanguage language) {
+		return language.keyStringOf(new NoteSymbol(co5), majorMinor);
 	}
 	/**
 	 * 調号を表す半角文字列を返します。

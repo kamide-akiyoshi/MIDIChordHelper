@@ -13,6 +13,8 @@ package camidion.chordhelper.music;
  * </p>
  */
 public class NoteSymbol implements Cloneable {
+	private static final int INDEX_OF_A = NoteSymbolLanguage.SYMBOL.indexOf("A");
+	private static final int INDEX_OF_C = NoteSymbolLanguage.SYMBOL.indexOf("C");
 	/**
 	 * メジャーキー基準の五度圏インデックス値
 	 */
@@ -40,12 +42,10 @@ public class NoteSymbol implements Cloneable {
 	 *  指定の音名が空、またはA～Gの範囲を外れている場合
 	 */
 	public NoteSymbol(String noteSymbol) {
-		this(SymbolLanguage.SYMBOL.majorCo5Of(noteSymbol.trim()));
+		this(NoteSymbolLanguage.SYMBOL.indexOf(noteSymbol) - INDEX_OF_C);
 	}
 	@Override
-	protected NoteSymbol clone() {
-		return new NoteSymbol(majorCo5);
-	}
+	protected NoteSymbol clone() { return new NoteSymbol(majorCo5); }
 	/**
 	 * この音階が指定されたオブジェクトと等しいか調べます。
 	 *
@@ -57,13 +57,9 @@ public class NoteSymbol implements Cloneable {
 	 */
 	@Override
 	public boolean equals(Object anObject) {
-		if( this == anObject )
-			return true;
-		if( anObject instanceof NoteSymbol ) {
-			NoteSymbol another = (NoteSymbol) anObject;
-			return majorCo5 == another.majorCo5;
-		}
-		return false;
+		if( this == anObject ) return true;
+		if( ! (anObject instanceof NoteSymbol) ) return false;
+		return majorCo5 == ((NoteSymbol)anObject).majorCo5;
 	}
 	/**
 	 * この音階のハッシュコード値として、
@@ -98,9 +94,7 @@ public class NoteSymbol implements Cloneable {
 	 * @param isMinor マイナーのときtrue
 	 * @return 五度圏インデックス値
 	 */
-	public int toCo5(boolean isMinor) {
-		return isMinor ? majorCo5 - 3 : majorCo5;
-	}
+	public int toCo5(boolean isMinor) { return isMinor ? majorCo5 - 3 : majorCo5; }
 	/**
 	 * ノート番号（0～11）を返します。
 	 * <p>これはMIDIノート番号からオクターブ情報を抜いた値と同じです。
@@ -116,15 +110,13 @@ public class NoteSymbol implements Cloneable {
 	 * @return この音階の文字列表現
 	 */
 	@Override
-	public String toString() {
-		return toStringIn(SymbolLanguage.SYMBOL, false);
-	}
+	public String toString() { return toStringIn(NoteSymbolLanguage.SYMBOL); }
 	/**
 	 * 指定した言語モードにおける文字列表現を返します。
 	 * @param language 言語モード
 	 * @return 文字列表現
 	 */
-	public String toStringIn(SymbolLanguage language) {
+	public String toStringIn(NoteSymbolLanguage language) {
 		return toStringIn(language, false);
 	}
 	/**
@@ -139,61 +131,52 @@ public class NoteSymbol implements Cloneable {
 	 * @param isMinor マイナーのときtrue
 	 * @return 文字列表現
 	 */
-	public String toStringIn(SymbolLanguage language, boolean isMinor) {
-		int co5index771 = majorCo5 + 15; // 0(Fbb) -> 7(Fb) -> 14(F) -> 15(C)
-		if( isMinor ) co5index771 += 3; // 15(C) -> 18(Am)
-		if( co5index771 < 0 || co5index771 >= 35 ) {
+	public String toStringIn(NoteSymbolLanguage language, boolean isMinor) {
+		int index = majorCo5 + (isMinor ? INDEX_OF_A : INDEX_OF_C);
+		if( index < 0 || index >= 35 ) {
 			// インデックスOB発生の恐れがある場合
 			// 調号 5b ～ 6# の範囲に収まるルート音となるような異名同音(enharmonic)に置き換える
-			co5index771 = Music.mod12(co5index771);  // returns 0(Fbb) ... 7(Fb) 8(Cb) 9(Gb) 10(Db) 11(Ab)
+			index = Music.mod12(index);  // returns 0(Fbb) ... 7(Fb) 8(Cb) 9(Gb) 10(Db) 11(Ab)
 			if( isMinor ) {
 				// 18(Am)
-				if( co5index771 == 0 )
-					co5index771 += Music.SEMITONES_PER_OCTAVE * 2; // 0(Fbbm) -> 24(D#m 5#)
+				if( index == 0 )
+					index += Music.SEMITONES_PER_OCTAVE * 2; // 0(Fbbm) -> 24(D#m 5#)
 				else
-					co5index771 += Music.SEMITONES_PER_OCTAVE;  // 1(Cbbm) -> 13(Bbm 5b)
+					index += Music.SEMITONES_PER_OCTAVE;  // 1(Cbbm) -> 13(Bbm 5b)
 			}
 			else {
 				// 15(C)
-				if( co5index771 < 10 )  // 0(Fbb) -> 12(Eb 3b), 9(Gb) -> 21(F# 6#)
-					co5index771 += Music.SEMITONES_PER_OCTAVE;
+				if( index < 10 )  // 0(Fbb) -> 12(Eb 3b), 9(Gb) -> 21(F# 6#)
+					index += Music.SEMITONES_PER_OCTAVE;
 			}
 		}
-		return language.noteSymbolOf(co5index771);
+		return language.stringOf(index);
 	}
 	/**
 	 * 指定の最大文字数の範囲で、MIDIノート番号が示す音名を返します。
+	 * <p>白鍵の場合は A ～ G までの文字、黒鍵の場合は＃と♭の両方の表現を返します。
+	 * ただし、制限文字数の指定により＃と♭の両方を返せないことがわかった場合、
+	 * 五度圏のC/Amに近いキーでよく使われるほうの表記（C# Eb F# Ab Bb）だけを返します。
+	 * </p>
 	 * <p>ノート番号だけでは物理的な音階情報しか得られないため、
 	 * 白鍵で＃♭のついた音階表現（B#、Cb など）、
 	 * ダブルシャープ、ダブルフラットを使った表現は返しません。
 	 * </p>
-	 * <p>白鍵の場合は A ～ G までの文字、黒鍵の場合は＃と♭の両方の表現を返します。
-	 * ただし、制限文字数の指定により、＃と♭の両方を返せないことがわかった場合は、
-	 * 五度圏で値０（キー C / Am）からの距離が、メジャー、マイナーの両方を含めて
-	 * 近くにあるほうの表現（C# Eb F# Ab Bb）のみを返します。
-	 * </p>
-	 * @param noteNo MIDIノート番号
+	 * @param noteNumber MIDIノート番号
 	 * @param maxChars 最大文字数
 	 * @return MIDIノート番号が示す音名
 	 */
-	public static String noteNumberToSymbol(int noteNo, int maxChars) {
-		int co5 = Music.mod12(Music.reverseCo5(noteNo));
-		if( co5 == 11 ) {
-			return (new NoteSymbol(-1)).toString();
-		}
-		else if( co5 >= 6 ) {
-			if( maxChars >= 7 ) {
-				return
-					(new NoteSymbol(co5)).toString() + " / " +
-					(new NoteSymbol(co5 - 12)).toString();
-			}
-			else {
-				// String capacity not enough
-				// Select only one note (sharped or flatted)
-				return (new NoteSymbol(co5 - ((co5 >= 8) ? 12 : 0))).toString();
-			}
-		}
-		else return (new NoteSymbol(co5)).toString();
+	public static String noteNumberToSymbol(int noteNumber, int maxChars) {
+		int co5 = Music.mod12(Music.reverseCo5(noteNumber));
+		if( co5 == 11 ) co5 -= Music.SEMITONES_PER_OCTAVE; // E# -> F
+		if( co5 < 6 ) return (new NoteSymbol(co5)).toString(); // F C G D A E B
+
+		if( maxChars >= "F# / Gb".length() ) return
+				(new NoteSymbol(co5)).toString() + " / " +
+				(new NoteSymbol(co5 - Music.SEMITONES_PER_OCTAVE)).toString();
+
+		if( co5 >= 8 ) co5 -= Music.SEMITONES_PER_OCTAVE; // G# -> Ab, D# -> Eb, A# -> Bb
+		return (new NoteSymbol(co5)).toString(); // C# Eb F# Ab Bb
 	}
 	/**
 	 * 最大256文字の範囲で、MIDIノート番号が示す音名を返します。

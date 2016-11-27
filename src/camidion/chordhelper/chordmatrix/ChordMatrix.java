@@ -37,7 +37,7 @@ import camidion.chordhelper.music.Chord;
 import camidion.chordhelper.music.Key;
 import camidion.chordhelper.music.Music;
 import camidion.chordhelper.music.NoteSymbol;
-import camidion.chordhelper.music.SymbolLanguage;
+import camidion.chordhelper.music.NoteSymbolLanguage;
 
 /**
  * MIDI Chord Helper 用のコードボタンマトリクス
@@ -174,7 +174,7 @@ public class ChordMatrix extends JPanel
 			}
 			else {
 				tip += key.signatureDescription() + " " +
-					key.toStringIn(SymbolLanguage.IN_JAPANESE);
+					key.toStringIn(NoteSymbolLanguage.IN_JAPANESE);
 				if( v == 0 ) {
 					setIcon(new ButtonIcon(ButtonIcon.NATURAL_ICON));
 				}

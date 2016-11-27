@@ -851,7 +851,7 @@ public class MIDISpec {
 				if( msgdata.length == 2 ) {
 					Key key = new Key(msgdata);
 					str += ": " + key.signatureDescription();
-					str += " (" + key.toStringIn(SymbolLanguage.NAME) + ")";
+					str += " (" + key.toStringIn(NoteSymbolLanguage.NAME) + ")";
 					break;
 				}
 				str += ": Size not 2 byte : data=(";

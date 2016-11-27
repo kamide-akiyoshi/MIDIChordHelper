@@ -9,7 +9,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 
 import camidion.chordhelper.music.Key;
-import camidion.chordhelper.music.SymbolLanguage;
+import camidion.chordhelper.music.NoteSymbolLanguage;
 
 /**
  * 調性選択
@@ -46,8 +46,8 @@ public class KeySignatureSelecter extends JPanel implements ActionListener {
 	private void updateToolTipText() {
 		Key key = getKey();
 		keysigCombobox.setToolTipText(
-			"Key: " + key.toStringIn( SymbolLanguage.NAME )
-			+ " "  + key.toStringIn( SymbolLanguage.IN_JAPANESE )
+			"Key: " + key.toStringIn( NoteSymbolLanguage.NAME )
+			+ " "  + key.toStringIn( NoteSymbolLanguage.IN_JAPANESE )
 			+ " (" + key.signatureDescription() + ")"
 		);
 	}
