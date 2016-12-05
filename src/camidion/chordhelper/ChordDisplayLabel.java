@@ -96,7 +96,7 @@ public class ChordDisplayLabel extends JLabel {
 			setText("MIDI note No." + noteNumber + " : " + pn);
 		}
 		else {
-			String ns = NoteSymbol.noteNoToSymbol(noteNumber);
+			String ns = NoteSymbol.noteNumberToSymbol(noteNumber);
 			double f = Music.noteNumberToFrequency(noteNumber);
 			setText("Note: "+ns+"  -  MIDI note No."+noteNumber+" : "+Math.round(f)+"Hz");
 		}

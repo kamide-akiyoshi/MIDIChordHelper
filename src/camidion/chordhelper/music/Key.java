@@ -36,7 +36,7 @@ public class Key implements Cloneable {
 	/**
 	 * 調号が空のキー（ハ長調またはイ短調）を構築します。
 	 */
-	public Key() { setKey(0, MAJOR_OR_MINOR); }
+	public Key() { }
 	/**
 	 * 指定の五度圏インデックス値を持つ調を、
 	 * メジャーとマイナーを指定せずに構築します。
@@ -68,11 +68,11 @@ public class Key implements Cloneable {
 	/**
 	 * C、Am のような文字列から調を構築します。
 	 * @param keySymbol 調を表す文字列
-	 * @throw IllegalArgumentException 調を表す文字列が不正の場合
+	 * @throw IllegalArgumentException 引数が空文字列の場合、または音名で始まっていない場合
 	 */
 	public Key(String keySymbol) throws IllegalArgumentException {
 		boolean isMinor = keySymbol.matches(".*m");
-		setKey((new NoteSymbol(keySymbol)).toCo5(isMinor), isMinor);
+		setKey((new NoteSymbol(keySymbol)).toCo5ForKey(isMinor), isMinor);
 	}
 	/**
 	 * 指定されたコードと同名の調を構築します。
@@ -80,7 +80,7 @@ public class Key implements Cloneable {
 	 */
 	public Key(Chord chord) {
 		boolean isMinor = chord.isSet(Chord.Interval.MINOR);
-		setKey(chord.rootNoteSymbol().toCo5(isMinor), isMinor);
+		setKey(chord.rootNoteSymbol().toCo5ForKey(isMinor), isMinor);
 	}
 	@Override
 	public Key clone() { return new Key(co5, majorMinor); }
@@ -138,7 +138,7 @@ public class Key implements Cloneable {
 	 * 相対ドの音階を返します。
 	 * @return 相対ドの音階（0～11）
 	 */
-	public int relativeDo() { return NoteSymbol.toNoteNumber(co5); }
+	public int relativeDo() { return NoteSymbol.majorCo5ToNoteNumber(co5); }
 	/**
 	 * この調のルート音を返します。
 	 * メジャーキーの場合は相対ド、

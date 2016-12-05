@@ -79,17 +79,17 @@ public class Chord implements Cloneable {
 		/** 長１３度（長６度の１オクターブ上） */
 		THIRTEENTH(21, OffsetIndex.THIRTEENTH);
 
-		private Interval(int offset, OffsetIndex offsetIndex) {
-			this.offset = offset;
+		private Interval(int chromaticOffset, OffsetIndex offsetIndex) {
+			this.chromaticOffset = chromaticOffset;
 			this.offsetIndex = offsetIndex;
 		}
 		private OffsetIndex offsetIndex;
-		private int offset;
+		private int chromaticOffset;
 		/**
 		 * 半音差を返します。
 		 * @return 半音差
 		 */
-		public int getChromaticOffset() { return offset; }
+		public int getChromaticOffset() { return chromaticOffset; }
 		/**
 		 * 対応するインデックスを返します。
 		 * @return 対応するインデックス
@@ -491,33 +491,33 @@ public class Chord implements Cloneable {
 	 * Swing の {@link JLabel#setText(String)} は HTML で指定できるので、
 	 * 文字の大きさに変化をつけることができます。
 	 *
-	 * @param color_name 色のHTML表現（色名または #RRGGBB 形式）
+	 * @param colorName 色のHTML表現（色名または #RRGGBB 形式）
 	 * @return コード名のHTML
 	 */
-	public String toHtmlString(String color_name) {
-		String small_tag = "<span style=\"font-size: 120%\">";
-		String end_of_small_tag = "</span>";
+	public String toHtmlString(String colorName) {
+		String span = "<span style=\"font-size: 120%\">";
+		String endSpan = "</span>";
 		String root = rootNoteSymbol.toString();
-		String formatted_root = (root.length() == 1) ? root + small_tag :
-			root.replace("#",small_tag+"<sup>#</sup>").
-			replace("b",small_tag+"<sup>b</sup>").
-			replace("x",small_tag+"<sup>x</sup>");
-		String formatted_bass = "";
+		String formattedRoot = (root.length() == 1) ? root + span :
+			root.replace("#",span+"<sup>#</sup>").
+			replace("b",span+"<sup>b</sup>").
+			replace("x",span+"<sup>x</sup>");
+		String formattedBass = "";
 		if( ! rootNoteSymbol.equals(bassNoteSymbol) ) {
 			String bass = bassNoteSymbol.toString();
-			formatted_bass = (bass.length() == 1) ? bass + small_tag :
-				bass.replace("#",small_tag+"<sup>#</sup>").
-				replace("b",small_tag+"<sup>b</sup>").
-				replace("x",small_tag+"<sup>x</sup>");
-			formatted_bass = "/" + formatted_bass + end_of_small_tag;
+			formattedBass = (bass.length() == 1) ? bass + span :
+				bass.replace("#",span+"<sup>#</sup>").
+				replace("b",span+"<sup>b</sup>").
+				replace("x",span+"<sup>x</sup>");
+			formattedBass = "/" + formattedBass + endSpan;
 		}
 		String suffix = symbolSuffix().
 			replace("-5","<sup>-5</sup>").
 			replace("+5","<sup>+5</sup>");
 		return
 			"<html>" +
-			"<span style=\"color: " + color_name + "; font-size: 170% ; white-space: nowrap ;\">" +
-			formatted_root + suffix + end_of_small_tag + formatted_bass +
+			"<span style=\"color: " + colorName + "; font-size: 170% ; white-space: nowrap ;\">" +
+			formattedRoot + suffix + endSpan + formattedBass +
 			"</span>" +
 			"</html>" ;
 	}
@@ -526,11 +526,11 @@ public class Chord implements Cloneable {
 	 * @return コードの説明（英語）
 	 */
 	public String toName() {
-		String chord_name = rootNoteSymbol.toStringIn(NoteSymbolLanguage.NAME) + nameSuffix() ;
+		String name = rootNoteSymbol.toStringIn(NoteSymbolLanguage.NAME) + nameSuffix() ;
 		if( ! rootNoteSymbol.equals(bassNoteSymbol) ) {
-			chord_name += " on " + bassNoteSymbol.toStringIn(NoteSymbolLanguage.NAME);
+			name += " on " + bassNoteSymbol.toStringIn(NoteSymbolLanguage.NAME);
 		}
-		return chord_name;
+		return name;
 	}
 	/**
 	 * コードネームの音名を除いた部分（サフィックス）を組み立てて返します。

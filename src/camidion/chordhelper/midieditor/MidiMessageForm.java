@@ -60,9 +60,7 @@ public class MidiMessageForm extends JPanel implements ActionListener {
 		new DefaultComboBoxModel<String>() {
 			{
 				for( int i = 0; i<=0x7F; i++ ) addElement(
-					String.format(
-						"0x%02X : %d : %s", i, i, NoteSymbol.noteNoToSymbol(i)
-					)
+					String.format("0x%02X : %d : %s", i, i, NoteSymbol.noteNumberToSymbol(i))
 				);
 				// Center note C
 				setSelectedItem(getElementAt(60));

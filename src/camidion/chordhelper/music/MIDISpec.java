@@ -713,7 +713,7 @@ public class MIDISpec {
 						str += getPercussionName(data1);
 					}
 					else {
-						str += NoteSymbol.noteNoToSymbol(data1);
+						str += NoteSymbol.noteNumberToSymbol(data1);
 					}
 					str +="] Velocity=" + data2;
 					break;
