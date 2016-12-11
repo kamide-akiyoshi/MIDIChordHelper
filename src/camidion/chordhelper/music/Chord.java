@@ -145,7 +145,7 @@ public class Chord implements Cloneable {
 	 */
 	public Chord(Key key) {
 		int keyCo5 = key.toCo5();
-		if( key.majorMinor() == Key.MINOR ) {
+		if( key.majorMinor() == Key.MajorMinor.MINOR ) {
 			keyCo5 += 3;
 			set(Interval.MINOR);
 		}

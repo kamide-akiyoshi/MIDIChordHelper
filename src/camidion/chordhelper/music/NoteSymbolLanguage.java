@@ -113,11 +113,11 @@ public enum NoteSymbolLanguage {
 	 * @param majorMinor 負数:マイナー 0:不明 正数:メジャー
 	 * @return 調の文字列表現
 	 */
-	public String keyStringOf(NoteSymbol note, int majorMinor) {
+	public String keyStringOf(NoteSymbol note, Key.MajorMinor majorMinor) {
 		String s = "";
-		if( majorMinor >= 0 ) {
+		if( majorMinor == Key.MajorMinor.MAJOR || majorMinor == Key.MajorMinor.MAJOR_OR_MINOR ) {
 			s = note.toStringIn(this) + major;
-			if( majorMinor > 0 ) return s;
+			if( majorMinor == Key.MajorMinor.MAJOR ) return s;
 			s += majorMinorDelimiter;
 		}
 		return s + note.toMinorKeyRootStringIn(this) + minor;

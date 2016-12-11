@@ -53,25 +53,18 @@ public class KeySignatureSelecter extends JPanel implements ActionListener {
 	}
 	public void clear() { setKey(new Key("C")); }
 	public void setKey( Key key ) {
-		if( key == null ) {
-			clear();
-			return;
-		}
+		if( key == null ) { clear(); return; }
 		keysigCombobox.setSelectedIndex( key.toCo5() + 7 );
-		if( minorCheckbox == null )
-			return;
-		switch( key.majorMinor() ) {
-		case Key.MINOR : minorCheckbox.setSelected(true); break;
-		case Key.MAJOR : minorCheckbox.setSelected(false); break;
-		}
+		if( minorCheckbox == null ) return;
+		minorCheckbox.setSelected(key.majorMinor() == Key.MajorMinor.MINOR);
 	}
 	public Key getKey() {
-		int minor = (
-			minorCheckbox == null ? Key.MAJOR_OR_MINOR :
-			isMinor() ? Key.MINOR :
-			Key.MAJOR
+		Key.MajorMinor majorMinor = (
+			minorCheckbox == null ? Key.MajorMinor.MAJOR_OR_MINOR :
+			isMinor() ? Key.MajorMinor.MINOR :
+			Key.MajorMinor.MAJOR
 		);
-		return new Key(getKeyCo5(),minor);
+		return new Key(getKeyCo5(),majorMinor);
 	}
 	public int getKeyCo5() {
 		return keysigCombobox.getSelectedIndex() - 7;

@@ -184,7 +184,7 @@ public class ChordProgression {
 	 */
 	public ChordProgression( int measureLength, int timeSignatureUpper ) {
 		int key_co5 = (int)(Math.random() * 12) - 5;
-		key = new Key( key_co5, Key.MAJOR );
+		key = new Key(key_co5, Key.MajorMinor.MAJOR);
 		lines = new Vector<Line>();
 		Line line = new Line();
 		boolean is_end;

@@ -14,17 +14,25 @@ package camidion.chordhelper.music;
  */
 public class Key implements Cloneable {
 	/**
-	 * メジャーかマイナーかが特定できていないことを示す値
+	 * メジャーとマイナーのどちらかあるいは両方であることを示す型
 	 */
-	public static final int MAJOR_OR_MINOR = 0;
-	/**
-	 * メジャーキー（長調）
-	 */
-	public static final int MAJOR = 1;
-	/**
-	 * マイナーキー（短調）
-	 */
-	public static final int MINOR = -1;
+	public enum MajorMinor {
+		/** メジャーキー（長調） */
+		MAJOR {
+			@Override
+			public MajorMinor opposite() { return MINOR; }
+		},
+		/**　マイナーキー（短調） */
+		MINOR {
+			@Override
+			public MajorMinor opposite() { return MAJOR; }
+		},
+		/** メジャーまたはマイナー */
+		MAJOR_OR_MINOR;
+
+		/** 反対の調を返します。 */
+		public MajorMinor opposite() { return this; }
+	}
 	/**
 	 * この調の五度圏インデックス値
 	 */
@@ -32,7 +40,7 @@ public class Key implements Cloneable {
 	/**
 	 * メジャー・マイナーの種別
 	 */
-	private int majorMinor;
+	private MajorMinor majorMinor;
 	/**
 	 * 調号が空のキー（ハ長調またはイ短調）を構築します。
 	 */
@@ -43,7 +51,7 @@ public class Key implements Cloneable {
 	 *
 	 * @param co5 五度圏インデックス値
 	 */
-	public Key(int co5) { setKey(co5, MAJOR_OR_MINOR); }
+	public Key(int co5) { setKey(co5, MajorMinor.MAJOR_OR_MINOR); }
 	/**
 	 * 指定の五度圏インデックス値を持つ、
 	 * メジャー／マイナーを指定した調を構築します。
@@ -51,7 +59,7 @@ public class Key implements Cloneable {
 	 * @param co5 五度圏インデックス値
 	 * @param majorMinor {@link #MAJOR}、{@link #MINOR}、{@link #MAJOR_OR_MINOR} のいずれか
 	 */
-	public Key(int co5, int majorMinor) { setKey(co5, majorMinor); }
+	public Key(int co5, MajorMinor majorMinor) { setKey(co5, majorMinor); }
 	/**
 	 * 指定の五度圏インデックス値を持つ、
 	 * メジャー／マイナーの明確な調を構築します。
@@ -96,11 +104,11 @@ public class Key implements Cloneable {
 		return false;
 	}
 	@Override
-	public int hashCode() { return majorMinor * 256 + co5 ; }
+	public int hashCode() { return majorMinor.ordinal() * 256 + co5 ; }
 	private void setKey(int co5, boolean isMinor) {
-		setKey( co5, isMinor ? MINOR : MAJOR );
+		setKey( co5, isMinor ? MajorMinor.MINOR : MajorMinor.MAJOR );
 	}
-	private void setKey(int co5, int majorMinor) {
+	private void setKey(int co5, MajorMinor majorMinor) {
 		this.co5 = co5;
 		this.majorMinor = majorMinor;
 		normalize();
@@ -121,7 +129,7 @@ public class Key implements Cloneable {
 	public byte[] getBytes() {
 		byte data[] = new byte[2];
 		data[0] = (byte)(co5 & 0xFF);
-		data[1] = (byte)(majorMinor == MINOR ? 1 : 0);
+		data[1] = (byte)(majorMinor == MajorMinor.MINOR ? 1 : 0);
 		return data;
 	}
 	/**
@@ -131,9 +139,9 @@ public class Key implements Cloneable {
 	public int toCo5() { return co5; }
 	/**
 	 * メジャー／マイナーの区別を返します。
-	 * @return {@link #MAJOR}、{@link #MINOR}、{@link #MAJOR_OR_MINOR} のいずれか
+	 * @return メジャー／マイナーの区別
 	 */
-	public int majorMinor() { return majorMinor; }
+	public MajorMinor majorMinor() { return majorMinor; }
 	/**
 	 * 相対ドの音階を返します。
 	 * @return 相対ドの音階（0～11）
@@ -148,7 +156,7 @@ public class Key implements Cloneable {
 	 */
 	public int rootNoteNumber() {
 		int n = relativeDo();
-		return majorMinor==MINOR ? Music.mod12(n-3) : n;
+		return majorMinor==MajorMinor.MINOR ? Music.mod12(n-3) : n;
 	}
 	/**
 	 * 指定されたノート番号の音が、この調のスケールの構成音か調べます。
@@ -199,7 +207,7 @@ public class Key implements Cloneable {
 	 *
 	 * @return 平行調
 	 */
-	public Key relativeKey() { return new Key(co5, -majorMinor); }
+	public Key relativeKey() { return new Key(co5, majorMinor.opposite()); }
 	/**
 	 * 同主調を生成して返します。
 	 * これは元の調とルート音が同じで、メジャーとマイナーが異なる調です。
@@ -213,8 +221,8 @@ public class Key implements Cloneable {
 	 */
 	public Key parallelKey() {
 		switch( majorMinor ) {
-		case MAJOR: return new Key( co5-3, MINOR );
-		case MINOR: return new Key( co5+3, MAJOR );
+		case MAJOR: return new Key( co5-3, MajorMinor.MINOR );
+		case MINOR: return new Key( co5+3, MajorMinor.MAJOR );
 		default: return new Key(co5);
 		}
 	}
