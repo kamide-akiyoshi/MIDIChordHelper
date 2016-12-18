@@ -7,16 +7,23 @@ package camidion.chordhelper.music;
  * <p>内部的には次の値を持っています。</p>
  * <ul>
  * <li>五度圏インデックス値。これは調号の♯の数（♭の数は負数）と同じです。</li>
- * <li>メジャー／マイナーの区別（無指定ありの３値）</li>
+ * <li>メジャー／マイナーの区別、区別なしの３値（{@link MajorMinor}で定義）</li>
  * </ul>
  * <p>これらの値はMIDIのメタメッセージにある調号のパラメータに対応します。
  * </p>
  */
 public class Key implements Cloneable {
 	/**
-	 * メジャーとマイナーのどちらかあるいは両方であることを示す型
+	 * キー指定（メジャー／マイナー／両方）
 	 */
 	public enum MajorMinor {
+		/**
+		 * メジャーまたはマイナー（区別なし）
+		 */
+		MAJOR_OR_MINOR {
+			@Override
+			public boolean includes(MajorMinor mm) { return true; }
+		},
 		/** メジャーキー（長調） */
 		MAJOR {
 			@Override
@@ -26,48 +33,49 @@ public class Key implements Cloneable {
 		MINOR {
 			@Override
 			public MajorMinor opposite() { return MAJOR; }
-		},
-		/** メジャーまたはマイナー */
-		MAJOR_OR_MINOR;
-
+		};
 		/** 反対の調を返します。 */
 		public MajorMinor opposite() { return this; }
+		/**
+		 * この値が、引数で指定されたメジャー／マイナーを含んだ意味であるときにtrueを返します。
+		 * */
+		public boolean includes(MajorMinor mm) { return equals(mm); }
 	}
 	/**
 	 * この調の五度圏インデックス値
 	 */
 	private int co5;
 	/**
-	 * メジャー・マイナーの種別
+	 * メジャー・マイナーの種別（null不可：コンストラクタでの初期化必須）
 	 */
 	private MajorMinor majorMinor;
 	/**
-	 * 調号が空のキー（ハ長調またはイ短調）を構築します。
+	 * 調号が空（C/Am ハ長調またはイ短調）のキーを、メジャーとマイナーを指定せずに構築します。
 	 */
-	public Key() { }
+	public Key() {
+		majorMinor = MajorMinor.MAJOR_OR_MINOR;
+	}
 	/**
-	 * 指定の五度圏インデックス値を持つ調を、
-	 * メジャーとマイナーを指定せずに構築します。
+	 * 指定の五度圏インデックス値を持つ調を、メジャーとマイナーを指定せずに構築します。
 	 *
 	 * @param co5 五度圏インデックス値
 	 */
-	public Key(int co5) { setKey(co5, MajorMinor.MAJOR_OR_MINOR); }
+	public Key(int co5) {
+		this.co5 = co5;
+		majorMinor = MajorMinor.MAJOR_OR_MINOR;
+		normalize();
+	}
 	/**
-	 * 指定の五度圏インデックス値を持つ、
-	 * メジャー／マイナーを指定した調を構築します。
+	 * 指定の五度圏インデックス値を持つ、メジャー／マイナーを指定した調を構築します。
 	 *
 	 * @param co5 五度圏インデックス値
-	 * @param majorMinor {@link #MAJOR}、{@link #MINOR}、{@link #MAJOR_OR_MINOR} のいずれか
+	 * @param majorMinor メジャー／マイナー指定
 	 */
-	public Key(int co5, MajorMinor majorMinor) { setKey(co5, majorMinor); }
-	/**
-	 * 指定の五度圏インデックス値を持つ、
-	 * メジャー／マイナーの明確な調を構築します。
-	 *
-	 * @param co5 五度圏インデックス値
-	 * @param isMinor true:マイナー、false:メジャー
-	 */
-	public Key(int co5, boolean isMinor) { setKey(co5, isMinor); }
+	public Key(int co5, MajorMinor majorMinor) {
+		this.co5 = co5;
+		this.majorMinor = majorMinor;
+		normalize();
+	}
 	/**
 	 * MIDIの調データ（メタメッセージ2byte）から調を構築します。
 	 * @param midiData MIDIの調データ
@@ -79,16 +87,20 @@ public class Key implements Cloneable {
 	 * @throw IllegalArgumentException 引数が空文字列の場合、または音名で始まっていない場合
 	 */
 	public Key(String keySymbol) throws IllegalArgumentException {
-		boolean isMinor = keySymbol.matches(".*m");
-		setKey((new NoteSymbol(keySymbol)).toCo5ForKey(isMinor), isMinor);
+		co5 = NoteSymbol.co5OfSymbol(keySymbol);
+		if( keySymbol.matches(".*m") ) { majorMinor = MajorMinor.MINOR; co5 -= 3; }
+		else majorMinor = MajorMinor.MAJOR;
+		normalize();
 	}
 	/**
 	 * 指定されたコードと同名の調を構築します。
 	 * @param chord コード（和音）
 	 */
 	public Key(Chord chord) {
-		boolean isMinor = chord.isSet(Chord.Interval.MINOR);
-		setKey(chord.rootNoteSymbol().toCo5ForKey(isMinor), isMinor);
+		co5 = chord.rootNoteSymbol().toCo5();
+		if( chord.isSet(Chord.Interval.MINOR) ) { majorMinor = MajorMinor.MINOR; co5 -= 3; }
+		else majorMinor = MajorMinor.MAJOR;
+		normalize();
 	}
 	@Override
 	public Key clone() { return new Key(co5, majorMinor); }
@@ -97,30 +109,20 @@ public class Key implements Cloneable {
 		if( this == anObject ) return true;
 		if( anObject instanceof Key ) {
 			Key another = (Key) anObject;
-			return
-				co5 == another.toCo5() &&
-				majorMinor == another.majorMinor() ;
+			return co5 == another.toCo5() && majorMinor == another.majorMinor();
 		}
 		return false;
 	}
 	@Override
-	public int hashCode() { return majorMinor.ordinal() * 256 + co5 ; }
-	private void setKey(int co5, boolean isMinor) {
-		setKey( co5, isMinor ? MajorMinor.MINOR : MajorMinor.MAJOR );
-	}
-	private void setKey(int co5, MajorMinor majorMinor) {
-		this.co5 = co5;
-		this.majorMinor = majorMinor;
-		normalize();
-	}
+	public int hashCode() { return majorMinor.ordinal() * 64 + co5 ; }
 	/**
-	 * MIDIの調データ（メタメッセージ2byte）を設定します。
+	 * この調にMIDIの調データ（メタメッセージ2byte）を設定し、{@link #normalize()}で正規化します。
 	 * @param data MIDIの調データ
 	 */
-	public void setBytes( byte[] data ) {
-		byte sharpFlat = data.length > 0 ? data[0] : 0;
-		byte isMinor = data.length > 1 ? data[1] : 0;
-		setKey( (int)sharpFlat, isMinor==1 );
+	public void setBytes(byte[] data) {
+		co5 = data.length > 0 ? (int)data[0] : 0;
+		majorMinor = (data.length > 1 && data[1] == 1) ? MajorMinor.MINOR : MajorMinor.MAJOR ;
+		normalize();
 	}
 	/**
 	 * MIDIの調データ（メタメッセージ2byte）を生成して返します。
@@ -148,7 +150,7 @@ public class Key implements Cloneable {
 	 */
 	public int relativeDo() { return NoteSymbol.majorCo5ToNoteNumber(co5); }
 	/**
-	 * この調のルート音を返します。
+	 * この調のルート音を表すノート番号（オクターブ抜き）を返します。
 	 * メジャーキーの場合は相対ド、
 	 * マイナーキーの場合は相対ラの音階です。
 	 *
@@ -194,56 +196,48 @@ public class Key implements Cloneable {
 	 */
 	public void normalize() {
 		if( co5 < -7 || co5 > 7 ) {
-			co5 = Music.mod12( co5 );
+			co5 = Music.mod12(co5);
 			if( co5 > 6 ) co5 -= Music.SEMITONES_PER_OCTAVE;
 		}
 	}
 	/**
 	 * 平行調を生成して返します。
 	 * これは元の調と同じ調号を持つ、メジャーとマイナーが異なる調です。
-	 *
-	 * <p>メジャーとマイナーの区別が不明な場合、クローンを生成したのと同じことになります。
-	 * </p>
-	 *
+	 * メジャーとマイナーの区別が不明な場合、クローンを生成したのと同じことになります。
 	 * @return 平行調
 	 */
-	public Key relativeKey() { return new Key(co5, majorMinor.opposite()); }
+	public Key createRelativeKey() { return new Key(co5, majorMinor.opposite()); }
 	/**
 	 * 同主調を生成して返します。
 	 * これは元の調とルート音が同じで、メジャーとマイナーが異なる調です。
-	 *
-	 * <p>メジャーとマイナーの区別が不明な場合、クローンを生成したのと同じことになります。
-	 * 元の調の♭、♯の数が５個以上の場合、
-	 * ７♭～７♯の範囲をはみ出すことがあります（正規化は行われません）。
-	 * </p>
-	 *
+	 * メジャーとマイナーの区別が不明な場合、クローンを生成したのと同じことになります。
 	 * @return 同主調
 	 */
-	public Key parallelKey() {
+	public Key createParallelKey() {
+		int newCo5 = co5;
 		switch( majorMinor ) {
-		case MAJOR: return new Key( co5-3, MajorMinor.MINOR );
-		case MINOR: return new Key( co5+3, MajorMinor.MAJOR );
-		default: return new Key(co5);
+		case MAJOR: newCo5 -= 3; break;
+		case MINOR: newCo5 += 3; break;
+		default: break;
 		}
+		return new Key(newCo5, majorMinor.opposite());
 	}
 	/**
 	 * 五度圏で真裏にあたる調を生成して返します。
 	 * @return 五度圏で真裏にあたる調
 	 */
-	public Key oppositeKey() { return new Key(Music.oppositeCo5(co5), majorMinor); }
+	public Key createOppositeKey() { return new Key(Music.oppositeCo5(co5), majorMinor); }
 	/**
 	 * この調の文字列表現を C、Am のような形式で返します。
 	 * @return この調の文字列表現
 	 */
 	@Override
-	public String toString() { return toStringIn(NoteSymbolLanguage.SYMBOL); }
+	public String toString() { return toStringIn(NoteSymbol.Language.SYMBOL); }
 	/**
 	 * この調の文字列表現を、指定された形式で返します。
 	 * @return この調の文字列表現
 	 */
-	public String toStringIn(NoteSymbolLanguage language) {
-		return language.keyStringOf(new NoteSymbol(co5), majorMinor);
-	}
+	public String toStringIn(NoteSymbol.Language language) { return language.stringOf(this); }
 	/**
 	 * 調号を表す半角文字列を返します。
 	 * 正規化された状態において最大２文字になるよう調整されます。

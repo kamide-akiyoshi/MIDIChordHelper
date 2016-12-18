@@ -350,7 +350,7 @@ public class ChordProgression {
 
 	// Major/minor 切り替え
 	public void toggleKeyMajorMinor() {
-		key = key.relativeKey();
+		key = key.createRelativeKey();
 	}
 
 	// コード進行の移調
@@ -361,13 +361,13 @@ public class ChordProgression {
 					Object element = measure.get(i);
 					if( element instanceof ChordStroke ) {
 						ChordStroke cs = (ChordStroke)element;
-						Chord new_chord = cs.chord.clone();
+						Chord newChord = cs.chord.clone();
 						//
 						// キーが未設定のときは、最初のコードから推測して設定
-						if( key == null ) key = new Key( new_chord );
+						if( key == null ) key = new Key(newChord);
 						//
-						new_chord.transpose( chromaticOffset, key );
-						measure.set( i, new ChordStroke( new_chord, cs.beat_length ) );
+						newChord.transpose( chromaticOffset, key );
+						measure.set(i, new ChordStroke(newChord, cs.beat_length));
 					}
 				}
 			}

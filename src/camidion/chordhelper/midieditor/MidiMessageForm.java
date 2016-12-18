@@ -234,19 +234,19 @@ public class MidiMessageForm extends JPanel implements ActionListener {
 	/**
 	 * 調号選択
 	 */
-	private KeySignatureSelecter keysigSelecter = new KeySignatureSelecter() {
+	private KeySignatureSelecter keysigSelecter = new KeySignatureSelecter(new Key("C")) {
 		{
 			keysigCombobox.addActionListener(
 				new ActionListener() {
 					public void actionPerformed(ActionEvent e) {
-						dataText.setValue(getKey().getBytes());
+						dataText.setValue(getSelectedKey().getBytes());
 					}
 				}
 			);
 			minorCheckbox.addItemListener(
 				new ItemListener() {
 					public void itemStateChanged(ItemEvent e) {
-						dataText.setValue(getKey().getBytes());
+						dataText.setValue(getSelectedKey().getBytes());
 					}
 				}
 			);
@@ -295,7 +295,7 @@ public class MidiMessageForm extends JPanel implements ActionListener {
 				switch( data1 ) { // Data type -> Selecter
 				case 0x51: dataText.setValue(tempoSelecter.getTempoByteArray()); break;
 				case 0x58: dataText.setValue(timesigSelecter.getByteArray()); break;
-				case 0x59: dataText.setValue(keysigSelecter.getKey().getBytes()); break;
+				case 0x59: dataText.setValue(keysigSelecter.getSelectedKey().getBytes()); break;
 				default: break;
 				}
 			}
@@ -464,9 +464,7 @@ public class MidiMessageForm extends JPanel implements ActionListener {
 			byte data[] = dataText.getBytes();
 			if( data == null ) return null;
 			try {
-				msg.setMessage(
-						(int)(msgStatus & 0xFF), data, data.length
-						);
+				msg.setMessage((int)(msgStatus & 0xFF), data, data.length);
 			} catch( InvalidMidiDataException e ) {
 				e.printStackTrace();
 				return null;
@@ -474,20 +472,16 @@ public class MidiMessageForm extends JPanel implements ActionListener {
 			return (MidiMessage)msg;
 		}
 		ShortMessage msg = new ShortMessage();
-		int msg_data1 = data1Text.getValue();
-		if( msg_data1 < 0 ) msg_data1 = 0;
-		int msg_data2 = data2Text.getValue();
-		if( msg_data2 < 0 ) msg_data2 = 0;
+		int msgData1 = data1Text.getValue();
+		if( msgData1 < 0 ) msgData1 = 0;
+		int msgData2 = data2Text.getValue();
+		if( msgData2 < 0 ) msgData2 = 0;
 		try {
-			if( MIDISpec.isChannelMessage( msgStatus ) ) {
-				msg.setMessage(
-					(msgStatus & 0xF0),
-					channelText.getSelectedChannel(),
-					msg_data1, msg_data2
-				);
+			if( MIDISpec.isChannelMessage(msgStatus) ) {
+				msg.setMessage((msgStatus & 0xF0), channelText.getSelectedChannel(), msgData1, msgData2);
 			}
 			else {
-				msg.setMessage( msgStatus, msg_data1, msg_data2 );
+				msg.setMessage(msgStatus, msgData1, msgData2);
 			}
 		} catch( InvalidMidiDataException e ) {
 			e.printStackTrace();
@@ -527,7 +521,7 @@ public class MidiMessageForm extends JPanel implements ActionListener {
 			switch(msgType) {
 			case 0x51: tempoSelecter.setTempo(data); break;
 			case 0x58: timesigSelecter.setValue(data[0], data[1]); break;
-			case 0x59: keysigSelecter.setKey(new Key(data)); break;
+			case 0x59: keysigSelecter.setSelectedKey(new Key(data)); break;
 			default: break;
 			}
 			if( MIDISpec.hasMetaMessageText(msgType) ) {

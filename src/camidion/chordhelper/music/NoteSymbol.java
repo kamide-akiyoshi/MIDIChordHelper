@@ -1,5 +1,9 @@
 package camidion.chordhelper.music;
 
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
+
 /**
  * 音名（オクターブ抜き）を表すクラスです。値は不変です。
  *
@@ -13,8 +17,129 @@ package camidion.chordhelper.music;
  * </p>
  */
 public class NoteSymbol implements Cloneable {
-	private static final int INDEX_OF_A = NoteSymbolLanguage.SYMBOL.indexOf("A");
-	private static final int INDEX_OF_C = NoteSymbolLanguage.SYMBOL.indexOf("C");
+	private static final int INDEX_OF_A = Language.SYMBOL.indexOf("A");
+	private static final int INDEX_OF_C = Language.SYMBOL.indexOf("C");
+	/**
+	 * 音階や調を表すシンボルの言語モードによる違いを定義します。
+	 * <p>音名には、下記のような五度圏順のインデックス値（0～34）が割り当てられます。
+	 * <pre>Fbb=0, Cbb=1, .. Bb=13, F=14, C=15, .. B=20, F#=21, C#=22, .. B#=27, Fx=28, .. Bx=34</pre>
+	 */
+	public static enum Language {
+		/**
+		 * 記号表記（Bb, F#）
+		 */
+		SYMBOL(Arrays.asList("bb","b","","#","x"),"","m"),
+		/**
+		 * 英名表記（B flat, F sharp）
+		 */
+		NAME(Arrays.asList(" double flat"," flat",""," sharp"," double sharp")," major"," minor"),
+		/**
+		 * 日本名表記（変ロ, 嬰ヘ）
+		 */
+		IN_JAPANESE(Arrays.asList("重変","変","","嬰","重嬰"),"長調","短調");
+		//
+		private Language(List<String> sharpFlatList, String major, String minor) {
+			if( (this.sharpFlatList = sharpFlatList).contains("変") ) {
+				this.notes = "ヘハトニイホロ";
+				this.majorMinorDelimiter = "／";
+			} else {
+				this.notes = "FCGDAEB";
+				this.majorMinorDelimiter = " / ";
+			}
+			this.major = major;
+			this.minor = minor;
+		}
+		/**
+		 * ♭や♯の表記を、半音下がる数が多いほうから順に並べたリスト
+		 */
+		private List<String> sharpFlatList;
+		/**
+		 * 引数の先頭にある、♭や♯などの変化記号のインデックス(0～4)を返します。
+		 * <p>変化記号がない場合、2 を返します。それ以外は次の値を返します。</p>
+		 * <ul>
+		 * <li>ダブルシャープ：4</li>
+		 * <li>シャープ：3</li>
+		 * <li>フラット：1</li>
+		 * <li>ダブルフラット：0</li>
+		 * </ul>
+		 * @param s 変化記号で始まる文字列
+		 * @return インデックス
+		 */
+		private int sharpFlatIndexOf(String s) {
+			int index = 0;
+			for( String sharpFlat : sharpFlatList ) {
+				if( ! sharpFlat.isEmpty() && s.startsWith(sharpFlat) ) return index;
+				index++;
+			}
+			return 2;
+		}
+		/**
+		 * 音名を五度圏順で並べた7文字
+		 */
+		private String notes;
+		/**
+		 * インデックス値に該当する音名を返します。
+		 * @param index インデックス値（定義は{@link Language}参照）
+		 * @return 音名（例：Bb、B flat、変ロ）
+		 * @throws IndexOutOfBoundsException インデックス値が範囲を外れている場合
+		 */
+		private String stringOf(int index) {
+			int sharpFlatIndex = index / 7;
+			char note = notes.charAt(index - sharpFlatIndex * 7);
+			String sharpFlat = sharpFlatList.get(sharpFlatIndex);
+			return this == IN_JAPANESE ? sharpFlat + note : note + sharpFlat;
+		}
+		/**
+		 * 音名に対するインデックス値を返します。
+		 * 音名は通常、英大文字（ABCDEFG）ですが、英小文字（abcdefg）も認識します。
+		 * 日本語名（イロハニホヘト）はサポートしていません。
+		 *
+		 * @param noteSymbol 音名で始まる文字列
+		 * @return インデックス値（定義は{@link Language}参照）
+		 * @throws UnsupportedOperationException このオブジェクトが {@link #IN_JAPANESE} の場合
+		 * @throws NullPointerException 引数がnullの場合
+		 * @throws IllegalArgumentException 引数が空文字列の場合、または音名で始まっていない場合
+		 */
+		private int indexOf(String noteSymbol) {
+			if( this == IN_JAPANESE ) throw new UnsupportedOperationException();
+			Objects.requireNonNull(noteSymbol,"Musical note symbol must not be null");
+			String trimmed = noteSymbol.trim();
+			if( trimmed.isEmpty() ) throw new IllegalArgumentException("Empty musical note symbol");
+			int noteIndex = notes.indexOf(Character.toUpperCase(trimmed.charAt(0)));
+			if( noteIndex < 0 ) throw new IllegalArgumentException(
+					"Unknown musical note symbol ["+noteSymbol+"] not in ["+notes+"]");
+			return 7 * sharpFlatIndexOf(trimmed.substring(1)) + noteIndex;
+		}
+		/**
+		 * メジャーを表す文字列
+		 */
+		private String major;
+		/**
+		 * マイナーを表す文字列
+		 */
+		private String minor;
+		/**
+		 * メジャーとマイナーを併記する場合の区切り文字
+		 */
+		private String majorMinorDelimiter;
+		/**
+		 * 調の文字列表現を返します。メジャー／マイナーの区別がない場合、両方の表現を返します。
+		 * @param majorCo5 調の五度圏の値（0 == C/Am）
+		 * @param majorMinor メジャー／マイナーの区別
+		 * @return 調の文字列表現
+		 */
+		public String stringOf(Key key) {
+			String s = "";
+			int co5 = key.toCo5();
+			Key.MajorMinor majorMinor = key.majorMinor();
+			if( majorMinor.includes(Key.MajorMinor.MAJOR) ) {
+				s = stringOf(co5 + INDEX_OF_C) + major;
+				if( ! majorMinor.includes(Key.MajorMinor.MINOR) ) return s;
+				s += majorMinorDelimiter;
+			}
+			return s + stringOf(co5 + INDEX_OF_A) + minor;
+		}
+	}
 	/** メジャーキー基準の五度圏インデックス値 */
 	private int majorCo5;
 	/** ノート番号（0～11） */
@@ -33,9 +158,7 @@ public class NoteSymbol implements Cloneable {
 	 * @param noteSymbol 音名の文字列
 	 * @throws IllegalArgumentException 引数が空文字列の場合、または音名で始まっていない場合
 	 */
-	public NoteSymbol(String noteSymbol) {
-		this(NoteSymbolLanguage.SYMBOL.indexOf(noteSymbol) - INDEX_OF_C);
-	}
+	public NoteSymbol(String noteSymbol) { this(co5OfSymbol(noteSymbol)); }
 	@Override
 	protected NoteSymbol clone() { return new NoteSymbol(majorCo5); }
 	/**
@@ -75,17 +198,6 @@ public class NoteSymbol implements Cloneable {
 	 */
 	public int toCo5() { return majorCo5; }
 	/**
-	 * メジャー／マイナーキーに対応する五度圏インデックス値を返します。
-	 * <p>マイナーの場合、メジャー基準の五度圏インデックス値から３が差し引かれます。
-	 * 例えば、C major の場合は調号が０個なのに対し、C minor のときは調号の♭が３個に増えますが、
-	 * ３を差し引くことによってこのズレが補正されます。
-	 * </p>
-	 *
-	 * @param isMinor マイナーのときtrue
-	 * @return 五度圏インデックス値
-	 */
-	public int toCo5ForKey(boolean isMinor) { return isMinor ? majorCo5 - 3 : majorCo5; }
-	/**
 	 * ノート番号（0～11）を返します。
 	 * <p>これはMIDIノート番号からオクターブ情報を抜いた値と同じです。
 	 * 五度圏インデックス値をノート番号に変換した場合、
@@ -100,23 +212,23 @@ public class NoteSymbol implements Cloneable {
 	 * @return この音階の文字列表現
 	 */
 	@Override
-	public String toString() { return toStringIn(NoteSymbolLanguage.SYMBOL); }
+	public String toString() { return toStringIn(Language.SYMBOL); }
 	/**
-	 * 指定した言語モードにおける文字列表現を返します。
+	 * この音階の文字列表現を、引数で指定された言語モードで返します。
 	 * @param language 言語モード
 	 * @return 文字列表現
 	 */
-	public String toStringIn(NoteSymbolLanguage language) {
+	public String toStringIn(Language language) {
 		return language.stringOf(majorCo5 + INDEX_OF_C);
 	}
 	/**
-	 * 指定した言語モードにおける、マイナーキー用の文字列表現を返します。
-	 * マイナーキー用の文字列では、例えば五度圏インデックスが0の場合、Cの代わりにAを返します。
-	 * @param language 言語モード
-	 * @return 文字列表現
+	 * 引数で指定された音名のメジャーキー基準の五度圏インデックスを返します。
+	 * @param noteSymbol 音名の文字列
+	 * @return メジャーキー基準の五度圏インデックス
+	 * @throws IllegalArgumentException 引数が空文字列の場合、または音名で始まっていない場合
 	 */
-	public String toMinorKeyRootStringIn(NoteSymbolLanguage language) {
-		return language.stringOf(majorCo5 + INDEX_OF_A);
+	public static int co5OfSymbol(String noteSymbol) {
+		return Language.SYMBOL.indexOf(noteSymbol) - INDEX_OF_C;
 	}
 	/**
 	 * 指定の最大文字数の範囲で、MIDIノート番号が示す音名を返します。

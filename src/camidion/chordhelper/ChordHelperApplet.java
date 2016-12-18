@@ -283,7 +283,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public static class VersionInfo {
 		public static final String	NAME = "MIDI Chord Helper";
-		public static final String	VERSION = "Ver.20161211.1";
+		public static final String	VERSION = "Ver.20161218.1";
 		public static final String	COPYRIGHT = "Copyright (C) 2004-2016";
 		public static final String	AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String	URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";
@@ -421,7 +421,7 @@ public class ChordHelperApplet extends JApplet {
 			addChordMatrixListener(new ChordMatrixListener(){
 				public void keySignatureChanged() {
 					Key capoKey = getKeySignatureCapo();
-					keyboardPanel.keySelecter.setKey(capoKey);
+					keyboardPanel.keySelecter.setSelectedKey(capoKey);
 					keyboardPanel.keyboardCenterPanel.keyboard.setKeySignature(capoKey);
 				}
 				public void chordChanged() { chordOn(); }
@@ -454,7 +454,7 @@ public class ChordHelperApplet extends JApplet {
 			keySelecter.keysigCombobox.addActionListener(new ActionListener() {
 				@Override
 				public void actionPerformed(ActionEvent e) {
-					Key key = keySelecter.getKey();
+					Key key = keySelecter.getSelectedKey();
 					key.transpose( - chordMatrix.capoSelecter.getCapo() );
 					chordMatrix.setKeySignature(key);
 				}

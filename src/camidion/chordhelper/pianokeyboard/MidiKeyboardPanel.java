@@ -50,10 +50,8 @@ public class MidiKeyboardPanel extends JPanel {
 			{
 				setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
 				add( Box.createHorizontalStrut(5) );
-				add(velocitySelecter = new VelocitySelecter(
-					keyboardCenterPanel.keyboard.velocityModel)
-				);
-				add(keySelecter = new KeySignatureSelecter(false));
+				add(velocitySelecter = new VelocitySelecter(keyboardCenterPanel.keyboard.velocityModel));
+				add(keySelecter = new KeySignatureSelecter());
 				add( keyboardCenterPanel.keyboard.chordDisplay );
 				add( Box.createHorizontalStrut(5) );
 			}

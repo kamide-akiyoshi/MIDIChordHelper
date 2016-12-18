@@ -9,7 +9,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 
 import camidion.chordhelper.music.Key;
-import camidion.chordhelper.music.NoteSymbolLanguage;
+import camidion.chordhelper.music.NoteSymbol;
 
 /**
  * 調性選択
@@ -21,9 +21,7 @@ public class KeySignatureSelecter extends JPanel implements ActionListener {
 			Key key;
 			for( int i = -7 ; i <= 7 ; i++ ) {
 				str = (key = new Key(i)).toString();
-				if( i != 0 ) {
-					str = key.signature() + " : " + str ;
-				}
+				if( i != 0 ) str = key.signature() + " : " + str ;
 				addItem(str);
 			}
 			setMaximumRowCount(15);
@@ -31,45 +29,43 @@ public class KeySignatureSelecter extends JPanel implements ActionListener {
 	};
 	JCheckBox minorCheckbox = null;
 
-	public KeySignatureSelecter() { this(true); }
-	public KeySignatureSelecter(boolean useMinorCheckbox) {
+	public KeySignatureSelecter() { this(null); }
+	public KeySignatureSelecter(Key key) {
 		add(new JLabel("Key:"));
 		add(keysigCombobox);
-		if(useMinorCheckbox) {
+		if(key != null && key.majorMinor() != Key.MajorMinor.MAJOR_OR_MINOR) {
 			add( minorCheckbox = new JCheckBox("minor") );
 			minorCheckbox.addActionListener(this);
 		}
 		keysigCombobox.addActionListener(this);
-		clear();
+		setSelectedKey(key);
 	}
+
 	public void actionPerformed(ActionEvent e) { updateToolTipText(); }
 	private void updateToolTipText() {
-		Key key = getKey();
+		Key key = getSelectedKey();
 		keysigCombobox.setToolTipText(
-			"Key: " + key.toStringIn( NoteSymbolLanguage.NAME )
-			+ " "  + key.toStringIn( NoteSymbolLanguage.IN_JAPANESE )
+			"Key: " + key.toStringIn( NoteSymbol.Language.NAME )
+			+ " "  + key.toStringIn( NoteSymbol.Language.IN_JAPANESE )
 			+ " (" + key.signatureDescription() + ")"
 		);
 	}
-	public void clear() { setKey(new Key("C")); }
-	public void setKey( Key key ) {
-		if( key == null ) { clear(); return; }
-		keysigCombobox.setSelectedIndex( key.toCo5() + 7 );
-		if( minorCheckbox == null ) return;
-		minorCheckbox.setSelected(key.majorMinor() == Key.MajorMinor.MINOR);
+
+	public void setSelectedKey(Key key) {
+		if( key == null ) key = new Key("C");
+		keysigCombobox.setSelectedIndex(key.toCo5() + 7);
+		setMajorMinor(key.majorMinor());
 	}
-	public Key getKey() {
-		Key.MajorMinor majorMinor = (
-			minorCheckbox == null ? Key.MajorMinor.MAJOR_OR_MINOR :
-			isMinor() ? Key.MajorMinor.MINOR :
-			Key.MajorMinor.MAJOR
-		);
-		return new Key(getKeyCo5(),majorMinor);
+	public Key getSelectedKey() {
+		return new Key(keysigCombobox.getSelectedIndex() - 7, getMajorMinor());
 	}
-	public int getKeyCo5() {
-		return keysigCombobox.getSelectedIndex() - 7;
+
+	private void setMajorMinor(Key.MajorMinor majorMinor) {
+		if( minorCheckbox == null || majorMinor == Key.MajorMinor.MAJOR_OR_MINOR ) return;
+		minorCheckbox.setSelected(majorMinor == Key.MajorMinor.MINOR);
 	}
-	public boolean isMinor() {
-		return minorCheckbox != null && minorCheckbox.isSelected();
+	private Key.MajorMinor getMajorMinor() {
+		return minorCheckbox == null ? Key.MajorMinor.MAJOR_OR_MINOR :
+			minorCheckbox.isSelected() ? Key.MajorMinor.MINOR : Key.MajorMinor.MAJOR;
 	}
 }
