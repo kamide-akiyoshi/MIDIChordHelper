@@ -16,7 +16,7 @@ import java.util.Objects;
  * 非常に高い親和性を持ちます。
  * </p>
  */
-public class NoteSymbol implements Cloneable {
+public class NoteSymbol {
 	private static final int INDEX_OF_A = Language.SYMBOL.indexOf("A");
 	private static final int INDEX_OF_C = Language.SYMBOL.indexOf("C");
 	/**
@@ -159,8 +159,6 @@ public class NoteSymbol implements Cloneable {
 	 * @throws IllegalArgumentException 引数が空文字列の場合、または音名で始まっていない場合
 	 */
 	public NoteSymbol(String noteSymbol) { this(co5OfSymbol(noteSymbol)); }
-	@Override
-	protected NoteSymbol clone() { return new NoteSymbol(majorCo5); }
 	/**
 	 * この音階が指定されたオブジェクトと等しいか調べます。
 	 *

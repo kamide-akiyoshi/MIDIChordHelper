@@ -178,8 +178,8 @@ public class ChordMatrix extends JPanel
 					setIcon(new ButtonIcon(ButtonIcon.NATURAL_ICON));
 				}
 				else {
-					setFont( getFont().deriveFont(Font.PLAIN) );
-					setText( key.signature() );
+					setFont(getFont().deriveFont(Font.PLAIN));
+					setText(key.signature());
 				}
 			}
 			setToolTipText(tip);
@@ -853,7 +853,7 @@ public class ChordMatrix extends JPanel
 		int keyCode = e.getKeyCode();
 		ChordLabel cl = null;
 		Chord chord = null;
-		int key_co5 = key.toCo5();
+		int keyCo5 = key.toCo5();
 		// System.out.println( keyChar + " Pressed on chord matrix" );
 		//
 		if( (i = "6 ".indexOf(keyChar)) >= 0 ) {
@@ -863,27 +863,27 @@ public class ChordMatrix extends JPanel
 			return;
 		}
 		else if( (i = "asdfghjkl;:]".indexOf(keyChar)) >= 0 ) {
-			i_col = i + key_co5 + 7;
+			i_col = i + keyCo5 + 7;
 		}
 		else if( (i = "ASDFGHJKL+*}".indexOf(keyChar)) >= 0 ) {
-			i_col = i + key_co5 + 7;
+			i_col = i + keyCo5 + 7;
 			shiftPressed = true;
 		}
 		else if( (i = "zxcvbnm,./\\".indexOf(keyChar)) >=0 ) {
-			i_col = i + key_co5 + 7;
+			i_col = i + keyCo5 + 7;
 			i_row = 2;
 		}
 		else if( (i = "ZXCVBNM<>?_".indexOf(keyChar)) >=0 ) {
-			i_col = i + key_co5 + 7;
+			i_col = i + keyCo5 + 7;
 			i_row = 2;
 			shiftPressed = true;
 		}
 		else if( (i = "qwertyuiop@[".indexOf(keyChar)) >= 0 ) {
-			i_col = i + key_co5 + 7;
+			i_col = i + keyCo5 + 7;
 			i_row = 0;
 		}
 		else if( (i = "QWERTYUIOP`{".indexOf(keyChar)) >= 0 ) {
-			i_col = i + key_co5 + 7;
+			i_col = i + keyCo5 + 7;
 			i_row = 0;
 			shiftPressed = true;
 		}
@@ -896,26 +896,22 @@ public class ChordMatrix extends JPanel
 		// Shift current key-signature
 		else if( keyCode == KeyEvent.VK_LEFT || keyCode == KeyEvent.VK_KP_LEFT ) {
 			// Add a flat
-			setKeySignature( new Key(key_co5-1) );
+			setKeySignature(new Key(keyCo5 - 1));
 			return;
 		}
 		else if( keyCode == KeyEvent.VK_RIGHT || keyCode == KeyEvent.VK_KP_RIGHT ) {
 			// Add a sharp
-			setKeySignature( new Key(key_co5+1) );
+			setKeySignature(new Key(keyCo5 + 1));
 			return;
 		}
 		else if( keyCode == KeyEvent.VK_DOWN || keyCode == KeyEvent.VK_KP_DOWN ) {
 			// Semitone down
-			Key key = new Key(key_co5);
-			key.transpose(-1);
-			setKeySignature(key);
+			setKeySignature(new Key(Music.transposeCo5(keyCo5, -1)));
 			return;
 		}
 		else if( keyCode == KeyEvent.VK_UP || keyCode == KeyEvent.VK_KP_UP ) {
 			// Semitone up
-			Key key = new Key(key_co5);
-			key.transpose(1);
-			setKeySignature(key);
+			setKeySignature(new Key(Music.transposeCo5(keyCo5, 1)));
 			return;
 		}
 		if( i < 0 ) // No key char found
@@ -1020,7 +1016,7 @@ public class ChordMatrix extends JPanel
 					cl.setBold(true);
 			}
 		}
-		this.capoKey = (this.key = key).clone().transpose(capoSelecter.getCapo());
+		this.capoKey = (this.key = key).transposedKey(capoSelecter.getCapo());
 		for( ChordLabel cl : chordLabels ) cl.keyChanged();
 		fireKeySignatureChanged();
 	}
@@ -1030,9 +1026,8 @@ public class ChordMatrix extends JPanel
 	 * @param newCapo 新しいカポ位置
 	 */
 	protected void capoChanged(int newCapo) {
-		if( this.capo == newCapo )
-			return;
-		(this.capoKey = this.key.clone()).transpose(this.capo = newCapo);
+		if(capo == newCapo) return;
+		capoKey = key.transposedKey(capo = newCapo);
 		selectedChordCapo = (
 			selectedChord == null ? null : selectedChord.clone().transpose(newCapo)
 		);

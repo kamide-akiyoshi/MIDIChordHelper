@@ -349,9 +349,7 @@ public class ChordProgression {
 	}
 
 	// Major/minor 切り替え
-	public void toggleKeyMajorMinor() {
-		key = key.createRelativeKey();
-	}
+	public void toggleKeyMajorMinor() { key = key.relativeKey(); }
 
 	// コード進行の移調
 	public void transpose(int chromaticOffset) {
@@ -372,7 +370,7 @@ public class ChordProgression {
 				}
 			}
 		}
-		key.transpose(chromaticOffset);
+		key = key.transposedKey(chromaticOffset);
 	}
 	// 異名同音の♭と＃を切り替える
 	public void toggleEnharmonically() {
@@ -388,7 +386,7 @@ public class ChordProgression {
 		else {
 			return;
 		}
-		key.toggleEnharmonically();
+		key = key.enharmonicKey();
 		for( Line line : lines ) {
 			for( Measure measure : line ) {
 				for( int i=0; i<measure.size(); i++ ) {

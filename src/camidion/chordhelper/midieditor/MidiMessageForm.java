@@ -235,21 +235,18 @@ public class MidiMessageForm extends JPanel implements ActionListener {
 	 * 調号選択
 	 */
 	private KeySignatureSelecter keysigSelecter = new KeySignatureSelecter(new Key("C")) {
+		private void update() {
+			dataText.setValue(getSelectedKey().getBytes());
+		}
 		{
-			keysigCombobox.addActionListener(
-				new ActionListener() {
-					public void actionPerformed(ActionEvent e) {
-						dataText.setValue(getSelectedKey().getBytes());
-					}
-				}
-			);
-			minorCheckbox.addItemListener(
-				new ItemListener() {
-					public void itemStateChanged(ItemEvent e) {
-						dataText.setValue(getSelectedKey().getBytes());
-					}
-				}
-			);
+			keysigCombobox.addActionListener(new ActionListener() {
+				@Override
+				public void actionPerformed(ActionEvent e) { update(); }
+			});
+			minorCheckbox.addItemListener(new ItemListener() {
+				@Override
+				public void itemStateChanged(ItemEvent e) { update(); }
+			});
 		}
 	};
 

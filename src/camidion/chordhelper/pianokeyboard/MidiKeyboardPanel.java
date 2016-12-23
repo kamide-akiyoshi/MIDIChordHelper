@@ -20,6 +20,7 @@ import camidion.chordhelper.midieditor.MidiChannelButtonSelecter;
 import camidion.chordhelper.midieditor.MidiChannelComboSelecter;
 import camidion.chordhelper.midieditor.MidiEventDialog;
 import camidion.chordhelper.midieditor.VelocitySelecter;
+import camidion.chordhelper.music.Key;
 
 public class MidiKeyboardPanel extends JPanel {
 	private MidiEventDialog eventDialog;
@@ -51,7 +52,7 @@ public class MidiKeyboardPanel extends JPanel {
 				setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
 				add( Box.createHorizontalStrut(5) );
 				add(velocitySelecter = new VelocitySelecter(keyboardCenterPanel.keyboard.velocityModel));
-				add(keySelecter = new KeySignatureSelecter());
+				add(keySelecter = new KeySignatureSelecter(new Key()));
 				add( keyboardCenterPanel.keyboard.chordDisplay );
 				add( Box.createHorizontalStrut(5) );
 			}

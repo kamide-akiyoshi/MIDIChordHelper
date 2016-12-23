@@ -12,38 +12,38 @@ import camidion.chordhelper.music.Key;
 import camidion.chordhelper.music.NoteSymbol;
 
 /**
- * 調性選択
+ * 調性選択フォーム
  */
 public class KeySignatureSelecter extends JPanel implements ActionListener {
-	public JComboBox<String> keysigCombobox = new JComboBox<String>() {
+	public JComboBox<Key> keysigCombobox = new JComboBox<Key>() {
 		{
-			String str;
-			Key key;
-			for( int i = -7 ; i <= 7 ; i++ ) {
-				str = (key = new Key(i)).toString();
-				if( i != 0 ) str = key.signature() + " : " + str ;
-				addItem(str);
-			}
-			setMaximumRowCount(15);
+			for(int co5 = -Key.MAX_SHARPS_OR_FLATS ; co5 <= Key.MAX_SHARPS_OR_FLATS ; co5++)
+				addItem(new Key(co5));
+			setMaximumRowCount(getItemCount());
 		}
 	};
 	JCheckBox minorCheckbox = null;
 
-	public KeySignatureSelecter() { this(null); }
+	/**
+	 * 調性選択フォームを構築します。
+	 * 初期値としてメジャー・マイナーの区別がある調を指定した場合、
+	 * メジャー・マイナーを選択できるminorチェックボックス付きで構築されます。
+	 * @param key 調の初期値
+	 */
 	public KeySignatureSelecter(Key key) {
 		add(new JLabel("Key:"));
 		add(keysigCombobox);
-		if(key != null && key.majorMinor() != Key.MajorMinor.MAJOR_OR_MINOR) {
-			add( minorCheckbox = new JCheckBox("minor") );
+		if(key.majorMinor() != Key.MajorMinor.MAJOR_OR_MINOR) {
+			add(minorCheckbox = new JCheckBox("minor"));
 			minorCheckbox.addActionListener(this);
 		}
 		keysigCombobox.addActionListener(this);
 		setSelectedKey(key);
 	}
 
-	public void actionPerformed(ActionEvent e) { updateToolTipText(); }
-	private void updateToolTipText() {
-		Key key = getSelectedKey();
+	@Override
+	public void actionPerformed(ActionEvent e) {
+		Key key = (Key)keysigCombobox.getSelectedItem();
 		keysigCombobox.setToolTipText(
 			"Key: " + key.toStringIn( NoteSymbol.Language.NAME )
 			+ " "  + key.toStringIn( NoteSymbol.Language.IN_JAPANESE )
@@ -51,13 +51,27 @@ public class KeySignatureSelecter extends JPanel implements ActionListener {
 		);
 	}
 
+	/**
+	 * 調の選択を、引数で指定された通りに変更します。
+	 * メジャー・マイナーの区別のない調が指定された場合、
+	 * minorチェックボックスは変更されず、プルダウン選択のみが変更されます。
+	 *
+	 * @param key 選択する調
+	 */
 	public void setSelectedKey(Key key) {
-		if( key == null ) key = new Key("C");
-		keysigCombobox.setSelectedIndex(key.toCo5() + 7);
 		setMajorMinor(key.majorMinor());
+		if( key.majorMinor() != Key.MajorMinor.MAJOR_OR_MINOR ) key = new Key(key.toCo5());
+		keysigCombobox.setSelectedItem(key);
 	}
+	/**
+	 * 選択されている調を返します。minorチェックボックスがある場合はメジャー・マイナーの区別つき、
+	 * そうでない場合は区別なしの調を返します。
+	 *
+	 * @return 選択されている調
+	 */
 	public Key getSelectedKey() {
-		return new Key(keysigCombobox.getSelectedIndex() - 7, getMajorMinor());
+		Key key = (Key)keysigCombobox.getSelectedItem();
+		return minorCheckbox == null ? key : new Key(key.toCo5(), getMajorMinor());
 	}
 
 	private void setMajorMinor(Key.MajorMinor majorMinor) {

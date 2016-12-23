@@ -444,17 +444,17 @@ public class Chord implements Cloneable {
 		return true;
 	}
 	/**
-	 * コードを移調します。
+	 * 移調したコードを返します。
 	 * @param chromatic_offset 移調幅（半音単位）
 	 * @return 移調した新しいコード（移調幅が０の場合は自分自身）
 	 */
 	public Chord transpose(int chromatic_offset) {
-		return transpose(chromatic_offset, 0);
+		return transposedChord(chromatic_offset, 0);
 	}
 	public Chord transpose(int chromatic_offset, Key original_key) {
-		return transpose(chromatic_offset, original_key.toCo5());
+		return transposedChord(chromatic_offset, original_key.toCo5());
 	}
-	public Chord transpose(int chromatic_offset, int original_key_co5) {
+	private Chord transposedChord(int chromatic_offset, int original_key_co5) {
 		if( chromatic_offset == 0 ) return this;
 		int offsetCo5 = Music.mod12(Music.reverseCo5(chromatic_offset));
 		if( offsetCo5 > 6 ) offsetCo5 -= 12;
