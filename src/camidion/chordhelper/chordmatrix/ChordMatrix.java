@@ -48,31 +48,21 @@ import camidion.chordhelper.music.NoteSymbol;
 public class ChordMatrix extends JPanel
 	implements MouseListener, KeyListener, MouseMotionListener, MouseWheelListener
 {
-	/**
-	 * 列数
-	 */
+	/** 列数 */
 	public static final int	N_COLUMNS = Music.SEMITONES_PER_OCTAVE * 2 + 1;
-	/**
-	 * 行数
-	 */
+	/** 行数 */
 	public static final int	CHORD_BUTTON_ROWS = 3;
-	/**
-	 * 調号ボタン
-	 */
-	public Co5Label keysigLabels[] = new Co5Label[ N_COLUMNS ];
-	/**
-	 * コードボタン
-	 */
+	/** 調号ボタン */
+	public Co5Label keysigLabels[] = new Co5Label[N_COLUMNS];
+	/** コードボタン */
 	public ChordLabel chordLabels[] = new ChordLabel[N_COLUMNS * CHORD_BUTTON_ROWS];
-	/**
-	 * コードボタンの下のコード表示部
-	 */
+	/** コードボタンの下のコード表示部 */
 	public ChordDisplayLabel chordDisplay = new ChordDisplayLabel("Chord Pad", this, null);
 
 	private static class ChordLabelSelection {
-		ChordLabel chordLabel;
-		int bitIndex;
-		boolean isSus4;
+		private ChordLabel chordLabel;
+		private int bitIndex;
+		private boolean isSus4;
 		public ChordLabelSelection(ChordLabel chordLabel, int bitIndex) {
 			this.chordLabel = chordLabel;
 			this.bitIndex = bitIndex;
@@ -252,12 +242,12 @@ public class ChordMatrix extends JPanel
 	 * コードボタン
 	 */
 	private class ChordLabel extends JLabel {
-		public byte checkBits = 0;
-		public int co5Value;
-		public boolean isMinor;
-		public boolean isSus4;
-		public boolean isSelected = false;
-		public Chord chord;
+		private byte checkBits = 0;
+		private int co5Value;
+		private boolean isMinor;
+		private boolean isSus4;
+		private boolean isSelected = false;
+		private Chord chord;
 
 		private boolean inActiveZone = true;
 		private Font boldFont;
@@ -273,9 +263,9 @@ public class ChordMatrix extends JPanel
 			if( isMinor ) co5Value -= 3;
 			String labelText = ( isSus4 ? chord.symbolSuffix() : chord.toString() );
 			if( isMinor && labelText.length() > 3 ) {
-				float small_point_size = getFont().getSize2D() - 2;
-				boldFont = getFont().deriveFont(Font.BOLD, small_point_size);
-				plainFont = getFont().deriveFont(Font.PLAIN, small_point_size);
+				float smallPointSize = getFont().getSize2D() - 2;
+				boldFont = getFont().deriveFont(Font.BOLD, smallPointSize);
+				plainFont = getFont().deriveFont(Font.PLAIN, smallPointSize);
 			}
 			else {
 				boldFont = getFont().deriveFont(Font.BOLD);
@@ -460,37 +450,27 @@ public class ChordMatrix extends JPanel
 			setFont( is_bold ? boldFont : plainFont );
 		}
 		public void keyChanged() {
-			int co5_key = capoKey.toCo5();
-			int co5_offset = co5Value - co5_key;
-			inActiveZone = (co5_offset <= 6 && co5_offset >= -6) ;
-			int root_note = chord.rootNoteSymbol().toNoteNumber();
+			int co5Key = capoKey.toCo5();
+			int co5Offset = co5Value - co5Key;
+			inActiveZone = (co5Offset <= 6 && co5Offset >= -6) ;
+			int rootNote = chord.rootNoteSymbol().toNoteNumber();
 			//
 			// Reconstruct color index
 			//
 			// Root
-			indicatorColorIndices[0] = Music.isOnScale(
-				root_note, co5_key
-			) ? 0 : co5_offset > 0 ? 1 : 2;
+			indicatorColorIndices[0] = Music.isOnScale(rootNote, co5Key) ? 0 : co5Offset > 0 ? 1 : 2;
 			//
 			// 3rd / sus4
-			indicatorColorIndices[1] = Music.isOnScale(
-				root_note+(isMinor?3:isSus4?5:4), co5_key
-			) ? 0 : co5_offset > 0 ? 1 : 2;
+			indicatorColorIndices[1] = Music.isOnScale(rootNote+(isMinor?3:isSus4?5:4), co5Key) ? 0 : co5Offset > 0 ? 1 : 2;
 			//
 			// P5th
-			indicatorColorIndices[2] = Music.isOnScale(
-				root_note+7, co5_key
-			) ? 0 : co5_offset > 0 ? 1 : 2;
+			indicatorColorIndices[2] = Music.isOnScale(rootNote+7, co5Key) ? 0 : co5Offset > 0 ? 1 : 2;
 			//
 			// dim5th
-			indicatorColorIndices[3] = Music.isOnScale(
-				root_note+6, co5_key
-			) ? 0 : co5_offset > 4 ? 1 : 2;
+			indicatorColorIndices[3] = Music.isOnScale(rootNote+6, co5Key) ? 0 : co5Offset > 4 ? 1 : 2;
 			//
 			// aug5th
-			indicatorColorIndices[4] = Music.isOnScale(
-				root_note+8, co5_key
-			) ? 0 : co5_offset > -3 ? 1 : 2;
+			indicatorColorIndices[4] = Music.isOnScale(rootNote+8, co5Key) ? 0 : co5Offset > -3 ? 1 : 2;
 		}
 	}
 
@@ -542,10 +522,10 @@ public class ChordMatrix extends JPanel
 
 	/**
 	 * コードボタンマトリクスの構築
-	 * @param capoValueModel カポ選択値モデル
+	 * @param capoComboBoxModel カポ値選択コンボボックスのデータモデル
 	 */
-	public ChordMatrix(CapoComboBoxModel capoValueModel) {
-		capoSelecter = new CapoSelecterView(capoValueModel) {{
+	public ChordMatrix(CapoComboBoxModel capoComboBoxModel) {
+		capoSelecter = new CapoSelecterView(capoComboBoxModel) {{
 			checkbox.addItemListener(new ItemListener() {
 				public void itemStateChanged(ItemEvent e) {capoChanged(getCapo());}
 			});
@@ -569,11 +549,12 @@ public class ChordMatrix extends JPanel
 		for (i=0; i < N_COLUMNS * CHORD_BUTTON_ROWS; i++) {
 			row = i / N_COLUMNS;
 			v = i - (N_COLUMNS * row) - 12;
-			Chord chord = new Chord(
-				new NoteSymbol(row==2 ? v+3 : v)
-			);
-			if( row==0 ) chord.set(Chord.Interval.SUS4);
-			else if( row==2 ) chord.set(Chord.Interval.MINOR);
+			Chord chord;
+			switch(row) {
+			case 0: chord = new Chord(new NoteSymbol(v), Chord.Interval.SUS4); break;
+			case 2: chord = new Chord(new NoteSymbol(v+3), Chord.Interval.MINOR); break;
+			default: chord = new Chord(new NoteSymbol(v)); break;
+			}
 			ChordLabel cl = new ChordLabel(chord);
 			cl.addMouseListener(this);
 			cl.addMouseMotionListener(this);
@@ -585,9 +566,7 @@ public class ChordMatrix extends JPanel
 		setOpaque(true);
 		addKeyListener(this);
 		addFocusListener(new FocusListener() {
-			public void focusGained(FocusEvent e) {
-				repaint();
-			}
+			public void focusGained(FocusEvent e) { repaint(); }
 			public void focusLost(FocusEvent e) {
 				selectedChord = selectedChordCapo = null;
 				fireChordChanged();
@@ -595,7 +574,7 @@ public class ChordMatrix extends JPanel
 			}
 		});
 		setLayout(new GridLayout( 4, N_COLUMNS, 2, 2 ));
-		setKeySignature( new Key() );
+		setKeySignature(new Key());
 		//
 		// Make chord label selections index
 		//
@@ -661,7 +640,7 @@ public class ChordMatrix extends JPanel
 			if( e.isControlDown() )
 				chord.set(Chord.Interval.NINTH);
 			else
-				chord.clear(Chord.OffsetIndex.NINTH);
+				chord.clear(Chord.Interval.NINTH);
 
 			if( e.isAltDown() ) {
 				if( cl.isSus4 ) {
@@ -702,39 +681,32 @@ public class ChordMatrix extends JPanel
 	public void mouseDragged(MouseEvent e) {
 		Component obj = e.getComponent();
 		if( obj instanceof ChordLabel ) {
-			ChordLabel l_src = (ChordLabel)obj;
+			ChordLabel labelDraggedFrom = (ChordLabel)obj;
 			Component obj2 = this.getComponentAt(
-				l_src.getX() + e.getX(),
-				l_src.getY() + e.getY()
+				labelDraggedFrom.getX() + e.getX(),
+				labelDraggedFrom.getY() + e.getY()
 			);
 			if( obj2 == this ) {
-				//
 				// Entered gap between chord buttons - do nothing
-				//
 				return;
 			}
-			ChordLabel l_dst =
-				( (obj2 instanceof ChordLabel ) ? (ChordLabel)obj2 : null );
-			if( l_dst == l_src ) {
-				//
+			ChordLabel labelDraggedTo = ((obj2 instanceof ChordLabel) ? (ChordLabel)obj2 : null);
+			if( labelDraggedTo == labelDraggedFrom ) {
 				// Returned to original chord button
-				//
 				destinationChordLabel = null;
 				return;
 			}
 			if( destinationChordLabel != null ) {
-				//
 				// Already touched another chord button
-				//
 				return;
 			}
-			Chord chord = l_src.chord.clone();
-			if( l_src.isMinor ) {
-				if( l_dst == null ) { // Out of chord buttons
+			Chord chord = labelDraggedFrom.chord.clone();
+			if( labelDraggedFrom.isMinor ) {
+				if( labelDraggedTo == null ) { // Out of chord buttons
 					// mM7
 					chord.set(Chord.Interval.MAJOR_SEVENTH);
 				}
-				else if( l_src.co5Value < l_dst.co5Value ) { // Right
+				else if( labelDraggedFrom.co5Value < labelDraggedTo.co5Value ) { // Right
 					// m6
 					chord.set(Chord.Interval.SIXTH);
 				}
@@ -743,14 +715,14 @@ public class ChordMatrix extends JPanel
 					chord.set(Chord.Interval.SEVENTH);
 				}
 			}
-			else if( l_src.isSus4 ) {
-				if( l_dst == null ) { // Out of chord buttons
+			else if( labelDraggedFrom.isSus4 ) {
+				if( labelDraggedTo == null ) { // Out of chord buttons
 					return;
 				}
-				else if( ! l_dst.isSus4 ) { // Down from sus4 to major
+				else if( ! labelDraggedTo.isSus4 ) { // Down from sus4 to major
 					chord.set(Chord.Interval.MAJOR);
 				}
-				else if( l_src.co5Value < l_dst.co5Value ) { // Right
+				else if( labelDraggedFrom.co5Value < labelDraggedTo.co5Value ) { // Right
 					chord.set(Chord.Interval.NINTH);
 				}
 				else { // Left
@@ -759,17 +731,17 @@ public class ChordMatrix extends JPanel
 				}
 			}
 			else {
-				if( l_dst == null ) { // Out of chord buttons
+				if( labelDraggedTo == null ) { // Out of chord buttons
 					return;
 				}
-				else if( l_dst.isSus4 ) { // Up from major to sus4
+				else if( labelDraggedTo.isSus4 ) { // Up from major to sus4
 					chord.set(Chord.Interval.NINTH);
 				}
-				else if( l_src.co5Value < l_dst.co5Value ) { // Right
+				else if( labelDraggedFrom.co5Value < labelDraggedTo.co5Value ) { // Right
 					// M7
 					chord.set(Chord.Interval.MAJOR_SEVENTH);
 				}
-				else if( l_dst.isMinor ) { // Down from major to minor
+				else if( labelDraggedTo.isMinor ) { // Down from major to minor
 					// 6
 					chord.set(Chord.Interval.SIXTH);
 				}
@@ -778,7 +750,7 @@ public class ChordMatrix extends JPanel
 					chord.set(Chord.Interval.SEVENTH);
 				}
 			}
-			if( chord.isSet(Chord.OffsetIndex.NINTH) || (l_src.isSus4 && (l_dst == null || ! l_dst.isSus4) ) ) {
+			if( chord.isSet(Chord.Interval.NINTH) || (labelDraggedFrom.isSus4 && (labelDraggedTo == null || ! labelDraggedTo.isSus4) ) ) {
 				if( (e.getModifiersEx() & InputEvent.BUTTON3_DOWN_MASK) != 0 ) {
 					if( e.isShiftDown() ) {
 						chord.set(Chord.Interval.MAJOR_SEVENTH);
@@ -795,10 +767,10 @@ public class ChordMatrix extends JPanel
 				if( e.isControlDown() )
 					chord.set(Chord.Interval.NINTH);
 				else
-					chord.clear(Chord.OffsetIndex.NINTH);
+					chord.clear(Chord.Interval.NINTH);
 			}
 			if( e.isAltDown() ) {
-				if( l_src.isSus4 ) {
+				if( labelDraggedFrom.isSus4 ) {
 					chord.set(Chord.Interval.MAJOR);
 					chord.set(Chord.Interval.SHARP5);
 				}
@@ -807,7 +779,7 @@ public class ChordMatrix extends JPanel
 				}
 			}
 			setSelectedChord(chord);
-			destinationChordLabel = (l_dst == null ? l_src : l_dst ) ;
+			destinationChordLabel = (labelDraggedTo == null ? labelDraggedFrom : labelDraggedTo ) ;
 		}
 		else if( obj instanceof Co5Label ) {
 			Co5Label l_src = (Co5Label)obj;
@@ -847,7 +819,7 @@ public class ChordMatrix extends JPanel
 	}
 	private Chord.Interval pcKeyNextShift7;
 	public void keyPressed(KeyEvent e) {
-		int i = -1, i_col = -1, i_row = 1;
+		int i = -1, iCol = -1, iRow = 1;
 		boolean shiftPressed = false; // True if Shift-key pressed or CapsLocked
 		char keyChar = e.getKeyChar();
 		int keyCode = e.getKeyCode();
@@ -863,28 +835,28 @@ public class ChordMatrix extends JPanel
 			return;
 		}
 		else if( (i = "asdfghjkl;:]".indexOf(keyChar)) >= 0 ) {
-			i_col = i + keyCo5 + 7;
+			iCol = i + keyCo5 + 7;
 		}
 		else if( (i = "ASDFGHJKL+*}".indexOf(keyChar)) >= 0 ) {
-			i_col = i + keyCo5 + 7;
+			iCol = i + keyCo5 + 7;
 			shiftPressed = true;
 		}
 		else if( (i = "zxcvbnm,./\\".indexOf(keyChar)) >=0 ) {
-			i_col = i + keyCo5 + 7;
-			i_row = 2;
+			iCol = i + keyCo5 + 7;
+			iRow = 2;
 		}
 		else if( (i = "ZXCVBNM<>?_".indexOf(keyChar)) >=0 ) {
-			i_col = i + keyCo5 + 7;
-			i_row = 2;
+			iCol = i + keyCo5 + 7;
+			iRow = 2;
 			shiftPressed = true;
 		}
 		else if( (i = "qwertyuiop@[".indexOf(keyChar)) >= 0 ) {
-			i_col = i + keyCo5 + 7;
-			i_row = 0;
+			iCol = i + keyCo5 + 7;
+			iRow = 0;
 		}
 		else if( (i = "QWERTYUIOP`{".indexOf(keyChar)) >= 0 ) {
-			i_col = i + keyCo5 + 7;
-			i_row = 0;
+			iCol = i + keyCo5 + 7;
+			iRow = 0;
 			shiftPressed = true;
 		}
 		else if( keyChar == '5' ) {
@@ -916,15 +888,15 @@ public class ChordMatrix extends JPanel
 		}
 		if( i < 0 ) // No key char found
 			return;
-		if( i_col < 0 ) i_col += 12; else if( i_col > N_COLUMNS ) i_col -= 12;
-		cl = chordLabels[i_col + N_COLUMNS * i_row];
+		if( iCol < 0 ) iCol += 12; else if( iCol > N_COLUMNS ) iCol -= 12;
+		cl = chordLabels[iCol + N_COLUMNS * iRow];
 		chord = cl.chord.clone();
 		if( shiftPressed ) {
 			chord.set(Chord.Interval.SEVENTH);
 		}
 		// specify by previous key
 		else if( pcKeyNextShift7 == null ) {
-			chord.clear(Chord.OffsetIndex.SEVENTH);
+			chord.clear(Chord.Interval.SEVENTH);
 		}
 		else {
 			chord.set(pcKeyNextShift7);
@@ -938,9 +910,7 @@ public class ChordMatrix extends JPanel
 				chord.set(Chord.Interval.FLAT5);
 			}
 		}
-		if( e.isControlDown() ) { // Cannot use for ninth ?
-			chord.set(Chord.Interval.NINTH);
-		}
+		if( e.isControlDown() ) chord.set(Chord.Interval.NINTH);
 		if( selectedChordLabel != null ) clear();
 		(selectedChordLabel = cl).setSelection(true);
 		setSelectedChord(chord);
@@ -1028,9 +998,7 @@ public class ChordMatrix extends JPanel
 	protected void capoChanged(int newCapo) {
 		if(capo == newCapo) return;
 		capoKey = key.transposedKey(capo = newCapo);
-		selectedChordCapo = (
-			selectedChord == null ? null : selectedChord.clone().transpose(newCapo)
-		);
+		selectedChordCapo = (selectedChord == null ? null : selectedChord.transposedChord(newCapo));
 		for( ChordLabel cl : chordLabels ) cl.keyChanged();
 		fireKeySignatureChanged();
 	}
@@ -1048,23 +1016,21 @@ public class ChordMatrix extends JPanel
 	 * ドラッグされたかどうか調べます。
 	 * @return ドラッグ先コードボタンがあればtrue
 	 */
-	public boolean isDragged() {
-		return destinationChordLabel != null ;
-	}
+	public boolean isDragged() { return destinationChordLabel != null ; }
 
 	private boolean isDark = false;
-	public void setDarkMode(boolean is_dark) {
-		this.isDark = is_dark;
-		currentColorset = (is_dark ? darkModeColorset : normalModeColorset);
+	public void setDarkMode(boolean isDark) {
+		this.isDark = isDark;
+		currentColorset = (isDark ? darkModeColorset : normalModeColorset);
 		setBackground( currentColorset.focus[0] );
 		Key prev_key = key;
 		key = null;
 		setKeySignature(prev_key);
 		for( int i=0; i < keysigLabels.length; i++ ) keysigLabels[i].setSelection();
 		for( int i=0; i <  chordLabels.length; i++ ) chordLabels[i].setSelection();
-		chordGuide.setDarkMode( is_dark );
-		chordDisplay.setDarkMode( is_dark );
-		Color col = is_dark ? Color.black : null;
+		chordGuide.setDarkMode(isDark);
+		chordDisplay.setDarkMode(isDark);
+		Color col = isDark ? Color.black : null;
 		capoSelecter.setBackground( col );
 		capoSelecter.valueSelecter.setBackground( col );
 	}
@@ -1081,35 +1047,34 @@ public class ChordMatrix extends JPanel
 	public void setBeat(SequenceTickIndex sequenceTickIndex) {
 		byte beat = (byte)(sequenceTickIndex.lastBeat);
 		byte tsu = sequenceTickIndex.timesigUpper;
-		if( currentBeat == beat && timesigUpper == tsu )
-			return;
+		if( currentBeat == beat && timesigUpper == tsu ) return;
 		timesigUpper = tsu;
 		currentBeat = beat;
 		keysigLabels[ key.toCo5() + 12 ].repaint();
 	}
 
-	private ChordLabel	selectedChordLabel = null;
+	private ChordLabel selectedChordLabel = null;
 	public JComponent getSelectedButton() {
 		return selectedChordLabel;
 	}
-	private Chord	selectedChord = null;
+	private Chord selectedChord = null;
 	public Chord getSelectedChord() {
 		return selectedChord;
 	}
-	private Chord	selectedChordCapo = null;
+	private Chord selectedChordCapo = null;
 	public Chord getSelectedChordCapo() {
 		return selectedChordCapo;
 	}
 	public void setSelectedChordCapo( Chord chord ) {
 		setNoteIndex(-1); // Cancel arpeggio mode
-		selectedChord = (chord == null ? null : chord.clone().transpose(-capo,capoKey));
+		selectedChord = (chord == null ? null : chord.transposedChord(-capo,capoKey));
 		selectedChordCapo = chord;
 		fireChordChanged();
 	}
 	public void setSelectedChord( Chord chord ) {
 		setNoteIndex(-1); // Cancel arpeggio mode
 		selectedChord = chord;
-		selectedChordCapo = (chord == null ? null : chord.clone().transpose(capo,key));
+		selectedChordCapo = (chord == null ? null : chord.transposedChord(capo,key));
 		fireChordChanged();
 	}
 	/**
@@ -1122,10 +1087,7 @@ public class ChordMatrix extends JPanel
 			try {
 				chord = new Chord(chordSymbol);
 			} catch( IllegalArgumentException e ) {
-				JOptionPane.showMessageDialog(
-					null, e.getMessage(), "Input error",
-					JOptionPane.ERROR_MESSAGE
-				);
+				JOptionPane.showMessageDialog(null, e.getMessage(), "Input error", JOptionPane.ERROR_MESSAGE);
 				return;
 			}
 		}

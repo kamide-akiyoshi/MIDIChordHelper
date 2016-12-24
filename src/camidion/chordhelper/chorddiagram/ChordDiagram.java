@@ -18,7 +18,6 @@ import java.util.Objects;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
-import javax.swing.ComboBoxModel;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
 import javax.swing.JScrollBar;
@@ -71,10 +70,10 @@ public class ChordDiagram extends JPanel {
 	}
 	/**
 	 * コードダイアグラムを構築します。
-	 * @param capoValueModel カポ値選択コンボボックスのデータモデル
+	 * @param capoComboBoxModel カポ値選択コンボボックスのデータモデル
 	 */
-	public ChordDiagram(ComboBoxModel<Integer> capoValueModel) {
-		capoSelecterView.valueSelecter.setModel(capoValueModel);
+	public ChordDiagram(CapoComboBoxModel capoComboBoxModel) {
+		capoSelecterView.valueSelecter.setModel(capoComboBoxModel);
 		setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
 		add(new JPanel() {
 			{

@@ -131,6 +131,6 @@ public class ChordTextField extends JTextField {
 			return;
 		String delimiter = ""; // was "\n"
 		setText( getText() + (chord == null ? delimiter : chord + " ") );
-		currentChord = ( chord == null ? null : chord.clone() );
+		currentChord = chord;
 	}
 }

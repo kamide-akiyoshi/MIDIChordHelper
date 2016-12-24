@@ -39,15 +39,15 @@ public class ChordProgression {
 	}
 
 	class ChordStroke {
-		Chord chord; int beat_length; TickRange tickRange = null;
+		Chord chord; int beatLength; TickRange tickRange = null;
 		public ChordStroke(Chord chord) { this( chord, 1 ); }
 		public ChordStroke(Chord chord, int beat_length) {
 			this.chord = chord;
-			this.beat_length = beat_length;
+			this.beatLength = beat_length;
 		}
 		public String toString() {
 			String str = chord.toString();
-			for( int i=2; i <= beat_length; i++ ) str += " %";
+			for( int i=2; i <= beatLength; i++ ) str += " %";
 			return str;
 		}
 	}
@@ -69,7 +69,7 @@ public class ChordProgression {
 			int n = 0;
 			for( Object obj : this ) {
 				if( obj instanceof ChordStroke ) {
-					n += ((ChordStroke)obj).beat_length;
+					n += ((ChordStroke)obj).beatLength;
 				}
 			}
 			return n;
@@ -80,7 +80,7 @@ public class ChordProgression {
 			int l, l_prev = 0;
 			for( Object obj : this ) {
 				if( obj instanceof ChordStroke ) {
-					l = ((ChordStroke)obj).beat_length;
+					l = ((ChordStroke)obj).beatLength;
 					if( l_prev > 0 && l_prev != l ) {
 						return false;
 					}
@@ -100,7 +100,7 @@ public class ChordProgression {
 			if( last_chord_stroke == null ) {
 				return 0;
 			}
-			return last_chord_stroke.beat_length += num_beats;
+			return last_chord_stroke.beatLength += num_beats;
 		}
 		public String toString() {
 			String str = "";
@@ -183,13 +183,13 @@ public class ChordProgression {
 	 * @param timeSignatureUpper 拍子の分子
 	 */
 	public ChordProgression( int measureLength, int timeSignatureUpper ) {
-		int key_co5 = (int)(Math.random() * 12) - 5;
-		key = new Key(key_co5, Key.MajorMinor.MAJOR);
+		int keyCo5 = (int)(Math.random() * 12) - 5;
+		key = new Key(keyCo5, Key.MajorMinor.MAJOR);
 		lines = new Vector<Line>();
 		Line line = new Line();
 		boolean is_end;
-		Chord chord, prev_chord = new Chord(new NoteSymbol(key_co5));
-		int co5_offset, prev_co5_offset;
+		Chord chord, prevChord = new Chord(new NoteSymbol(keyCo5));
+		int co5Offset, prevCo5Offset;
 		double r;
 		for( int mp=0; mp<measureLength; mp++ ) {
 			is_end = (mp == 0 || mp == measureLength - 1); // 最初または最後の小節かを覚えておく
@@ -202,12 +202,11 @@ public class ChordProgression {
 					i % 2 != 0 && Math.random() < 0.9
 				){
 					// もう一拍延長
-					lastChordStroke.beat_length++;
+					lastChordStroke.beatLength++;
 					continue;
 				}
-				chord = new Chord(new NoteSymbol(key_co5));
-				co5_offset = 0;
-				prev_co5_offset = prev_chord.rootNoteSymbol().toCo5() - key_co5;
+				co5Offset = 0;
+				prevCo5Offset = prevChord.rootNoteSymbol().toCo5() - keyCo5;
 				if( ! is_end ) {
 					//
 					// 最初または最後の小節は常にトニックにする。
@@ -215,21 +214,19 @@ public class ChordProgression {
 					// サブドミナントを超えるとスケールを外れるので、超えそうになったらランダムに決め直す。
 					//
 					r = Math.random();
-					co5_offset = prev_co5_offset - 1;
-					if( co5_offset < -1 || (prev_co5_offset < 5 && r < 0.5) ) {
+					co5Offset = prevCo5Offset - 1;
+					if( co5Offset < -1 || (prevCo5Offset < 5 && r < 0.5) ) {
 						//
 						// 長７度がルートとなるコードの出現確率を半減させながらコードを決める
 						// （余りが６のときだけが長７度）
 						// なお、前回と同じコードは使わないようにする。
 						do {
-							co5_offset = (int)(Math.random() * 13) % 7 - 1;
-						} while( co5_offset == prev_co5_offset );
+							co5Offset = (int)(Math.random() * 13) % 7 - 1;
+						} while( co5Offset == prevCo5Offset );
 					}
-					int co5RootNote = key_co5 + co5_offset;
-					chord.setRoot(new NoteSymbol(co5RootNote));
-					chord.setBass(new NoteSymbol(co5RootNote));
 				}
-				switch( co5_offset ) {
+				chord = new Chord(new NoteSymbol(keyCo5 + co5Offset));
+				switch(co5Offset) {
 				// ルート音ごとに、7th などの付加や、メジャーマイナー反転を行う確率を決める
 				case 5: // VII
 					if( Math.random() < 0.5 ) {
@@ -241,7 +238,7 @@ public class ChordProgression {
 						chord.set(Chord.Interval.SEVENTH);
 					break;
 				case 4: // Secondary dominant (III)
-					if( prev_co5_offset == 5 ) {
+					if( prevCo5Offset == 5 ) {
 						// ルートが長７度→長３度の進行のとき、反転確率を上げる。
 						// （ハ長調でいう Bm7-5 の次に E7 を出現しやすくする）
 						if( Math.random() < 0.2 ) chord.set(Chord.Interval.MINOR);
@@ -279,7 +276,7 @@ public class ChordProgression {
 					break;
 				}
 				measure.add( lastChordStroke = new ChordStroke(chord) );
-				prev_chord = chord;
+				prevChord = chord;
 			}
 			line.add(measure);
 			if( (mp+1) % 8 == 0 ) { // ８小節おきに改行
@@ -359,20 +356,19 @@ public class ChordProgression {
 					Object element = measure.get(i);
 					if( element instanceof ChordStroke ) {
 						ChordStroke cs = (ChordStroke)element;
-						Chord newChord = cs.chord.clone();
 						//
 						// キーが未設定のときは、最初のコードから推測して設定
-						if( key == null ) key = new Key(newChord);
+						if( key == null ) key = new Key(cs.chord);
 						//
-						newChord.transpose( chromaticOffset, key );
-						measure.set(i, new ChordStroke(newChord, cs.beat_length));
+						Chord newChord = cs.chord.transposedChord(chromaticOffset, key);
+						measure.set(i, new ChordStroke(newChord, cs.beatLength));
 					}
 				}
 			}
 		}
 		key = key.transposedKey(chromaticOffset);
 	}
-	// 異名同音の♭と＃を切り替える
+	// 異名同音の♭と♯を切り替える
 	public void toggleEnharmonically() {
 		if( key == null ) return;
 		int original_key_co5 = key.toCo5();
@@ -393,10 +389,16 @@ public class ChordProgression {
 					Object element = measure.get(i);
 					if( element instanceof ChordStroke ) {
 						ChordStroke cs = (ChordStroke)element;
-						Chord newChord = cs.chord.clone();
-						newChord.setRoot(new NoteSymbol(newChord.rootNoteSymbol().toCo5() + co5Offset));
-						newChord.setBass(new NoteSymbol(newChord.bassNoteSymbol().toCo5() + co5Offset));
-						measure.set( i, new ChordStroke( newChord, cs.beat_length ) );
+						NoteSymbol root = cs.chord.rootNoteSymbol();
+						NoteSymbol bass = cs.chord.bassNoteSymbol();
+						if( root.equals(bass) ) {
+							bass = root = new NoteSymbol(root.toCo5() + co5Offset);
+						} else {
+							root = new NoteSymbol(root.toCo5() + co5Offset);
+							bass = new NoteSymbol(bass.toCo5() + co5Offset);
+						}
+						Chord newChord = new Chord(root, bass, cs.chord.intervals());
+						measure.set(i, new ChordStroke(newChord, cs.beatLength));
 					}
 				}
 			}
@@ -421,7 +423,7 @@ public class ChordProgression {
 					}
 					else if( element instanceof ChordStroke ) {
 						ChordStroke chord_stroke = (ChordStroke)element;
-						tick_range.moveForward( tpb * chord_stroke.beat_length );
+						tick_range.moveForward( tpb * chord_stroke.beatLength );
 						chord_stroke.tickRange = tick_range.clone();
 					}
 				}

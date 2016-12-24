@@ -283,7 +283,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public static class VersionInfo {
 		public static final String	NAME = "MIDI Chord Helper";
-		public static final String	VERSION = "Ver.20161223.1";
+		public static final String	VERSION = "Ver.2016124.1";
 		public static final String	COPYRIGHT = "Copyright (C) 2004-2016";
 		public static final String	AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String	URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";
@@ -415,9 +415,9 @@ public class ChordHelperApplet extends JApplet {
 		rootPaneDefaultBgcolor = getContentPane().getBackground();
 		//
 		// コードダイアグラム、コードボタン、ピアノ鍵盤のセットアップ
-		CapoComboBoxModel capoValueModel = new CapoComboBoxModel();
-		chordDiagram = new ChordDiagram(capoValueModel);
-		chordMatrix = new ChordMatrix(capoValueModel) {{
+		CapoComboBoxModel capoComboBoxModel = new CapoComboBoxModel();
+		chordDiagram = new ChordDiagram(capoComboBoxModel);
+		chordMatrix = new ChordMatrix(capoComboBoxModel) {{
 			addChordMatrixListener(new ChordMatrixListener(){
 				public void keySignatureChanged() {
 					Key capoKey = getKeySignatureCapo();
@@ -786,8 +786,7 @@ public class ChordHelperApplet extends JApplet {
 		}
 		if( playChord == null ) {
 			// もう鳴らさないので、歌詞表示に通知して終了
-			if( lyricDisplay != null )
-				lyricDisplay.appendChord(null);
+			if( lyricDisplay != null ) lyricDisplay.appendChord(null);
 			return;
 		}
 		// あの楽器っぽい表示
@@ -797,7 +796,7 @@ public class ChordHelperApplet extends JApplet {
 		}
 		// コードボタンからのコードを、カポつき演奏キーからオリジナルキーへ変換
 		Key originalKey = chordMatrix.getKeySignatureCapo();
-		Chord originalChord = playChord.clone().transpose(
+		Chord originalChord = playChord.transposedChord(
 			chordMatrix.capoSelecter.getCapo(),
 			chordMatrix.getKeySignature()
 		);
@@ -861,11 +860,9 @@ public class ChordHelperApplet extends JApplet {
 		Chord diagramChord;
 		int chordDiagramCapo = chordDiagram.capoSelecterView.getCapo();
 		if( chordDiagramCapo == chordMatrix.capoSelecter.getCapo() )
-			diagramChord = playChord.clone();
+			diagramChord = playChord;
 		else
-			diagramChord = originalChord.clone().transpose(
-				- chordDiagramCapo, originalKey
-			);
+			diagramChord = originalChord.transposedChord(-chordDiagramCapo, originalKey);
 		chordDiagram.setChord(diagramChord);
 		if( chordDiagram.recordTextButton.isSelected() )
 			lyricDisplay.appendChord(diagramChord);
