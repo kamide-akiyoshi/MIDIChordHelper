@@ -31,48 +31,50 @@ public class Chord implements Cloneable {
 	public static enum Interval {
 
 		/** 長２度（major 2nd / sus2） */
-		SUS2(2, OffsetIndex.THIRD),
+		SUS2(2, OffsetIndex.THIRD, "sus2", "suspended 2nd"),
 		/** 短３度または増２度 */
-		MINOR(3, OffsetIndex.THIRD),
+		MINOR(3, OffsetIndex.THIRD, "m", "minor"),
 		/** 長３度 */
-		MAJOR(4, OffsetIndex.THIRD),
+		MAJOR(4, OffsetIndex.THIRD, "", "major"),
 		/** 完全４度（parfect 4th / sus4） */
-		SUS4(5, OffsetIndex.THIRD),
+		SUS4(5, OffsetIndex.THIRD, "sus4", "suspended 4th"),
 
 		/** 減５度または増４度（トライトーン ＝ 三全音 ＝ 半オクターブ） */
-		FLAT5(6, OffsetIndex.FIFTH),
+		FLAT5(6, OffsetIndex.FIFTH, "-5", "flatted 5th"),
 		/** 完全５度 */
-		PARFECT5(7, OffsetIndex.FIFTH),
+		PARFECT5(7, OffsetIndex.FIFTH, "", "parfect 5th"),
 		/** 増５度または短６度 */
-		SHARP5(8, OffsetIndex.FIFTH),
+		SHARP5(8, OffsetIndex.FIFTH, "+5", "sharped 5th"),
 
 		/** 長６度または減７度 */
-		SIXTH(9, OffsetIndex.SEVENTH),
+		SIXTH(9, OffsetIndex.SEVENTH, "6", "6th"),
 		/** 短７度 */
-		SEVENTH(10, OffsetIndex.SEVENTH),
+		SEVENTH(10, OffsetIndex.SEVENTH, "7", "7th"),
 		/** 長７度 */
-		MAJOR_SEVENTH(11, OffsetIndex.SEVENTH),
+		MAJOR_SEVENTH(11, OffsetIndex.SEVENTH, "M7", "major 7th"),
 
 		/** 短９度（短２度の１オクターブ上） */
-		FLAT9(13, OffsetIndex.NINTH),
+		FLAT9(13, OffsetIndex.NINTH, "-9", "flatted 9th"),
 		/** 長９度（長２度の１オクターブ上） */
-		NINTH(14, OffsetIndex.NINTH),
+		NINTH(14, OffsetIndex.NINTH, "9", "9th"),
 		/** 増９度（増２度の１オクターブ上） */
-		SHARP9(15, OffsetIndex.NINTH),
+		SHARP9(15, OffsetIndex.NINTH, "+9", "sharped 9th"),
 
 		/** 完全１１度（完全４度の１オクターブ上） */
-		ELEVENTH(17, OffsetIndex.ELEVENTH),
+		ELEVENTH(17, OffsetIndex.ELEVENTH, "11", "11th"),
 		/** 増１１度（増４度の１オクターブ上） */
-		SHARP11(18, OffsetIndex.ELEVENTH),
+		SHARP11(18, OffsetIndex.ELEVENTH, "+11", "sharped 11th"),
 
 		/** 短１３度（短６度の１オクターブ上） */
-		FLAT13(20, OffsetIndex.THIRTEENTH),
+		FLAT13(20, OffsetIndex.THIRTEENTH, "-13", "flatted 13th"),
 		/** 長１３度（長６度の１オクターブ上） */
-		THIRTEENTH(21, OffsetIndex.THIRTEENTH);
+		THIRTEENTH(21, OffsetIndex.THIRTEENTH, "13", "13th");
 
-		private Interval(int chromaticOffset, OffsetIndex offsetIndex) {
+		private Interval(int chromaticOffset, OffsetIndex offsetIndex, String symbol, String description) {
 			this.chromaticOffset = chromaticOffset;
 			this.offsetIndex = offsetIndex;
+			this.symbol = symbol;
+			this.description = description;
 		}
 		/**
 		 * 半音差を返します。
@@ -86,7 +88,104 @@ public class Chord implements Cloneable {
 		 */
 		public OffsetIndex getChromaticOffsetIndex() { return offsetIndex; }
 		private OffsetIndex offsetIndex;
+		/**
+		 * コード名に使う略称を返します。
+		 * @return 略称
+		 */
+		public String getSymbol() { return symbol; }
+		private String symbol;
+		/**
+		 * コード用の説明を返します。
+		 * @return 説明
+		 */
+		public String getDescription() { return description; }
+		private String description;
 	}
+	/**
+	 * コードネームの音名を除いた部分（サフィックス）を組み立てて返します。
+	 * @return コードネームの音名を除いた部分
+	 */
+	public String symbolSuffix() {
+		String suffix = "";
+		Interval itv3rd = offsets.get(OffsetIndex.THIRD);
+		Interval itv5th = offsets.get(OffsetIndex.FIFTH);
+		Interval itv7th = offsets.get(OffsetIndex.SEVENTH);
+		if( itv3rd == Interval.MINOR ) {
+			suffix += itv3rd.getSymbol();
+		}
+		if( itv7th != null ) {
+			suffix += itv7th.getSymbol();
+		}
+		if( Arrays.asList(Interval.SUS2, Interval.SUS4).contains(itv3rd) ) {
+			suffix += itv3rd.getSymbol();
+		}
+		if( itv5th != Interval.PARFECT5 ) {
+			suffix += itv5th.getSymbol();
+		}
+		Vector<String> inParen = new Vector<String>();
+		for( OffsetIndex index : Arrays.asList(OffsetIndex.NINTH, OffsetIndex.ELEVENTH, OffsetIndex.THIRTEENTH) ) {
+			Interval interval = offsets.get(index);
+			if( interval != null ) inParen.add(interval.getSymbol());
+		}
+		if( ! inParen.isEmpty() ) suffix += "("+String.join(",",inParen)+")";
+		String alias = symbolSuffixAliases.get(suffix);
+		return alias == null ? suffix : alias;
+	}
+	private static final Map<String, String> symbolSuffixAliases = new HashMap<String, String>() {
+		{
+			put("m-5", "dim");
+			put("+5", "aug");
+			put("m6-5", "dim7");
+			put("(9)", "add9");
+			put("7(9)", "9");
+			put("M7(9)", "M9");
+			put("7+5", "aug7");
+			put("m6-5(9)", "dim9");
+		}
+	};
+	/**
+	 * コードの説明のうち、音名を除いた部分を組み立てて返します。
+	 * @return コード説明の音名を除いた部分
+	 */
+	public String nameSuffix() {
+		String suffix = "";
+		Interval itv3rd = offsets.get(OffsetIndex.THIRD);
+		Interval itv5th = offsets.get(OffsetIndex.FIFTH);
+		Interval itv7th = offsets.get(OffsetIndex.SEVENTH);
+		if( itv3rd == Interval.MINOR ) {
+			suffix += " " + itv3rd.getDescription();
+		}
+		if( itv7th != null ) {
+			suffix += " " + itv7th.getDescription();
+		}
+		if( Arrays.asList(Interval.SUS2, Interval.SUS4).contains(itv3rd) ) {
+			suffix += " " + itv3rd.getDescription();
+		}
+		if( itv5th != Interval.PARFECT5 ) {
+			suffix += " " + itv5th.getDescription();
+		}
+		Vector<String> inParen = new Vector<String>();
+		for( OffsetIndex index : Arrays.asList(OffsetIndex.NINTH, OffsetIndex.ELEVENTH, OffsetIndex.THIRTEENTH) ) {
+			Interval interval = offsets.get(index);
+			if( interval != null ) inParen.add(interval.getDescription());
+		}
+		if( ! inParen.isEmpty() ) suffix += "("+String.join(",",inParen)+")";
+		String alias = nameSuffixAliases.get(suffix);
+		return alias == null ? suffix : alias;
+	}
+	private static final Map<String, String> nameSuffixAliases = new HashMap<String, String>() {
+		{
+			put("", " "+Interval.MAJOR.getDescription());
+			put(" minor flatted 5th", " diminished (triad)");
+			put(" sharped 5th", " augumented");
+			put(" minor 6th flatted 5th", " diminished 7th");
+			put("(9th)", " additional 9th");
+			put(" 7th(9th)", " 9th");
+			put(" major 7th(9th)", " major 9th");
+			put(" 7th sharped 5th", " augumented 7th");
+			put(" minor 6th flatted 5th(9th)", " diminished 9th");
+		}
+	};
 
 	/**
 	 * 現在有効な構成音（ルート、ベースは除く）の音程（初期値はメジャーコードの構成音）
@@ -158,6 +257,7 @@ public class Chord implements Cloneable {
 		} else {
 			bassNoteSymbol = rootNoteSymbol;
 		}
+		// 先頭の音名はもういらないので削除
 		String suffix = parts[0].replaceFirst("^[A-G][#bx]*","");
 		//
 		// () があれば、その中身を取り出す
@@ -177,8 +277,8 @@ public class Chord implements Cloneable {
 		else if( suffix.matches(".*(6|dim[79]).*") ) set(Interval.SIXTH);
 		else if( suffix.matches(".*7.*") ) set(Interval.SEVENTH);
 		//
-		// minor sus4  （maj7 と間違えないように比較）
-		if( suffix.matches(".*m.*") && ! suffix.matches(".*ma.*") ) set(Interval.MINOR);
+		// minor sus4  （maj7 と間違えないように比較しつつ、mmaj7も解釈させる）
+		if( suffix.matches(".*m.*") && ! suffix.matches(".*ma.*") || suffix.matches(".*mma.*") ) set(Interval.MINOR);
 		else if( suffix.matches(".*sus4.*") ) set(Interval.SUS4);
 		//
 		// 9th の判定
@@ -428,150 +528,6 @@ public class Chord implements Cloneable {
 			name += " on " + bassNoteSymbol.toStringIn(NoteSymbol.Language.NAME);
 		}
 		return name;
-	}
-	/**
-	 * コードネームの音名を除いた部分（サフィックス）を組み立てて返します。
-	 * @return コードネームの音名を除いた部分
-	 */
-	public String symbolSuffix() {
-		String suffix = (
-			offsets.get(OffsetIndex.THIRD) == Interval.MINOR ? "m" : ""
-		);
-		Interval itv;
-		if( (itv = offsets.get(OffsetIndex.SEVENTH)) != null ) {
-			switch(itv) {
-			case SIXTH:         suffix += "6";  break;
-			case SEVENTH:       suffix += "7";  break;
-			case MAJOR_SEVENTH: suffix += "M7"; break;
-			default: break;
-			}
-		}
-		switch( offsets.get(OffsetIndex.THIRD) ) {
-		case SUS4: suffix += "sus4"; break;
-		case SUS2: suffix += "sus2"; break;
-		default: break;
-		}
-		switch( offsets.get(OffsetIndex.FIFTH) ) {
-		case FLAT5:  suffix += "-5"; break;
-		case SHARP5: suffix += "+5"; break;
-		default: break;
-		}
-		Vector<String> paren = new Vector<String>();
-		if( (itv = offsets.get(OffsetIndex.NINTH)) != null ) {
-			switch(itv) {
-			case NINTH:  paren.add("9"); break;
-			case FLAT9:  paren.add("-9"); break;
-			case SHARP9: paren.add("+9"); break;
-			default: break;
-			}
-		}
-		if( (itv = offsets.get(OffsetIndex.ELEVENTH)) != null ) {
-			switch(itv) {
-			case ELEVENTH: paren.add("11"); break;
-			case SHARP11:  paren.add("+11"); break;
-			default: break;
-			}
-		}
-		if( (itv = offsets.get(OffsetIndex.THIRTEENTH)) != null ) {
-			switch(itv) {
-			case THIRTEENTH: paren.add("13"); break;
-			case FLAT13:     paren.add("-13"); break;
-			default: break;
-			}
-		}
-		if( ! paren.isEmpty() ) {
-			boolean is_first = true;
-			suffix += "(";
-			for( String p : paren ) {
-				if( is_first )
-					is_first = false;
-				else
-					suffix += ",";
-				suffix += p;
-			}
-			suffix += ")";
-		}
-		if( suffix.equals("m-5") ) return "dim";
-		else if( suffix.equals("+5") ) return "aug";
-		else if( suffix.equals("m6-5") ) return "dim7";
-		else if( suffix.equals("(9)") ) return "add9";
-		else if( suffix.equals("7(9)") ) return "9";
-		else if( suffix.equals("M7(9)") ) return "M9";
-		else if( suffix.equals("7+5") ) return "aug7";
-		else if( suffix.equals("m6-5(9)") ) return "dim9";
-		else return suffix ;
-	}
-	/**
-	 * コードの説明のうち、音名を除いた部分を組み立てて返します。
-	 * @return コード説明の音名を除いた部分
-	 */
-	public String nameSuffix() {
-		String suffix = "";
-		if( offsets.get(OffsetIndex.THIRD) == Interval.MINOR )
-			suffix += " minor";
-		Interval itv;
-		if( (itv = offsets.get(OffsetIndex.SEVENTH)) != null ) {
-			switch(itv) {
-			case SIXTH:         suffix += " 6th"; break;
-			case SEVENTH:       suffix += " 7th"; break;
-			case MAJOR_SEVENTH: suffix += " major 7th"; break;
-			default: break;
-			}
-		}
-		switch( offsets.get(OffsetIndex.THIRD) ) {
-		case SUS4: suffix += " suspended 4th"; break;
-		case SUS2: suffix += " suspended 2nd"; break;
-		default: break;
-		}
-		switch( offsets.get(OffsetIndex.FIFTH) ) {
-		case FLAT5 : suffix += " flatted 5th"; break;
-		case SHARP5: suffix += " sharped 5th"; break;
-		default: break;
-		}
-		Vector<String> paren = new Vector<String>();
-		if( (itv = offsets.get(OffsetIndex.NINTH)) != null ) {
-			switch(itv) {
-			case NINTH:  paren.add("9th"); break;
-			case FLAT9:  paren.add("flatted 9th"); break;
-			case SHARP9: paren.add("sharped 9th"); break;
-			default: break;
-			}
-		}
-		if( (itv = offsets.get(OffsetIndex.ELEVENTH)) != null ) {
-			switch(itv) {
-			case ELEVENTH: paren.add("11th"); break;
-			case SHARP11:  paren.add("sharped 11th"); break;
-			default: break;
-			}
-		}
-		if( (itv = offsets.get(OffsetIndex.THIRTEENTH)) != null ) {
-			switch(itv) {
-			case THIRTEENTH: paren.add("13th"); break;
-			case FLAT13:     paren.add("flatted 13th"); break;
-			default: break;
-			}
-		}
-		if( ! paren.isEmpty() ) {
-			boolean is_first = true;
-			suffix += "(additional ";
-			for( String p : paren ) {
-				if( is_first )
-					is_first = false;
-				else
-					suffix += ",";
-				suffix += p;
-			}
-			suffix += ")";
-		}
-		if( suffix.equals(" minor flatted 5th") ) return " diminished (triad)";
-		else if( suffix.equals(" sharped 5th") ) return " augumented";
-		else if( suffix.equals(" minor 6th flatted 5th") ) return " diminished 7th";
-		else if( suffix.equals(" 7th(additional 9th)") ) return " 9th";
-		else if( suffix.equals(" major 7th(additional 9th)") ) return " major 9th";
-		else if( suffix.equals(" 7th sharped 5th") ) return " augumented 7th";
-		else if( suffix.equals(" minor 6th flatted 5th(additional 9th)") ) return " diminished 9th";
-		else if( suffix.isEmpty() ) return " major";
-		else return suffix ;
 	}
 
 	/**
