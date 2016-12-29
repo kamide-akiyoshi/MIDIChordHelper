@@ -22,6 +22,7 @@ import java.awt.event.MouseMotionListener;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
 import java.util.ArrayList;
+import java.util.List;
 
 import javax.swing.JComponent;
 import javax.swing.JLabel;
@@ -53,81 +54,18 @@ public class ChordMatrix extends JPanel
 	/** 行数 */
 	public static final int	CHORD_BUTTON_ROWS = 3;
 	/** 調号ボタン */
-	public Co5Label keysigLabels[] = new Co5Label[N_COLUMNS];
+	public KeySignatureLabel keysigLabels[] = new KeySignatureLabel[N_COLUMNS];
 	/** コードボタン */
 	public ChordLabel chordLabels[] = new ChordLabel[N_COLUMNS * CHORD_BUTTON_ROWS];
 	/** コードボタンの下のコード表示部 */
 	public ChordDisplayLabel chordDisplay = new ChordDisplayLabel("Chord Pad", this, null);
 
-	private static class ChordLabelSelection {
-		private ChordLabel chordLabel;
-		private int bitIndex;
-		private boolean isSus4;
-		public ChordLabelSelection(ChordLabel chordLabel, int bitIndex) {
-			this.chordLabel = chordLabel;
-			this.bitIndex = bitIndex;
-			this.isSus4 = chordLabel.isSus4;
-		}
-		public void setCheckBit(boolean isOn) {
-			chordLabel.setCheckBit(isOn, bitIndex);
-		}
-		public boolean setBassCheckBit(boolean isOn) {
-			if( bitIndex == 0 && ! isSus4 ) {
-				chordLabel.setCheckBit(isOn, 6);
-				return true;
-			}
-			return false;
-		}
-	}
-	private static class ChordLabelSelections {
-		int weight = 0;
-		int bass_weight = 0;
-		boolean is_active = false;
-		boolean is_bass_active = false;
-		private ChordLabelSelection acls[];
-		public ChordLabelSelections(ArrayList<ChordLabelSelection> al) {
-			acls = al.toArray(new ChordLabelSelection[al.size()]);
-		}
-		void addWeight(int weight_diff) {
-			if( (weight += weight_diff) < 0 ) weight = 0;
-			if( (weight > 0) != is_active ) {
-				is_active = !is_active;
-				for( ChordLabelSelection cls : acls ) {
-					cls.setCheckBit(is_active);
-				}
-			}
-		}
-		void addBassWeight(int weight_diff) {
-			if( (bass_weight += weight_diff) < 0 ) bass_weight = 0;
-			if( (bass_weight > 0) != is_bass_active ) {
-				is_bass_active = !is_bass_active;
-				for( ChordLabelSelection cls : acls ) {
-					if( ! cls.setBassCheckBit(is_bass_active) ) {
-						// No more root major/minor
-						break;
-					}
-				}
-			}
-			addWeight(weight_diff);
-		}
-		void clearWeight() {
-			weight = bass_weight = 0;
-			is_active = is_bass_active = false;
-			for( ChordLabelSelection cls : acls ) {
-				cls.setCheckBit(false);
-				cls.setBassCheckBit(false);
-			}
-		}
-	}
-	private ChordLabelSelections chordLabelSelections[] =
-		new ChordLabelSelections[Music.SEMITONES_PER_OCTAVE];
+	private NoteWeight noteWeightArray[] = new NoteWeight[Music.SEMITONES_PER_OCTAVE];
 	/**
 	 * 発音中のノート表示をクリアします。
 	 */
 	public void clearIndicators() {
-		for( int i=0; i<chordLabelSelections.length; i++ ) {
-			chordLabelSelections[i].clearWeight();
-		}
+		for( int i=0; i<noteWeightArray.length; i++ ) noteWeightArray[i].clear();
 		repaint();
 	}
 	/**
@@ -136,32 +74,26 @@ public class ChordMatrix extends JPanel
 	 * @param noteNumber ノート番号
 	 */
 	public void note(boolean isNoteOn, int noteNumber) {
-		int weightDiff = (isNoteOn ? 1 : -1);
-		ChordLabelSelections cls = chordLabelSelections[Music.mod12(noteNumber)];
-		if( noteNumber < 49 )
-			cls.addBassWeight(weightDiff);
-		else
-			cls.addWeight(weightDiff);
+		int diff = (isNoteOn ? 1 : -1);
+		NoteWeight w = noteWeightArray[Music.mod12(noteNumber)];
+		if( noteNumber < 49 ) w.addBass(diff); else w.add(diff);
 	}
 
 	/**
 	 * 調号ボタン
 	 */
-	private class Co5Label extends JLabel {
+	private class KeySignatureLabel extends JLabel {
 		public boolean isSelected = false;
 		public int co5Value = 0;
 		private Color indicatorColor;
-		public Co5Label(int v) {
+		public KeySignatureLabel(int v) {
 			Key key = new Key(co5Value = v);
 			setOpaque(true);
 			setBackground(false);
 			setForeground( currentColorset.foregrounds[0] );
 			setHorizontalAlignment( JLabel.CENTER );
 			String tip = "Key signature: ";
-			if( v != key.toCo5() ) {
-				tip += "out of range" ;
-			}
-			else {
+			if(v != key.toCo5()) tip += "out of range" ; else {
 				tip += key.signatureDescription() + " " +
 					key.toStringIn(NoteSymbol.Language.IN_JAPANESE);
 				if( v == 0 ) {
@@ -185,6 +117,9 @@ public class ChordMatrix extends JPanel
 				return;
 			}
 			if( currentBeat == 0 ) {
+				//
+				//  □
+				//
 				g.setColor( indicatorColor );
 				g.drawRect( 2, 2, d.width-5, d.height-5 );
 				g.setColor( isDark ? indicatorColor.darker() : indicatorColor.brighter() );
@@ -195,7 +130,9 @@ public class ChordMatrix extends JPanel
 			g.setColor( color );
 			if( currentBeat == 1 ) {
 				//
-				// ||__ii
+				// ||
+				// ||__||
+				//
 				g.drawLine( 2, d.height-3, d.width-3, d.height-3 );
 				g.drawLine( d.width-3, d.height*3/4, d.width-3, d.height-3 );
 				g.drawLine( 2, 2, 2, d.height-3 );
@@ -206,7 +143,7 @@ public class ChordMatrix extends JPanel
 			}
 			else {
 				//
-				// ii__
+				// ||__
 				//
 				int vertical_top = (d.height-1) * (currentBeat-1) / (timesigUpper-2) ;
 				g.drawLine( 2, vertical_top == 0 ? 2 : vertical_top, 2, d.height-3 );
@@ -227,25 +164,19 @@ public class ChordMatrix extends JPanel
 			setForeground(currentColorset.foregrounds[isSelected?1:0]);
 		}
 		public void setIndicatorColor() {
-			if( co5Value < 0 ) {
-				indicatorColor = currentColorset.indicators[2];
-			}
-			else if( co5Value > 0 ) {
-				indicatorColor = currentColorset.indicators[1];
-			}
-			else {
-				indicatorColor = currentColorset.foregrounds[1];
-			}
+			if( co5Value < 0 ) indicatorColor = currentColorset.indicators[2];
+			else if( co5Value > 0 ) indicatorColor = currentColorset.indicators[1];
+			else indicatorColor = currentColorset.foregrounds[1];
 		}
 	}
 	/**
 	 * コードボタン
 	 */
-	private class ChordLabel extends JLabel {
+	class ChordLabel extends JLabel {
 		private byte checkBits = 0;
 		private int co5Value;
 		private boolean isMinor;
-		private boolean isSus4;
+		boolean isSus4;
 		private boolean isSelected = false;
 		private Chord chord;
 
@@ -260,24 +191,25 @@ public class ChordMatrix extends JPanel
 			isMinor = chord.isSet(Chord.Interval.MINOR);
 			isSus4 = chord.isSet(Chord.Interval.SUS4);
 			co5Value = chord.rootNoteSymbol().toCo5();
-			if( isMinor ) co5Value -= 3;
-			String labelText = ( isSus4 ? chord.symbolSuffix() : chord.toString() );
-			if( isMinor && labelText.length() > 3 ) {
-				float smallPointSize = getFont().getSize2D() - 2;
-				boldFont = getFont().deriveFont(Font.BOLD, smallPointSize);
-				plainFont = getFont().deriveFont(Font.PLAIN, smallPointSize);
+			if(isMinor) co5Value -= 3;
+			String labelText = (isSus4 ? chord.symbolSuffix() : chord.toString());
+			Font f = getFont();
+			if(!isSus4 && labelText.length() > 3) {
+				float smallSize = f.getSize2D() - 2;
+				boldFont = f.deriveFont(Font.BOLD, smallSize);
+				plainFont = f.deriveFont(Font.PLAIN, smallSize);
 			}
 			else {
-				boldFont = getFont().deriveFont(Font.BOLD);
-				plainFont = getFont().deriveFont(Font.PLAIN);
+				boldFont = f.deriveFont(Font.BOLD);
+				plainFont = f.deriveFont(Font.PLAIN);
 			}
 			setOpaque(true);
 			setBackground(0);
-			setForeground( currentColorset.foregrounds[0] );
+			setForeground(currentColorset.foregrounds[0]);
 			setBold(false);
-			setHorizontalAlignment( JLabel.CENTER );
+			setHorizontalAlignment(JLabel.CENTER);
 			setText(labelText);
-			setToolTipText( "Chord: " + chord.toName() );
+			setToolTipText("Chord: " + chord.toName());
 		}
 		public void paint(Graphics g) {
 			super.paint(g);
@@ -285,9 +217,7 @@ public class ChordMatrix extends JPanel
 			Graphics2D g2 = (Graphics2D) g;
 			Color color = null;
 
-			if( ! inActiveZone ) {
-				g2.setColor( Color.gray );
-			}
+			if( ! inActiveZone ) g2.setColor( Color.gray );
 
 			if( (indicatorBits & 32) != 0 ) {
 				//
@@ -364,68 +294,57 @@ public class ChordMatrix extends JPanel
 				g2.drawLine( d.width/2, 0, d.width/2, 7 );
 			}
 		}
-		public void setCheckBit( boolean is_on, int bit_index ) {
+		public void setCheckBit(boolean isOn, int bitIndex) {
 			//
 			// Check bits: x6x43210
 			//   6:BassRoot
 			//   4:Augumented5th, 3:Diminished5th, 2:Parfect5th,
 			//   1:Major3rd/minor3rd/sus4th, 0:Root
 			//
-			byte mask = ((byte)(1<<bit_index));
-			byte old_check_bits = checkBits;
-			if( is_on ) {
-				checkBits |= mask;
-			}
-			else {
-				checkBits &= ~mask;
-			}
-			if( old_check_bits == checkBits ) {
-				// No bits changed
-				return;
-			}
+			byte mask = ((byte)(1<<bitIndex));
+			byte oldCheckBits = checkBits;
+			if(isOn) checkBits |= mask; else checkBits &= ~mask;
+			if(oldCheckBits == checkBits) return;
+			//
 			// Indicator bits: x6543210	6:Bass||_  5:[]  4:+  3:O  2:_ii  1:__  0:||_
 			//
-			byte indicator_bits = 0;
+			byte indicatorBits = 0;
 			if( (checkBits & 1) != 0 ) {
 				if( (checkBits & 7) == 7 ) { // All triad notes appared
 					//
 					// Draw square
-					indicator_bits |= 0x20;
+					indicatorBits |= 0x20;
 					//
 					// Draw different-colored vertical lines
 					if( indicatorColorIndices[0] != indicatorColorIndices[1] ) {
-						indicator_bits |= 1;
+						indicatorBits |= 1;
 					}
 					if( indicatorColorIndices[2] != indicatorColorIndices[1] ) {
-						indicator_bits |= 4;
+						indicatorBits |= 4;
 					}
 				}
 				else if( !isSus4 ) {
 					//
 					// Draw vertical lines  || ii
-					indicator_bits |= 5;
+					indicatorBits |= 5;
 					//
 					if( (checkBits & 2) != 0 && (!isMinor || (checkBits & 0x18) != 0) ) {
 						//
 						// Draw horizontal bottom lines __
-						indicator_bits |= 2;
+						indicatorBits |= 2;
 					}
 				}
 				if( !isSus4 ) {
 					if( isMinor || (checkBits & 2) != 0 ) {
-						indicator_bits |= (byte)(checkBits & 0x18);  // Copy bit 3 and bit 4
+						indicatorBits |= (byte)(checkBits & 0x18);  // Copy bit 3 and bit 4
 					}
 					if( (checkBits & 0x40) != 0 ) {
-						indicator_bits |= 0x40; // Bass
+						indicatorBits |= 0x40; // Bass
 					}
 				}
 			}
-			if( this.indicatorBits == indicator_bits ) {
-				// No shapes changed
-				return;
-			}
-			this.indicatorBits = indicator_bits;
-			repaint();
+			if( this.indicatorBits == indicatorBits ) return;
+			this.indicatorBits = indicatorBits; repaint();
 		}
 		public void setBackground(int i) {
 			switch( i ) {
@@ -439,15 +358,15 @@ public class ChordMatrix extends JPanel
 			default: return;
 			}
 		}
-		public void setSelection(boolean is_selected) {
-			this.isSelected = is_selected;
+		public void setSelection(boolean isSelected) {
+			this.isSelected = isSelected;
 			setSelection();
 		}
 		public void setSelection() {
 			setForeground(currentColorset.foregrounds[this.isSelected?1:0]);
 		}
-		public void setBold(boolean is_bold) {
-			setFont( is_bold ? boldFont : plainFont );
+		public void setBold(boolean isBold) {
+			setFont(isBold ? boldFont : plainFont);
 		}
 		public void keyChanged() {
 			int co5Key = capoKey.toCo5();
@@ -474,15 +393,6 @@ public class ChordMatrix extends JPanel
 		}
 	}
 
-	/**
-	 * 色セット（ダークモード切替対応）
-	 */
-	public class ColorSet {
-		Color[] focus = new Color[2];	// 0:lost 1:gained
-		Color[] foregrounds = new Color[2];	// 0:unselected 1:selected
-		public Color[] backgrounds = new Color[4]; // 0:remote 1:left 2:local 3:right
-		Color[] indicators = new Color[3];	// 0:natural 1:sharp 2:flat
-	}
 	public ColorSet normalModeColorset = new ColorSet() {
 		{
 			foregrounds[0] = null;
@@ -533,13 +443,13 @@ public class ChordMatrix extends JPanel
 				public void actionPerformed(ActionEvent e) {capoChanged(getCapo());}
 			});
 		}};
-		int i, v;
 		Dimension buttonSize = new Dimension(28,26);
 		//
 		// Make key-signature labels and chord labels
-		Co5Label l;
+		KeySignatureLabel l;
+		int i, v;
 		for (i=0, v= -Music.SEMITONES_PER_OCTAVE; i<N_COLUMNS; i++, v++) {
-			l = new Co5Label(v);
+			l = new KeySignatureLabel(v);
 			l.addMouseListener(this);
 			l.addMouseMotionListener(this);
 			add( keysigLabels[i] = l );
@@ -576,50 +486,50 @@ public class ChordMatrix extends JPanel
 		setLayout(new GridLayout( 4, N_COLUMNS, 2, 2 ));
 		setKeySignature(new Key());
 		//
-		// Make chord label selections index
+		// Setup note weight array
 		//
-		int noteIndex;
-		ArrayList<ChordLabelSelection> al;
+		int index;
+		List<ChordLabelMarker> markers;
 		Chord chord;
-		for( int note_no=0; note_no<chordLabelSelections.length; note_no++ ) {
-			al = new ArrayList<ChordLabelSelection>();
+		for( int noteNo = 0; noteNo < noteWeightArray.length; noteNo++ ) {
+			markers = new ArrayList<ChordLabelMarker>();
 			//
 			// Root major/minor chords
 			for( ChordLabel cl : chordLabels ) {
-				if( ! cl.isSus4 && cl.chord.indexOf(note_no) == 0 ) {
-					al.add(new ChordLabelSelection( cl, 0 )); // Root
+				if( ! cl.isSus4 && cl.chord.indexOf(noteNo) == 0 ) {
+					markers.add(new ChordLabelMarker(cl, 0)); // Root
 				}
 			}
 			// Root sus4 chords
 			for( ChordLabel cl : chordLabels ) {
-				if( cl.isSus4 && cl.chord.indexOf(note_no) == 0 ) {
-					al.add(new ChordLabelSelection( cl, 0 )); // Root
+				if( cl.isSus4 && cl.chord.indexOf(noteNo) == 0 ) {
+					markers.add(new ChordLabelMarker(cl, 0)); // Root
 				}
 			}
 			// 3rd,sus4th,5th included chords
 			for( ChordLabel cl : chordLabels ) {
-				noteIndex = cl.chord.indexOf(note_no);
-				if( noteIndex == 1 || noteIndex == 2 ) {
-					al.add(new ChordLabelSelection( cl, noteIndex )); // 3rd,sus4,P5
+				index = cl.chord.indexOf(noteNo);
+				if( index == 1 || index == 2 ) {
+					markers.add(new ChordLabelMarker(cl, index)); // 3rd,sus4,P5
 				}
 			}
 			// Diminished chords (major/minor chord button only)
 			for( ChordLabel cl : chordLabels ) {
 				if( cl.isSus4 ) continue;
-				(chord = cl.chord.clone()).set(Chord.Interval.FLAT5);
-				if( chord.indexOf(note_no) == 2 ) {
-					al.add(new ChordLabelSelection( cl, 3 ));
+				chord = new Chord(cl.chord, Chord.Interval.FLAT5);
+				if( chord.indexOf(noteNo) == 2 ) {
+					markers.add(new ChordLabelMarker(cl, 3));
 				}
 			}
 			// Augumented chords (major chord button only)
 			for( ChordLabel cl : chordLabels ) {
 				if( cl.isSus4 || cl.isMinor ) continue;
-				(chord = cl.chord.clone()).set(Chord.Interval.SHARP5);
-				if( chord.indexOf(note_no) == 2 ) {
-					al.add(new ChordLabelSelection( cl, 4 ));
+				chord = new Chord(cl.chord, Chord.Interval.SHARP5);
+				if( chord.indexOf(noteNo) == 2 ) {
+					markers.add(new ChordLabelMarker(cl, 4));
 				}
 			}
-			chordLabelSelections[note_no] = new ChordLabelSelections(al);
+			noteWeightArray[noteNo] = new NoteWeight(markers);
 		}
 	}
 	//
@@ -655,8 +565,8 @@ public class ChordMatrix extends JPanel
 			(selectedChordLabel = cl).setSelection(true);
 			setSelectedChord(chord);
 		}
-		else if( obj instanceof Co5Label ) {
-			int v = ((Co5Label)obj).co5Value;
+		else if( obj instanceof KeySignatureLabel ) {
+			int v = ((KeySignatureLabel)obj).co5Value;
 			if( (e.getModifiersEx() & InputEvent.BUTTON3_DOWN_MASK) != 0 ) {
 				setKeySignature( new Key(Music.oppositeCo5(v)) );
 			}
@@ -781,16 +691,16 @@ public class ChordMatrix extends JPanel
 			setSelectedChord(chord);
 			destinationChordLabel = (labelDraggedTo == null ? labelDraggedFrom : labelDraggedTo ) ;
 		}
-		else if( obj instanceof Co5Label ) {
-			Co5Label l_src = (Co5Label)obj;
+		else if( obj instanceof KeySignatureLabel ) {
+			KeySignatureLabel l_src = (KeySignatureLabel)obj;
 			Component obj2 = this.getComponentAt(
 				l_src.getX() + e.getX(),
 				l_src.getY() + e.getY()
 			);
-			if( !(obj2 instanceof Co5Label) ) {
+			if( !(obj2 instanceof KeySignatureLabel) ) {
 				return;
 			}
-			Co5Label l_dst = (Co5Label)obj2;
+			KeySignatureLabel l_dst = (KeySignatureLabel)obj2;
 			int v = l_dst.co5Value;
 			if( (e.getModifiersEx() & InputEvent.BUTTON3_DOWN_MASK) != 0 ) {
 				setKeySignature( new Key(Music.oppositeCo5(v)) );

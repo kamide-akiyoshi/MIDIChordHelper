@@ -204,13 +204,13 @@ public class Chord implements Cloneable {
 	private NoteSymbol bassNoteSymbol;
 
 	/**
-	 * 指定されたルート音と構成音を持つメジャーコードを構築します。
+	 * 指定されたルート音と構成音を持つコードを構築します。
 	 * @param root ルート音（ベース音としても使う）
 	 * @param itvs その他の構成音の音程
 	 */
 	public Chord(NoteSymbol root, Interval... itvs) { this(root, root, itvs); }
 	/**
-	 * 指定されたルート音、ベース音、構成音を持つメジャーコードを構築します。
+	 * 指定されたルート音、ベース音、構成音（可変個数）を持つコードを構築します。
 	 * @param root ルート音
 	 * @param bass ベース音
 	 * @param itvs その他の構成音の音程
@@ -219,14 +219,24 @@ public class Chord implements Cloneable {
 		this(root, bass, Arrays.asList(itvs));
 	}
 	/**
-	 * 指定されたルート音、ベース音、構成音を持つメジャーコードを構築します。
+	 * 指定されたルート音、ベース音、構成音（コレクション）を持つコードを構築します。
 	 * @param root ルート音
 	 * @param bass ベース音
 	 * @param itvs その他の構成音の音程
 	 */
 	public Chord(NoteSymbol root, NoteSymbol bass, Collection<Interval> itvs) {
-		bassNoteSymbol = root;
-		rootNoteSymbol = bass;
+		rootNoteSymbol = root;
+		bassNoteSymbol = bass;
+		for(Interval itv : itvs) if(itv != null) set(itv);
+	}
+	/**
+	 * 元のコードの構成音の一部を変更した新しいコードを構築します。
+	 * @param chord 元のコード
+	 * @param itvs ルート音、ベース音を除いた、変更したい構成音の音程
+	 */
+	public Chord(Chord original, Interval... itvs) {
+		this(original.rootNoteSymbol, original.bassNoteSymbol);
+		offsets = new HashMap<>(original.offsets);
 		for(Interval itv : itvs) if(itv != null) set(itv);
 	}
 	/**
