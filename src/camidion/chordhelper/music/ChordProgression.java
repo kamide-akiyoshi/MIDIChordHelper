@@ -1,5 +1,7 @@
 package camidion.chordhelper.music;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Vector;
 import java.util.regex.Pattern;
 
@@ -187,12 +189,12 @@ public class ChordProgression {
 		key = new Key(keyCo5, Key.MajorMinor.MAJOR);
 		lines = new Vector<Line>();
 		Line line = new Line();
-		boolean is_end;
+		boolean isEnd;
 		Chord chord, prevChord = new Chord(new NoteSymbol(keyCo5));
 		int co5Offset, prevCo5Offset;
 		double r;
 		for( int mp=0; mp<measureLength; mp++ ) {
-			is_end = (mp == 0 || mp == measureLength - 1); // 最初または最後の小節かを覚えておく
+			isEnd = (mp == 0 || mp == measureLength - 1); // 最初または最後の小節かを覚えておく
 			Measure measure = new Measure();
 			ChordStroke lastChordStroke = null;
 			for( int i=0; i<timeSignatureUpper; i++ ) {
@@ -207,7 +209,7 @@ public class ChordProgression {
 				}
 				co5Offset = 0;
 				prevCo5Offset = prevChord.rootNoteSymbol().toCo5() - keyCo5;
-				if( ! is_end ) {
+				if( ! isEnd ) {
 					//
 					// 最初または最後の小節は常にトニックにする。
 					// 完全五度ずつ下がる進行を基本としつつ、時々そうでない進行も出現するようにする。
@@ -225,56 +227,58 @@ public class ChordProgression {
 						} while( co5Offset == prevCo5Offset );
 					}
 				}
-				chord = new Chord(new NoteSymbol(keyCo5 + co5Offset));
+				NoteSymbol rootNote = new NoteSymbol(keyCo5 + co5Offset);
+				List<Chord.Interval> intervals = new ArrayList<>();
 				switch(co5Offset) {
 				// ルート音ごとに、7th などの付加や、メジャーマイナー反転を行う確率を決める
 				case 5: // VII
 					if( Math.random() < 0.5 ) {
 						// m7-5
-						chord.set(Chord.Interval.MINOR);
-						chord.set(Chord.Interval.FLAT5);
+						intervals.add(Chord.Interval.MINOR);
+						intervals.add(Chord.Interval.FLAT5);
 					}
 					if( Math.random() < 0.8 )
-						chord.set(Chord.Interval.SEVENTH);
+						intervals.add(Chord.Interval.SEVENTH);
 					break;
 				case 4: // Secondary dominant (III)
 					if( prevCo5Offset == 5 ) {
 						// ルートが長７度→長３度の進行のとき、反転確率を上げる。
 						// （ハ長調でいう Bm7-5 の次に E7 を出現しやすくする）
-						if( Math.random() < 0.2 ) chord.set(Chord.Interval.MINOR);
+						if( Math.random() < 0.2 ) intervals.add(Chord.Interval.MINOR);
 					}
 					else {
-						if( Math.random() < 0.8 ) chord.set(Chord.Interval.MINOR);
+						if( Math.random() < 0.8 ) intervals.add(Chord.Interval.MINOR);
 					}
-					if( Math.random() < 0.7 ) chord.set(Chord.Interval.SEVENTH);
+					if( Math.random() < 0.7 ) intervals.add(Chord.Interval.SEVENTH);
 					break;
 				case 3: // VI
-					if( Math.random() < 0.8 ) chord.set(Chord.Interval.MINOR);
-					if( Math.random() < 0.7 ) chord.set(Chord.Interval.SEVENTH);
+					if( Math.random() < 0.8 ) intervals.add(Chord.Interval.MINOR);
+					if( Math.random() < 0.7 ) intervals.add(Chord.Interval.SEVENTH);
 					break;
 				case 2: // II
-					if( Math.random() < 0.8 ) chord.set(Chord.Interval.MINOR);
-					if( Math.random() < 0.7 ) chord.set(Chord.Interval.SEVENTH);
+					if( Math.random() < 0.8 ) intervals.add(Chord.Interval.MINOR);
+					if( Math.random() < 0.7 ) intervals.add(Chord.Interval.SEVENTH);
 					break;
 				case 1: // Dominant (V)
-					if( Math.random() < 0.1 ) chord.set(Chord.Interval.MINOR);
-					if( Math.random() < 0.3 ) chord.set(Chord.Interval.SEVENTH);
-					if( Math.random() < 0.2 ) chord.set(Chord.Interval.NINTH);
+					if( Math.random() < 0.1 ) intervals.add(Chord.Interval.MINOR);
+					if( Math.random() < 0.3 ) intervals.add(Chord.Interval.SEVENTH);
+					if( Math.random() < 0.2 ) intervals.add(Chord.Interval.NINTH);
 					break;
 				case 0: // Tonic（ここでマイナーで終わるとさみしいので setMinorThird() はしない）
-					if( Math.random() < 0.2 ) chord.set(Chord.Interval.MAJOR_SEVENTH);
-					if( Math.random() < 0.2 ) chord.set(Chord.Interval.NINTH);
+					if( Math.random() < 0.2 ) intervals.add(Chord.Interval.MAJOR_SEVENTH);
+					if( Math.random() < 0.2 ) intervals.add(Chord.Interval.NINTH);
 					break;
 				case -1: // Sub-dominant (IV)
 					if( Math.random() < 0.1 ) {
-						chord.set(Chord.Interval.MINOR);
-						if( Math.random() < 0.3 ) chord.set(Chord.Interval.SEVENTH);
+						intervals.add(Chord.Interval.MINOR);
+						if( Math.random() < 0.3 ) intervals.add(Chord.Interval.SEVENTH);
 					}
 					else
-						if( Math.random() < 0.2 ) chord.set(Chord.Interval.MAJOR_SEVENTH);
-					if( Math.random() < 0.2 ) chord.set(Chord.Interval.NINTH);
+						if( Math.random() < 0.2 ) intervals.add(Chord.Interval.MAJOR_SEVENTH);
+					if( Math.random() < 0.2 ) intervals.add(Chord.Interval.NINTH);
 					break;
 				}
+				chord = new Chord(rootNote, rootNote, intervals);
 				measure.add( lastChordStroke = new ChordStroke(chord) );
 				prevChord = chord;
 			}

@@ -188,12 +188,9 @@ public class Chord implements Cloneable {
 	};
 
 	/**
-	 * 現在有効な構成音（ルート、ベースは除く）の音程（初期値はメジャーコードの構成音）
+	 * 現在有効な構成音（ルート、ベースは除く）の音程
 	 */
-	private Map<OffsetIndex, Interval> offsets = new HashMap<OffsetIndex, Interval>() {
-		private void set(Interval itv) { put(itv.getChromaticOffsetIndex(), itv); }
-		{ set(Interval.MAJOR); set(Interval.PARFECT5); }
-	};
+	private Map<OffsetIndex, Interval> offsets;
 	/**
 	 * このコードのルート音
 	 */
@@ -206,77 +203,100 @@ public class Chord implements Cloneable {
 	/**
 	 * 指定されたルート音と構成音を持つコードを構築します。
 	 * @param root ルート音（ベース音としても使う）
-	 * @param itvs その他の構成音の音程
+	 * @param intervals その他の構成音の音程（長三度、完全五度は指定しなくてもデフォルトで設定されます）
 	 */
-	public Chord(NoteSymbol root, Interval... itvs) { this(root, root, itvs); }
-	/**
-	 * 指定されたルート音、ベース音、構成音（可変個数）を持つコードを構築します。
-	 * @param root ルート音
-	 * @param bass ベース音
-	 * @param itvs その他の構成音の音程
-	 */
-	public Chord(NoteSymbol root, NoteSymbol bass, Interval... itvs) {
-		this(root, bass, Arrays.asList(itvs));
+	public Chord(NoteSymbol root, Interval... intervals) {
+		this(root, root, intervals);
 	}
 	/**
-	 * 指定されたルート音、ベース音、構成音（コレクション）を持つコードを構築します。
+	 * 指定されたルート音、ベース音、構成音を持つコードを構築します。
 	 * @param root ルート音
 	 * @param bass ベース音
-	 * @param itvs その他の構成音の音程
+	 * @param intervals その他の構成音の音程（長三度、完全五度は指定しなくてもデフォルトで設定されます）
 	 */
-	public Chord(NoteSymbol root, NoteSymbol bass, Collection<Interval> itvs) {
+	public Chord(NoteSymbol root, NoteSymbol bass, Interval... intervals) {
+		this(root, bass, Arrays.asList(intervals));
+	}
+	/**
+	 * 指定されたルート音、ベース音、構成音を持つコードを構築します。
+	 * @param root ルート音
+	 * @param bass ベース音
+	 * @param intervals その他の構成音の音程（長三度、完全五度は指定しなくてもデフォルトで設定されます）
+	 */
+	public Chord(NoteSymbol root, NoteSymbol bass, Collection<Interval> intervals) {
 		rootNoteSymbol = root;
 		bassNoteSymbol = bass;
-		for(Interval itv : itvs) if(itv != null) set(itv);
+		offsets = new HashMap<>();
+		set(Interval.MAJOR);
+		set(Interval.PARFECT5);
+		set(intervals);
 	}
 	/**
-	 * 元のコードの構成音の一部を変更した新しいコードを構築します。
+	 * 元のコードのルート音、ベース音以外の構成音の一部を変更した新しいコードを構築します。
 	 * @param chord 元のコード
-	 * @param itvs ルート音、ベース音を除いた、変更したい構成音の音程
+	 * @param intervals 変更したい構成音の音程（ルート音、ベース音を除く）
+	 * @throws NullPointerException 元のコードにnullが指定された場合
 	 */
-	public Chord(Chord original, Interval... itvs) {
-		this(original.rootNoteSymbol, original.bassNoteSymbol);
+	public Chord(Chord original, Interval... intervals) {
+		this(original, Arrays.asList(intervals));
+	}
+	/**
+	 * 元のコードのルート音、ベース音以外の構成音の一部を変更した新しいコードを構築します。
+	 * @param chord 元のコード
+	 * @param intervals 変更したい構成音の音程（ルート音、ベース音を除く）
+	 * @throws NullPointerException 元のコードにnullが指定された場合
+	 */
+	public Chord(Chord original, Collection<Interval> intervals) {
+		rootNoteSymbol = original.rootNoteSymbol;
+		bassNoteSymbol = original.bassNoteSymbol;
 		offsets = new HashMap<>(original.offsets);
-		for(Interval itv : itvs) if(itv != null) set(itv);
+		set(intervals);
 	}
 	/**
 	 * 指定された調と同名のコードを構築します。
 	 * @param key 調
+	 * @throws NullPointerException 調にnullが指定された場合
 	 */
 	public Chord(Key key) {
-		int keyCo5 = key.toCo5();
-		if( key.majorMinor() == Key.MajorMinor.MINOR ) {
+		offsets = new HashMap<>(); set(Interval.PARFECT5);
+		int keyCo5 = key.toCo5(); if( key.majorMinor() == Key.MajorMinor.MINOR ) {
 			keyCo5 += 3; set(Interval.MINOR);
-		}
+		} else set(Interval.MAJOR);
 		bassNoteSymbol = rootNoteSymbol = new NoteSymbol(keyCo5);
 	}
 	/**
-	 * コード名の文字列からコードを構築します。
-	 * @param chordSymbol コード名の文字列
+	 * コード名からコードを構築します。
+	 * @param chordSymbol コード名
+	 * @throws NullPointerException コード名にnullが指定された場合
 	 */
 	public Chord(String chordSymbol) {
+		offsets = new HashMap<>();
+		set(Interval.MAJOR);
+		set(Interval.PARFECT5);
 		//
-		// 分数コードの分子と分母に分ける
-		String parts[] = chordSymbol.trim().split("(/|on)");
-		if( parts.length == 0 ) return;
-		//
-		// ルート音とベース音を設定
-		rootNoteSymbol = new NoteSymbol(parts[0]);
-		if( parts.length > 1 && ! parts[0].equals(parts[1]) ) {
-			bassNoteSymbol = new NoteSymbol(parts[1]);
+		// 分数コードの分子と分母に分け、先頭の音名を取り込む
+		String rootOnBass[] = chordSymbol.trim().split("(/|on)");
+		if( rootOnBass.length == 0 ) {
+			bassNoteSymbol = rootNoteSymbol = new NoteSymbol();
+			return;
+		}
+		rootNoteSymbol = new NoteSymbol(rootOnBass[0]);
+		if( rootOnBass.length > 1 && ! rootOnBass[0].equals(rootOnBass[1]) ) {
+			// 分子（ルート音）と異なる分母（ベース音）が指定されていた場合
+			bassNoteSymbol = new NoteSymbol(rootOnBass[1]);
 		} else {
 			bassNoteSymbol = rootNoteSymbol;
 		}
-		// 先頭の音名はもういらないので削除
-		String suffix = parts[0].replaceFirst("^[A-G][#bx]*","");
+		// 先頭の音名はもういらないので削除し、サフィックスだけ残す
+		String suffix = rootOnBass[0].replaceFirst("^[A-G][#bx]*","");
 		//
-		// () があれば、その中身を取り出す
-		String suffixParts[] = suffix.split("[\\(\\)]");
-		if( suffixParts.length == 0 ) return;
+		// ()の中と外に分ける
+		String suffixWithParen[] = suffix.split("[\\(\\)]");
+		if( suffixWithParen.length == 0 ) return;
 		String suffixParen = "";
-		if( suffixParts.length > 1 ) {
-			suffixParen = suffixParts[1];
-			suffix = suffixParts[0];
+		if( suffixWithParen.length > 1 ) {
+			suffixParen = suffixWithParen[1];
+			suffix = suffixWithParen[0];
 		}
 		// +5 -5 aug dim
 		if( suffix.matches(".*(\\+5|aug|#5).*") ) set(Interval.FLAT5);
@@ -287,8 +307,10 @@ public class Chord implements Cloneable {
 		else if( suffix.matches(".*(6|dim[79]).*") ) set(Interval.SIXTH);
 		else if( suffix.matches(".*7.*") ) set(Interval.SEVENTH);
 		//
-		// minor sus4  （maj7 と間違えないように比較しつつ、mmaj7も解釈させる）
-		if( suffix.matches(".*m.*") && ! suffix.matches(".*ma.*") || suffix.matches(".*mma.*") ) set(Interval.MINOR);
+		// minor sus4  （m と maj7 を間違えないよう比較しつつ、mmaj7 も認識させる）
+		if( suffix.matches(".*m.*") && ! suffix.matches(".*ma.*") || suffix.matches(".*mma.*") ) {
+			set(Interval.MINOR);
+		}
 		else if( suffix.matches(".*sus4.*") ) set(Interval.SUS4);
 		//
 		// 9th の判定
@@ -345,6 +367,7 @@ public class Chord implements Cloneable {
 	 * コードの同一性を判定します。ルート音、ベース音の異名同音は異なるものとみなされます。
 	 * @param anObject 比較対象
 	 * @return 等しければtrue
+	 * @see #equalsEnharmonically(Chord)
 	 */
 	@Override
 	public boolean equals(Object anObject) {
@@ -363,6 +386,7 @@ public class Chord implements Cloneable {
 	 * ルート音、ベース音の異名同音を同じとみなしたうえで、コードの同一性を判定します。
 	 * @param another 比較対象のコード
 	 * @return 等しければtrue
+	 * @see #equals(Object)
 	 */
 	public boolean equalsEnharmonically(Chord another) {
 		if( another == this ) return true;
@@ -551,10 +575,17 @@ public class Chord implements Cloneable {
 	}
 	/**
 	 * 指定した音程の構成音を設定します。
-	 * @param itv 設定する音程
+	 * @param interval 設定する音程
 	 */
-	public void set(Interval itv) {
-		offsets.put(itv.getChromaticOffsetIndex(), itv);
+	public void set(Interval interval) {
+		offsets.put(interval.getChromaticOffsetIndex(), interval);
+	}
+	/**
+	 * 指定した複数の音程の構成音を設定します。
+	 * @param intervals 設定する音程
+	 */
+	protected void set(Collection<Interval> intervals) {
+		for(Interval itv : intervals) if(itv != null) set(itv);
 	}
 	/**
 	 * 指定した音程の構成音をクリアします。

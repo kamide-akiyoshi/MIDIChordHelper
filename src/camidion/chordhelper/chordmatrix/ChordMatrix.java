@@ -22,6 +22,7 @@ import java.awt.event.MouseMotionListener;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import javax.swing.JComponent;
@@ -589,27 +590,19 @@ public class ChordMatrix extends JPanel
 	public void mouseExited(MouseEvent e) { }
 	public void mouseClicked(MouseEvent e) { }
 	public void mouseDragged(MouseEvent e) {
-		Component obj = e.getComponent();
-		if( obj instanceof ChordLabel ) {
-			ChordLabel labelDraggedFrom = (ChordLabel)obj;
-			Component obj2 = this.getComponentAt(
+		Component draggedFrom = e.getComponent();
+		if( draggedFrom instanceof ChordLabel ) {
+			ChordLabel labelDraggedFrom = (ChordLabel)draggedFrom;
+			Component draggedTo = getComponentAt(
 				labelDraggedFrom.getX() + e.getX(),
 				labelDraggedFrom.getY() + e.getY()
 			);
-			if( obj2 == this ) {
-				// Entered gap between chord buttons - do nothing
-				return;
-			}
-			ChordLabel labelDraggedTo = ((obj2 instanceof ChordLabel) ? (ChordLabel)obj2 : null);
+			if( draggedTo == this ) return; // Entered to gap between chord buttons
+			ChordLabel labelDraggedTo = ((draggedTo instanceof ChordLabel) ? (ChordLabel)draggedTo : null);
 			if( labelDraggedTo == labelDraggedFrom ) {
-				// Returned to original chord button
-				destinationChordLabel = null;
-				return;
+				destinationChordLabel = null; return;
 			}
-			if( destinationChordLabel != null ) {
-				// Already touched another chord button
-				return;
-			}
+			if( destinationChordLabel != null ) return;
 			Chord chord = labelDraggedFrom.chord.clone();
 			if( labelDraggedFrom.isMinor ) {
 				if( labelDraggedTo == null ) { // Out of chord buttons
@@ -691,23 +684,19 @@ public class ChordMatrix extends JPanel
 			setSelectedChord(chord);
 			destinationChordLabel = (labelDraggedTo == null ? labelDraggedFrom : labelDraggedTo ) ;
 		}
-		else if( obj instanceof KeySignatureLabel ) {
-			KeySignatureLabel l_src = (KeySignatureLabel)obj;
-			Component obj2 = this.getComponentAt(
-				l_src.getX() + e.getX(),
-				l_src.getY() + e.getY()
+		else if( draggedFrom instanceof KeySignatureLabel ) {
+			KeySignatureLabel keyDraggedFrom = (KeySignatureLabel)draggedFrom;
+			Component draggedTo = getComponentAt(
+				keyDraggedFrom.getX() + e.getX(),
+				keyDraggedFrom.getY() + e.getY()
 			);
-			if( !(obj2 instanceof KeySignatureLabel) ) {
-				return;
-			}
-			KeySignatureLabel l_dst = (KeySignatureLabel)obj2;
-			int v = l_dst.co5Value;
+			if( !(draggedTo instanceof KeySignatureLabel) ) return;
+			KeySignatureLabel keyDraggedTo = (KeySignatureLabel)draggedTo;
+			int v = keyDraggedTo.co5Value;
 			if( (e.getModifiersEx() & InputEvent.BUTTON3_DOWN_MASK) != 0 ) {
-				setKeySignature( new Key(Music.oppositeCo5(v)) );
+				v = Music.oppositeCo5(v);
 			}
-			else {
-				setKeySignature( new Key(v) );
-			}
+			setKeySignature(new Key(v));
 			repaint();
 		}
 	}
@@ -796,31 +785,31 @@ public class ChordMatrix extends JPanel
 			setKeySignature(new Key(Music.transposeCo5(keyCo5, 1)));
 			return;
 		}
-		if( i < 0 ) // No key char found
-			return;
+		if( i < 0 ) return; // No key char found
 		if( iCol < 0 ) iCol += 12; else if( iCol > N_COLUMNS ) iCol -= 12;
 		cl = chordLabels[iCol + N_COLUMNS * iRow];
-		chord = cl.chord.clone();
+		List<Chord.Interval> intervals = new ArrayList<Chord.Interval>(Arrays.asList(cl.chord.intervals()));
 		if( shiftPressed ) {
-			chord.set(Chord.Interval.SEVENTH);
+			if( ! intervals.contains(Chord.Interval.SEVENTH) ) {
+				intervals.add(Chord.Interval.SEVENTH);
+			}
 		}
-		// specify by previous key
 		else if( pcKeyNextShift7 == null ) {
-			chord.clear(Chord.Interval.SEVENTH);
+			intervals.remove(Chord.Interval.SEVENTH);
 		}
-		else {
-			chord.set(pcKeyNextShift7);
-		}
+		else intervals.add(pcKeyNextShift7);
 		if( e.isAltDown() ) {
 			if( cl.isSus4 ) {
-				chord.set(Chord.Interval.MAJOR); // To cancel sus4
-				chord.set(Chord.Interval.SHARP5);
+				intervals.remove(Chord.Interval.SUS4);
+				intervals.add(Chord.Interval.SHARP5);
 			}
-			else {
-				chord.set(Chord.Interval.FLAT5);
-			}
+			else intervals.add(Chord.Interval.FLAT5);
 		}
-		if( e.isControlDown() ) chord.set(Chord.Interval.NINTH);
+		if( e.isControlDown() ) {
+			// TODO: ^Hなど、ここに到達する前に特殊な keyChar がやってきてしまうことがある
+			intervals.add(Chord.Interval.NINTH);
+		}
+		chord = new Chord(cl.chord, intervals);
 		if( selectedChordLabel != null ) clear();
 		(selectedChordLabel = cl).setSelection(true);
 		setSelectedChord(chord);
