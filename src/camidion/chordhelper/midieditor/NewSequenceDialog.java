@@ -396,9 +396,9 @@ public class NewSequenceDialog extends JDialog {
 				else if( ants instanceof MelodyTrackSpec ) {
 					MelodyTrackSpec ts = (MelodyTrackSpec)ants;
 					rangePanel.setVisible(true);
-					keyboardPanel.keyboard.setSelectedNote(ts.range.min_note);
-					keyboardPanel.keyboard.setSelectedNote(ts.range.max_note);
-					keyboardPanel.keyboard.autoScroll(ts.range.min_note);
+					keyboardPanel.keyboard.setSelectedNote(ts.range.minNote);
+					keyboardPanel.keyboard.setSelectedNote(ts.range.maxNote);
+					keyboardPanel.keyboard.autoScroll(ts.range.minNote);
 					randomMelodyCheckbox.setSelected(ts.randomMelody);
 					randomLyricCheckbox.setSelected(ts.randomLyric);
 					bassCheckbox.setSelected(ts.isBass);

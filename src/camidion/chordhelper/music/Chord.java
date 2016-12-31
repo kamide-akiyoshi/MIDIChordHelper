@@ -73,9 +73,9 @@ public class Chord {
 		/** 長１３度（長６度の１オクターブ上） */
 		THIRTEENTH(21, IntervalGroup.THIRTEENTH, "13", "13th");
 
-		private Interval(int chromaticOffset, IntervalGroup offsetIndex, String symbol, String description) {
+		private Interval(int chromaticOffset, IntervalGroup intervalGroup, String symbol, String description) {
 			this.chromaticOffset = chromaticOffset;
-			this.intervalGroup = offsetIndex;
+			this.intervalGroup = intervalGroup;
 			this.symbol = symbol;
 			this.description = description;
 		}
@@ -118,8 +118,8 @@ public class Chord {
 		if( SUSPENDED.contains(i3) ) suffix += i3.getSymbol();
 		if( Interval.PARFECT5 != i5 ) suffix += i5.getSymbol();
 		Vector<String> inParen = new Vector<String>();
-		for( IntervalGroup index : EXTENDED ) {
-			Interval interval = intervalMap.get(index);
+		for( IntervalGroup group : EXTENDED ) {
+			Interval interval = intervalMap.get(group);
 			if( interval != null ) inParen.add(interval.getSymbol());
 		}
 		if( ! inParen.isEmpty() ) suffix += "("+String.join(",",inParen)+")";
@@ -180,6 +180,54 @@ public class Chord {
 			put(" minor 6th flatted 5th(9th)", " diminished 9th");
 		}
 	};
+	private void setSymbolSuffix(String suffix) {
+		// ()の中と外に分ける
+		String outInParen[] = suffix.split("[\\(\\)]");
+		if( outInParen.length == 0 ) return;
+		String outParen = suffix;
+		String inParen = "";
+		if( outInParen.length > 1 ) {
+			outParen = outInParen[0];
+			inParen = outInParen[1];
+		}
+		// +5 -5 aug dim
+		if( outParen.matches(".*(\\+5|aug|#5).*") ) set(Interval.SHARP5);
+		else if( outParen.matches(".*(-5|dim|b5).*") ) set(Interval.FLAT5);
+		//
+		// 6 7 M7
+		if( outParen.matches(".*(M7|maj7|M9|maj9).*") ) set(Interval.MAJOR_SEVENTH);
+		else if( outParen.matches(".*(6|dim[79]).*") ) set(Interval.SIXTH);
+		else if( outParen.matches(".*7.*") ) set(Interval.SEVENTH);
+		//
+		// minor sus4  （m と maj7 を間違えないよう比較しつつ、mmaj7 も認識させる）
+		if( outParen.matches(".*m.*") && ! outParen.matches(".*ma.*") || outParen.matches(".*mma.*") ) {
+			set(Interval.MINOR);
+		}
+		else if( outParen.matches(".*sus4.*") ) set(Interval.SUS4);
+		//
+		// extended
+		if( outParen.matches(".*9.*") ) {
+			set(Interval.NINTH);
+			if( ! outParen.matches(".*(add9|6|M9|maj9|dim9).*") ) {
+				set(Interval.SEVENTH);
+			}
+		}
+		else for(String p : inParen.split(",")) {
+			if( p.matches("(\\+9|#9)") ) set(Interval.SHARP9);
+			else if( p.matches("(-9|b9)") ) set(Interval.FLAT9);
+			else if( p.matches("9") ) set(Interval.NINTH);
+
+			if( p.matches("(\\+11|#11)") ) set(Interval.SHARP11);
+			else if( p.matches("11") ) set(Interval.ELEVENTH);
+
+			if( p.matches("(-13|b13)") ) set(Interval.FLAT13);
+			else if( p.matches("13") ) set(Interval.THIRTEENTH);
+
+			// -5 や +5 が () の中にあっても解釈できるようにする
+			if( p.matches("(-5|b5)") ) set(Interval.FLAT5);
+			else if( p.matches("(\\+5|#5)") ) set(Interval.SHARP5);
+		}
+	}
 	/**
 	 * ルート音を返します。
 	 * @return ルート音
@@ -301,72 +349,17 @@ public class Chord {
 		intervalMap = new HashMap<>();
 		set(Interval.MAJOR);
 		set(Interval.PARFECT5);
-		//
-		// 分数コードの分子と分母に分け、先頭の音名を取り込む
 		String rootOnBass[] = chordSymbol.trim().split("(/|on)");
 		if( rootOnBass.length == 0 ) {
 			bassNoteSymbol = rootNoteSymbol = new NoteSymbol();
-			fixIntervals();
-			return;
-		}
-		rootNoteSymbol = new NoteSymbol(rootOnBass[0]);
-		if( rootOnBass.length > 1 && ! rootOnBass[0].equals(rootOnBass[1]) ) {
-			// 分子（ルート音）と異なる分母（ベース音）が指定されていた場合
-			bassNoteSymbol = new NoteSymbol(rootOnBass[1]);
 		} else {
-			bassNoteSymbol = rootNoteSymbol;
-		}
-		// 先頭の音名はもういらないので削除し、サフィックスだけ残す
-		String suffix = rootOnBass[0].replaceFirst("^[A-G][#bx]*","");
-		//
-		// ()の中と外に分ける
-		String suffixWithParen[] = suffix.split("[\\(\\)]");
-		if( suffixWithParen.length == 0 ) {
-			fixIntervals();
-			return;
-		}
-		String suffixParen = "";
-		if( suffixWithParen.length > 1 ) {
-			suffixParen = suffixWithParen[1];
-			suffix = suffixWithParen[0];
-		}
-		// +5 -5 aug dim
-		if( suffix.matches(".*(\\+5|aug|#5).*") ) set(Interval.FLAT5);
-		else if( suffix.matches(".*(-5|dim|b5).*") ) set(Interval.SHARP5);
-		//
-		// 6 7 M7
-		if( suffix.matches(".*(M7|maj7|M9|maj9).*") ) set(Interval.MAJOR_SEVENTH);
-		else if( suffix.matches(".*(6|dim[79]).*") ) set(Interval.SIXTH);
-		else if( suffix.matches(".*7.*") ) set(Interval.SEVENTH);
-		//
-		// minor sus4  （m と maj7 を間違えないよう比較しつつ、mmaj7 も認識させる）
-		if( suffix.matches(".*m.*") && ! suffix.matches(".*ma.*") || suffix.matches(".*mma.*") ) {
-			set(Interval.MINOR);
-		}
-		else if( suffix.matches(".*sus4.*") ) set(Interval.SUS4);
-		//
-		// 9th の判定
-		if( suffix.matches(".*9.*") ) {
-			set(Interval.NINTH);
-			if( ! suffix.matches(".*(add9|6|M9|maj9|dim9).*") ) set(Interval.SEVENTH);
-		}
-		else {
-			// () の中を , で分ける
-			for( String p : suffixParen.split(",") ) {
-				if( p.matches("(\\+9|#9)") ) set(Interval.SHARP9);
-				else if( p.matches("(-9|b9)") ) set(Interval.FLAT9);
-				else if( p.matches("9") ) set(Interval.NINTH);
-
-				if( p.matches("(\\+11|#11)") ) set(Interval.SHARP11);
-				else if( p.matches("11") ) set(Interval.ELEVENTH);
-
-				if( p.matches("(-13|b13)") ) set(Interval.FLAT13);
-				else if( p.matches("13") ) set(Interval.THIRTEENTH);
-
-				// -5 や +5 が () の中にあっても解釈できるようにする
-				if( p.matches("(-5|b5)") ) set(Interval.FLAT5);
-				else if( p.matches("(\\+5|#5)") ) set(Interval.SHARP5);
+			String root = rootOnBass[0].trim();
+			bassNoteSymbol = rootNoteSymbol = new NoteSymbol(root);
+			if( rootOnBass.length > 1 ) {
+				String bass = rootOnBass[1].trim();
+				if( ! root.equals(bass) ) bassNoteSymbol = new NoteSymbol(bass);
 			}
+			setSymbolSuffix(root.replaceFirst("^[A-G][#bx]*",""));
 		}
 		fixIntervals();
 	}
@@ -397,10 +390,12 @@ public class Chord {
 	 */
 	public boolean equalsEnharmonically(Chord another) {
 		if( another == this ) return true;
-		if( another == null ) return false;
-		if( ! rootNoteSymbol.equalsEnharmonically(another.rootNoteSymbol) ) return false;
-		if( ! bassNoteSymbol.equalsEnharmonically(another.bassNoteSymbol) ) return false;
-		return intervalMap.equals(another.intervalMap);
+		if( another != null ) {
+			if( ! rootNoteSymbol.equalsEnharmonically(another.rootNoteSymbol) ) return false;
+			if( ! bassNoteSymbol.equalsEnharmonically(another.bassNoteSymbol) ) return false;
+			return intervalMap.equals(another.intervalMap);
+		}
+		return false;
 	}
 	/**
 	 * コード構成音の数を返します。ルート音は含まれますが、ベース音は含まれません。
@@ -413,13 +408,14 @@ public class Chord {
 	 * @return ノート番号（該当する音がない場合は -1）
 	 */
 	public int noteAt(int index) {
-		int rootnote = rootNoteSymbol.toNoteNumber();
-		if( index == 0 ) return rootnote;
-		Interval itv;
-		int i=0;
-		for( IntervalGroup offsetIndex : IntervalGroup.values() )
-			if( (itv = intervalMap.get(offsetIndex)) != null && ++i == index )
-				return rootnote + itv.getChromaticOffset();
+		int root = rootNoteSymbol.toNoteNumber();
+		if( index == 0 ) return root;
+		int current = 0;
+		for( IntervalGroup group : IntervalGroup.values() ) {
+			Interval interval = intervalMap.get(group);
+			if( interval == null ) continue;
+			if( ++current == index ) return root + interval.getChromaticOffset();
+		}
 		return -1;
 	}
 	/**

@@ -63,7 +63,7 @@ public class MelodyTrackSpec extends AbstractNoteTrackSpec {
 
 		// 音階ごとの生起確率を決める重みリスト（random_melody の場合）
 		int i, noteNumber, prevNoteNumber = 1;
-		int noteWeights[] = new int[range.max_note - range.min_note];
+		int noteWeights[] = new int[range.maxNote - range.minNote];
 		//
 		Key key = cp.key;
 		if( key == null ) key = new Key("C");
@@ -121,7 +121,7 @@ public class MelodyTrackSpec extends AbstractNoteTrackSpec {
 						// 音階ごとに出現確率を決める
 						int totalWeight = 0;
 						for( i=0; i<noteWeights.length; i++ ) {
-							noteNumber = range.min_note + i;
+							noteNumber = range.minNote + i;
 							int m12 = Music.mod12(noteNumber - chord.rootNoteSymbol().toNoteNumber());
 							int w;
 							if( chord.indexOf(noteNumber) >= 0 ) {
@@ -158,7 +158,7 @@ public class MelodyTrackSpec extends AbstractNoteTrackSpec {
 						totalWeight *= r;
 						for( i=0; i<noteWeights.length; i++ ) {
 							if( (totalWeight -= noteWeights[i]) < 0 ) {
-								noteNumber = range.min_note + i;
+								noteNumber = range.minNote + i;
 								break;
 							}
 						}
