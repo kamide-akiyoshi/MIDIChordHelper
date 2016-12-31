@@ -243,7 +243,7 @@ public class NoteSymbol {
 	 * @return MIDIノート番号が示す音名
 	 */
 	public static String noteNumberToSymbol(int noteNumber, int maxChars) {
-		int co5 = Music.mod12(Music.reverseCo5(noteNumber));
+		int co5 = Music.mod12(Music.toggleCo5(noteNumber));
 		if( co5 == 11 ) co5 -= Music.SEMITONES_PER_OCTAVE; // E# -> F
 		if( co5 < 6 ) return (new NoteSymbol(co5)).toString(); // F C G D A E B
 
@@ -276,6 +276,6 @@ public class NoteSymbol {
 	 * @return ノート番号（0～11）
 	 */
 	public static int majorCo5ToNoteNumber(int majorCo5) {
-		return Music.mod12(Music.reverseCo5(majorCo5));
+		return Music.mod12(Music.toggleCo5(majorCo5));
 	}
 }

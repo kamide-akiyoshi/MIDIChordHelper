@@ -3,16 +3,19 @@ package camidion.chordhelper.music;
 import java.awt.Color;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Vector;
 
 import javax.swing.JLabel;
 
 /**
- * 和音（コード - musical chord）のクラス
+ * 和音（コード - musical chord）のクラス（値は不変）
  */
-public class Chord implements Cloneable {
+public class Chord {
 	/** コード構成音の順序に対応する色 */
 	public static final Color NOTE_INDEX_COLORS[] = {
 		Color.red,
@@ -23,71 +26,71 @@ public class Chord implements Cloneable {
 		Color.orange,
 		Color.green
 	};
-	/** 音程差の半音オフセットのインデックス */
-	private static enum OffsetIndex {
+	/** 音程差のグループ分け */
+	private static enum IntervalGroup {
 		THIRD, FIFTH, SEVENTH, NINTH, ELEVENTH, THIRTEENTH
 	}
 	/** 音程差 */
 	public static enum Interval {
 
 		/** 長２度（major 2nd / sus2） */
-		SUS2(2, OffsetIndex.THIRD, "sus2", "suspended 2nd"),
+		SUS2(2, IntervalGroup.THIRD, "sus2", "suspended 2nd"),
 		/** 短３度または増２度 */
-		MINOR(3, OffsetIndex.THIRD, "m", "minor"),
+		MINOR(3, IntervalGroup.THIRD, "m", "minor"),
 		/** 長３度 */
-		MAJOR(4, OffsetIndex.THIRD, "", "major"),
+		MAJOR(4, IntervalGroup.THIRD, "", "major"),
 		/** 完全４度（parfect 4th / sus4） */
-		SUS4(5, OffsetIndex.THIRD, "sus4", "suspended 4th"),
+		SUS4(5, IntervalGroup.THIRD, "sus4", "suspended 4th"),
 
 		/** 減５度または増４度（トライトーン ＝ 三全音 ＝ 半オクターブ） */
-		FLAT5(6, OffsetIndex.FIFTH, "-5", "flatted 5th"),
+		FLAT5(6, IntervalGroup.FIFTH, "-5", "flatted 5th"),
 		/** 完全５度 */
-		PARFECT5(7, OffsetIndex.FIFTH, "", "parfect 5th"),
+		PARFECT5(7, IntervalGroup.FIFTH, "", "parfect 5th"),
 		/** 増５度または短６度 */
-		SHARP5(8, OffsetIndex.FIFTH, "+5", "sharped 5th"),
+		SHARP5(8, IntervalGroup.FIFTH, "+5", "sharped 5th"),
 
 		/** 長６度または減７度 */
-		SIXTH(9, OffsetIndex.SEVENTH, "6", "6th"),
+		SIXTH(9, IntervalGroup.SEVENTH, "6", "6th"),
 		/** 短７度 */
-		SEVENTH(10, OffsetIndex.SEVENTH, "7", "7th"),
+		SEVENTH(10, IntervalGroup.SEVENTH, "7", "7th"),
 		/** 長７度 */
-		MAJOR_SEVENTH(11, OffsetIndex.SEVENTH, "M7", "major 7th"),
+		MAJOR_SEVENTH(11, IntervalGroup.SEVENTH, "M7", "major 7th"),
 
 		/** 短９度（短２度の１オクターブ上） */
-		FLAT9(13, OffsetIndex.NINTH, "-9", "flatted 9th"),
+		FLAT9(13, IntervalGroup.NINTH, "-9", "flatted 9th"),
 		/** 長９度（長２度の１オクターブ上） */
-		NINTH(14, OffsetIndex.NINTH, "9", "9th"),
+		NINTH(14, IntervalGroup.NINTH, "9", "9th"),
 		/** 増９度（増２度の１オクターブ上） */
-		SHARP9(15, OffsetIndex.NINTH, "+9", "sharped 9th"),
+		SHARP9(15, IntervalGroup.NINTH, "+9", "sharped 9th"),
 
 		/** 完全１１度（完全４度の１オクターブ上） */
-		ELEVENTH(17, OffsetIndex.ELEVENTH, "11", "11th"),
+		ELEVENTH(17, IntervalGroup.ELEVENTH, "11", "11th"),
 		/** 増１１度（増４度の１オクターブ上） */
-		SHARP11(18, OffsetIndex.ELEVENTH, "+11", "sharped 11th"),
+		SHARP11(18, IntervalGroup.ELEVENTH, "+11", "sharped 11th"),
 
 		/** 短１３度（短６度の１オクターブ上） */
-		FLAT13(20, OffsetIndex.THIRTEENTH, "-13", "flatted 13th"),
+		FLAT13(20, IntervalGroup.THIRTEENTH, "-13", "flatted 13th"),
 		/** 長１３度（長６度の１オクターブ上） */
-		THIRTEENTH(21, OffsetIndex.THIRTEENTH, "13", "13th");
+		THIRTEENTH(21, IntervalGroup.THIRTEENTH, "13", "13th");
 
-		private Interval(int chromaticOffset, OffsetIndex offsetIndex, String symbol, String description) {
+		private Interval(int chromaticOffset, IntervalGroup offsetIndex, String symbol, String description) {
 			this.chromaticOffset = chromaticOffset;
-			this.offsetIndex = offsetIndex;
+			this.intervalGroup = offsetIndex;
 			this.symbol = symbol;
 			this.description = description;
 		}
 		/**
-		 * 半音差を返します。
+		 * 半音差を返します。これはルート音からの音程差を半音単位で表した値です。
 		 * @return 半音差
 		 */
 		public int getChromaticOffset() { return chromaticOffset; }
 		private int chromaticOffset;
 		/**
-		 * 対応するインデックスを返します。
-		 * @return 対応するインデックス
+		 * この音程が属しているグループを返します。
+		 * @return この音程が属しているグループ
 		 */
-		public OffsetIndex getChromaticOffsetIndex() { return offsetIndex; }
-		private OffsetIndex offsetIndex;
+		public IntervalGroup getIntervalGroup() { return intervalGroup; }
+		private IntervalGroup intervalGroup;
 		/**
 		 * コード名に使う略称を返します。
 		 * @return 略称
@@ -107,30 +110,51 @@ public class Chord implements Cloneable {
 	 */
 	public String symbolSuffix() {
 		String suffix = "";
-		Interval itv3rd = offsets.get(OffsetIndex.THIRD);
-		Interval itv5th = offsets.get(OffsetIndex.FIFTH);
-		Interval itv7th = offsets.get(OffsetIndex.SEVENTH);
-		if( itv3rd == Interval.MINOR ) {
-			suffix += itv3rd.getSymbol();
-		}
-		if( itv7th != null ) {
-			suffix += itv7th.getSymbol();
-		}
-		if( Arrays.asList(Interval.SUS2, Interval.SUS4).contains(itv3rd) ) {
-			suffix += itv3rd.getSymbol();
-		}
-		if( itv5th != Interval.PARFECT5 ) {
-			suffix += itv5th.getSymbol();
-		}
+		Interval i3 = intervalMap.get(IntervalGroup.THIRD);
+		Interval i5 = intervalMap.get(IntervalGroup.FIFTH);
+		Interval i7 = intervalMap.get(IntervalGroup.SEVENTH);
+		if( Interval.MINOR == i3 ) suffix += i3.getSymbol();
+		if( i7 != null ) suffix += i7.getSymbol();
+		if( SUSPENDED.contains(i3) ) suffix += i3.getSymbol();
+		if( Interval.PARFECT5 != i5 ) suffix += i5.getSymbol();
 		Vector<String> inParen = new Vector<String>();
-		for( OffsetIndex index : Arrays.asList(OffsetIndex.NINTH, OffsetIndex.ELEVENTH, OffsetIndex.THIRTEENTH) ) {
-			Interval interval = offsets.get(index);
+		for( IntervalGroup index : EXTENDED ) {
+			Interval interval = intervalMap.get(index);
 			if( interval != null ) inParen.add(interval.getSymbol());
 		}
 		if( ! inParen.isEmpty() ) suffix += "("+String.join(",",inParen)+")";
 		String alias = symbolSuffixAliases.get(suffix);
 		return alias == null ? suffix : alias;
 	}
+	/**
+	 * コードの説明のうち、音名を除いた部分を組み立てて返します。
+	 * @return コード説明の音名を除いた部分
+	 */
+	public String nameSuffix() {
+		String suffix = "";
+		Interval i3 = intervalMap.get(IntervalGroup.THIRD);
+		Interval i5 = intervalMap.get(IntervalGroup.FIFTH);
+		Interval i7 = intervalMap.get(IntervalGroup.SEVENTH);
+		if( Interval.MINOR == i3 ) suffix += " " + i3.getDescription();
+		if( i7 != null ) suffix += " " + i7.getDescription();
+		if( SUSPENDED.contains(i3) ) suffix += " " + i3.getDescription();
+		if( Interval.PARFECT5 != i5 ) suffix += " " + i5.getDescription();
+		Vector<String> inParen = new Vector<String>();
+		for( IntervalGroup index : EXTENDED ) {
+			Interval i9 = intervalMap.get(index);
+			if( i9 != null ) inParen.add(i9.getDescription());
+		}
+		if( ! inParen.isEmpty() ) suffix += "("+String.join(",",inParen)+")";
+		String alias = nameSuffixAliases.get(suffix);
+		return alias == null ? suffix : alias;
+	}
+	private static final List<Interval> SUSPENDED = Arrays.asList(
+			Interval.SUS2,
+			Interval.SUS4);
+	private static final List<IntervalGroup> EXTENDED = Arrays.asList(
+			IntervalGroup.NINTH,
+			IntervalGroup.ELEVENTH,
+			IntervalGroup.THIRTEENTH);
 	private static final Map<String, String> symbolSuffixAliases = new HashMap<String, String>() {
 		{
 			put("m-5", "dim");
@@ -143,36 +167,6 @@ public class Chord implements Cloneable {
 			put("m6-5(9)", "dim9");
 		}
 	};
-	/**
-	 * コードの説明のうち、音名を除いた部分を組み立てて返します。
-	 * @return コード説明の音名を除いた部分
-	 */
-	public String nameSuffix() {
-		String suffix = "";
-		Interval itv3rd = offsets.get(OffsetIndex.THIRD);
-		Interval itv5th = offsets.get(OffsetIndex.FIFTH);
-		Interval itv7th = offsets.get(OffsetIndex.SEVENTH);
-		if( itv3rd == Interval.MINOR ) {
-			suffix += " " + itv3rd.getDescription();
-		}
-		if( itv7th != null ) {
-			suffix += " " + itv7th.getDescription();
-		}
-		if( Arrays.asList(Interval.SUS2, Interval.SUS4).contains(itv3rd) ) {
-			suffix += " " + itv3rd.getDescription();
-		}
-		if( itv5th != Interval.PARFECT5 ) {
-			suffix += " " + itv5th.getDescription();
-		}
-		Vector<String> inParen = new Vector<String>();
-		for( OffsetIndex index : Arrays.asList(OffsetIndex.NINTH, OffsetIndex.ELEVENTH, OffsetIndex.THIRTEENTH) ) {
-			Interval interval = offsets.get(index);
-			if( interval != null ) inParen.add(interval.getDescription());
-		}
-		if( ! inParen.isEmpty() ) suffix += "("+String.join(",",inParen)+")";
-		String alias = nameSuffixAliases.get(suffix);
-		return alias == null ? suffix : alias;
-	}
 	private static final Map<String, String> nameSuffixAliases = new HashMap<String, String>() {
 		{
 			put("", " "+Interval.MAJOR.getDescription());
@@ -186,24 +180,51 @@ public class Chord implements Cloneable {
 			put(" minor 6th flatted 5th(9th)", " diminished 9th");
 		}
 	};
-
 	/**
-	 * 現在有効な構成音（ルート、ベースは除く）の音程
+	 * ルート音を返します。
+	 * @return ルート音
 	 */
-	private Map<OffsetIndex, Interval> offsets;
-	/**
-	 * このコードのルート音
-	 */
+	public NoteSymbol rootNoteSymbol() { return rootNoteSymbol; }
 	private NoteSymbol rootNoteSymbol;
 	/**
-	 * このコードのベース音（ルート音と異なる場合は分数コードの分母）
+	 * ベース音を返します。オンコードの場合はルート音と異なります。
+	 * @return ベース音
 	 */
+	public NoteSymbol bassNoteSymbol() { return bassNoteSymbol; }
 	private NoteSymbol bassNoteSymbol;
+	/**
+	 * 指定した音程が設定されているか調べます。
+	 * @param interval 音程
+	 * @return 指定した音程が設定されていたらtrue
+	 */
+	public boolean isSet(Interval interval) {
+		return interval.equals(intervalMap.get(interval.getIntervalGroup()));
+	}
+	/**
+	 * このコードの構成音（ルート音自身やベース音は含まない）を、
+	 * ルート音からの音程のコレクション（変更不可能なビュー）として返します。
+	 * @return 音程のコレクション
+	 */
+	public Collection<Interval> intervals() { return intervals; }
+	private Collection<Interval> intervals;
+	private void fixIntervals() {
+		intervals = Collections.unmodifiableCollection(intervalMap.values());
+	}
+	/** 現在有効な構成音（ルート、ベースは除く）の音程 */
+	private Map<IntervalGroup, Interval> intervalMap;
+	private void set(Interval interval) {
+		intervalMap.put(interval.getIntervalGroup(), interval);
+	}
+	private void set(Collection<Interval> intervals) {
+		for(Interval interval : intervals) if(interval != null) set(interval);
+	}
 
 	/**
-	 * 指定されたルート音と構成音を持つコードを構築します。
-	 * @param root ルート音（ベース音としても使う）
-	 * @param intervals その他の構成音の音程（長三度、完全五度は指定しなくてもデフォルトで設定されます）
+	 * 指定されたルート音、構成音を持つコードを構築します。
+	 * @param root ルート音
+	 * @param intervals その他の構成音の音程
+	 * （メジャーコードの構成音である長三度・完全五度は、指定しなくてもデフォルトで設定されます）
+	 * @throws NullPointerException ルート音にnullが指定された場合
 	 */
 	public Chord(NoteSymbol root, Interval... intervals) {
 		this(root, root, intervals);
@@ -211,8 +232,10 @@ public class Chord implements Cloneable {
 	/**
 	 * 指定されたルート音、ベース音、構成音を持つコードを構築します。
 	 * @param root ルート音
-	 * @param bass ベース音
-	 * @param intervals その他の構成音の音程（長三度、完全五度は指定しなくてもデフォルトで設定されます）
+	 * @param bass ベース音（nullの場合はルート音が指定されたとみなされます）
+	 * @param intervals その他の構成音の音程
+	 * （メジャーコードの構成音である長三度・完全五度は、指定しなくてもデフォルトで設定されます）
+	 * @throws NullPointerException ルート音にnullが指定された場合
 	 */
 	public Chord(NoteSymbol root, NoteSymbol bass, Interval... intervals) {
 		this(root, bass, Arrays.asList(intervals));
@@ -220,16 +243,19 @@ public class Chord implements Cloneable {
 	/**
 	 * 指定されたルート音、ベース音、構成音を持つコードを構築します。
 	 * @param root ルート音
-	 * @param bass ベース音
-	 * @param intervals その他の構成音の音程（長三度、完全五度は指定しなくてもデフォルトで設定されます）
+	 * @param bass ベース音（nullの場合はルート音が指定されたとみなされます）
+	 * @param intervals その他の構成音の音程のコレクション
+	 * （メジャーコードの構成音である長三度・完全五度は、指定しなくてもデフォルトで設定されます）
+	 * @throws NullPointerException ルート音、または構成音コレクションにnullが指定された場合
 	 */
 	public Chord(NoteSymbol root, NoteSymbol bass, Collection<Interval> intervals) {
-		rootNoteSymbol = root;
-		bassNoteSymbol = bass;
-		offsets = new HashMap<>();
+		rootNoteSymbol = Objects.requireNonNull(root);
+		bassNoteSymbol = (bass==null ? root : bass);
+		intervalMap = new HashMap<>();
 		set(Interval.MAJOR);
 		set(Interval.PARFECT5);
 		set(intervals);
+		fixIntervals();
 	}
 	/**
 	 * 元のコードのルート音、ベース音以外の構成音の一部を変更した新しいコードを構築します。
@@ -243,14 +269,15 @@ public class Chord implements Cloneable {
 	/**
 	 * 元のコードのルート音、ベース音以外の構成音の一部を変更した新しいコードを構築します。
 	 * @param chord 元のコード
-	 * @param intervals 変更したい構成音の音程（ルート音、ベース音を除く）
-	 * @throws NullPointerException 元のコードにnullが指定された場合
+	 * @param intervals 変更したい構成音の音程（ルート音、ベース音を除く）のコレクション
+	 * @throws NullPointerException 引数にnullが指定された場合
 	 */
 	public Chord(Chord original, Collection<Interval> intervals) {
 		rootNoteSymbol = original.rootNoteSymbol;
 		bassNoteSymbol = original.bassNoteSymbol;
-		offsets = new HashMap<>(original.offsets);
+		intervalMap = new HashMap<>(original.intervalMap);
 		set(intervals);
+		fixIntervals();
 	}
 	/**
 	 * 指定された調と同名のコードを構築します。
@@ -258,11 +285,12 @@ public class Chord implements Cloneable {
 	 * @throws NullPointerException 調にnullが指定された場合
 	 */
 	public Chord(Key key) {
-		offsets = new HashMap<>(); set(Interval.PARFECT5);
+		intervalMap = new HashMap<>(); set(Interval.PARFECT5);
 		int keyCo5 = key.toCo5(); if( key.majorMinor() == Key.MajorMinor.MINOR ) {
 			keyCo5 += 3; set(Interval.MINOR);
 		} else set(Interval.MAJOR);
 		bassNoteSymbol = rootNoteSymbol = new NoteSymbol(keyCo5);
+		fixIntervals();
 	}
 	/**
 	 * コード名からコードを構築します。
@@ -270,7 +298,7 @@ public class Chord implements Cloneable {
 	 * @throws NullPointerException コード名にnullが指定された場合
 	 */
 	public Chord(String chordSymbol) {
-		offsets = new HashMap<>();
+		intervalMap = new HashMap<>();
 		set(Interval.MAJOR);
 		set(Interval.PARFECT5);
 		//
@@ -278,6 +306,7 @@ public class Chord implements Cloneable {
 		String rootOnBass[] = chordSymbol.trim().split("(/|on)");
 		if( rootOnBass.length == 0 ) {
 			bassNoteSymbol = rootNoteSymbol = new NoteSymbol();
+			fixIntervals();
 			return;
 		}
 		rootNoteSymbol = new NoteSymbol(rootOnBass[0]);
@@ -292,7 +321,10 @@ public class Chord implements Cloneable {
 		//
 		// ()の中と外に分ける
 		String suffixWithParen[] = suffix.split("[\\(\\)]");
-		if( suffixWithParen.length == 0 ) return;
+		if( suffixWithParen.length == 0 ) {
+			fixIntervals();
+			return;
+		}
 		String suffixParen = "";
 		if( suffixWithParen.length > 1 ) {
 			suffixParen = suffixWithParen[1];
@@ -336,32 +368,7 @@ public class Chord implements Cloneable {
 				else if( p.matches("(\\+5|#5)") ) set(Interval.SHARP5);
 			}
 		}
-	}
-	/**
-	 * ルート音を返します。
-	 * @return ルート音
-	 */
-	public NoteSymbol rootNoteSymbol() { return rootNoteSymbol; }
-	/**
-	 * ベース音を返します。分数コードの場合はルート音と異なります。
-	 * @return ベース音
-	 */
-	public NoteSymbol bassNoteSymbol() { return bassNoteSymbol; }
-	/**
-	 * このコードの構成音を、ルート音からの音程の配列として返します。
-	 * ルート音自身やベース音は含まれません。
-	 * @return 音程の配列
-	 */
-	public Interval[] intervals() {
-		return offsets.values().toArray(new Interval[offsets.size()]);
-	}
-	/**
-	 * 指定した音程が設定されているか調べます。
-	 * @param itv 音程
-	 * @return 指定した音程が設定されていたらtrue
-	 */
-	public boolean isSet(Interval itv) {
-		return itv.equals(offsets.get(itv.getChromaticOffsetIndex()));
+		fixIntervals();
 	}
 	/**
 	 * コードの同一性を判定します。ルート音、ベース音の異名同音は異なるものとみなされます。
@@ -376,7 +383,7 @@ public class Chord implements Cloneable {
 			Chord another = (Chord) anObject;
 			if( ! rootNoteSymbol.equals(another.rootNoteSymbol) ) return false;
 			if( ! bassNoteSymbol.equals(another.bassNoteSymbol) ) return false;
-			return offsets.equals(another.offsets);
+			return intervalMap.equals(another.intervalMap);
 		}
 		return false;
 	}
@@ -393,13 +400,13 @@ public class Chord implements Cloneable {
 		if( another == null ) return false;
 		if( ! rootNoteSymbol.equalsEnharmonically(another.rootNoteSymbol) ) return false;
 		if( ! bassNoteSymbol.equalsEnharmonically(another.bassNoteSymbol) ) return false;
-		return offsets.equals(another.offsets);
+		return intervalMap.equals(another.intervalMap);
 	}
 	/**
 	 * コード構成音の数を返します。ルート音は含まれますが、ベース音は含まれません。
 	 * @return コード構成音の数
 	 */
-	public int numberOfNotes() { return offsets.size() + 1; }
+	public int numberOfNotes() { return intervalMap.size() + 1; }
 	/**
 	 * 指定された位置にある構成音のノート番号を返します。
 	 * @param index 位置（０をルート音とした構成音の順序）
@@ -410,8 +417,8 @@ public class Chord implements Cloneable {
 		if( index == 0 ) return rootnote;
 		Interval itv;
 		int i=0;
-		for( OffsetIndex offsetIndex : OffsetIndex.values() )
-			if( (itv = offsets.get(offsetIndex)) != null && ++i == index )
+		for( IntervalGroup offsetIndex : IntervalGroup.values() )
+			if( (itv = intervalMap.get(offsetIndex)) != null && ++i == index )
 				return rootnote + itv.getChromaticOffset();
 		return -1;
 	}
@@ -428,8 +435,8 @@ public class Chord implements Cloneable {
 		int i;
 		ia[i=0] = rootnote;
 		Interval itv;
-		for( OffsetIndex offsetIndex : OffsetIndex.values() )
-			if( (itv = offsets.get(offsetIndex)) != null )
+		for( IntervalGroup offsetIndex : IntervalGroup.values() )
+			if( (itv = intervalMap.get(offsetIndex)) != null )
 				ia[++i] = rootnote + itv.getChromaticOffset();
 		if( range != null ) range.invertNotesOf(ia, key);
 		return ia;
@@ -445,8 +452,8 @@ public class Chord implements Cloneable {
 		if( Music.mod12(relativeNote) == 0 ) return 0;
 		Interval itv;
 		int i=0;
-		for( OffsetIndex offsetIndex : OffsetIndex.values() ) {
-			if( (itv = offsets.get(offsetIndex)) != null ) {
+		for( IntervalGroup offsetIndex : IntervalGroup.values() ) {
+			if( (itv = intervalMap.get(offsetIndex)) != null ) {
 				i++;
 				if( Music.mod12(relativeNote - itv.getChromaticOffset()) == 0 )
 					return i;
@@ -458,25 +465,18 @@ public class Chord implements Cloneable {
 	 * 指定したキーのスケールを外れた構成音がないか調べます。
 	 * @param key 調べるキー
 	 * @return スケールを外れている構成音がなければtrue
+	 * @throws NullPointerException キーにnullが指定された場合
 	 */
-	public boolean isOnScaleIn(Key key) { return isOnScaleInKey(key.toCo5()); }
-	private boolean isOnScaleInKey(int keyCo5) {
+	public boolean isOnScaleIn(Key key) {
+		int keyCo5 = key.toCo5();
 		int rootnote = rootNoteSymbol.toNoteNumber();
 		if( ! Music.isOnScale(rootnote, keyCo5) ) return false;
 		Interval itv;
-		for( OffsetIndex offsetIndex : OffsetIndex.values() ) {
-			if( (itv = offsets.get(offsetIndex)) == null ) continue;
+		for( IntervalGroup offsetIndex : IntervalGroup.values() ) {
+			if( (itv = intervalMap.get(offsetIndex)) == null ) continue;
 			if( ! Music.isOnScale(rootnote + itv.getChromaticOffset(), keyCo5) ) return false;
 		}
 		return true;
-	}
-	/**
-	 * C/Amの調に近いほうの♯、♭の表記で、移調したコードを返します。
-	 * @param chromaticOffset 移調幅（半音単位）
-	 * @return 移調した新しいコード（移調幅が０の場合は自分自身）
-	 */
-	public Chord transposedChord(int chromaticOffset) {
-		return transposedChord(chromaticOffset, 0);
 	}
 	/**
 	 * 指定された調に近いほうの♯、♭の表記で、移調したコードを返します。
@@ -484,15 +484,22 @@ public class Chord implements Cloneable {
 	 * @param originalKey 基準とする調
 	 * @return 移調した新しいコード（移調幅が０の場合は自分自身）
 	 */
-	public Chord transposedChord(int chromaticOffset, Key originalKey) {
-		return transposedChord(chromaticOffset, originalKey.toCo5());
+	public Chord transposedNewChord(int chromaticOffset, Key originalKey) {
+		return transposedNewChord(chromaticOffset, originalKey.toCo5());
 	}
-	private Chord transposedChord(int chromaticOffset, int originalKeyCo5) {
+	/**
+	 * C/Amの調に近いほうの♯、♭の表記で、移調したコードを返します。
+	 * @param chromaticOffset 移調幅（半音単位）
+	 * @return 移調した新しいコード（移調幅が０の場合は自分自身）
+	 */
+	public Chord transposedNewChord(int chromaticOffset) {
+		return transposedNewChord(chromaticOffset, 0);
+	}
+	private Chord transposedNewChord(int chromaticOffset, int originalKeyCo5) {
 		if( chromaticOffset == 0 ) return this;
-		int offsetCo5 = Music.mod12(Music.reverseCo5(chromaticOffset));
+		int offsetCo5 = Music.mod12(Music.toggleCo5(chromaticOffset));
 		if( offsetCo5 > 6 ) offsetCo5 -= 12;
 		int keyCo5 = originalKeyCo5 + offsetCo5;
-		//
 		int newRootCo5 = rootNoteSymbol.toCo5() + offsetCo5;
 		int newBassCo5 = bassNoteSymbol.toCo5() + offsetCo5;
 		if( keyCo5 > 6 ) {
@@ -503,7 +510,9 @@ public class Chord implements Cloneable {
 			newRootCo5 += 12;
 			newBassCo5 += 12;
 		}
-		return new Chord(new NoteSymbol(newRootCo5), new NoteSymbol(newBassCo5), intervals());
+		NoteSymbol root = new NoteSymbol(newRootCo5);
+		NoteSymbol bass = (newBassCo5 == newRootCo5 ? root : new NoteSymbol(newBassCo5));
+		return new Chord(root, bass, intervals);
 	}
 
 	/**
@@ -562,36 +571,5 @@ public class Chord implements Cloneable {
 			name += " on " + bassNoteSymbol.toStringIn(NoteSymbol.Language.NAME);
 		}
 		return name;
-	}
-
-	/**
-	 * このコードのクローンを作成します。
-	 */
-	@Override
-	public Chord clone() {
-		Chord newChord = new Chord(rootNoteSymbol, bassNoteSymbol);
-		newChord.offsets = new HashMap<>(offsets);
-		return newChord;
-	}
-	/**
-	 * 指定した音程の構成音を設定します。
-	 * @param interval 設定する音程
-	 */
-	public void set(Interval interval) {
-		offsets.put(interval.getChromaticOffsetIndex(), interval);
-	}
-	/**
-	 * 指定した複数の音程の構成音を設定します。
-	 * @param intervals 設定する音程
-	 */
-	protected void set(Collection<Interval> intervals) {
-		for(Interval itv : intervals) if(itv != null) set(itv);
-	}
-	/**
-	 * 指定した音程の構成音をクリアします。
-	 * @param itv クリアする音程
-	 */
-	public void clear(Interval itv) {
-		offsets.remove(itv.getChromaticOffsetIndex());
 	}
 }

@@ -22,7 +22,6 @@ import java.awt.event.MouseMotionListener;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import javax.swing.JComponent;
@@ -539,32 +538,32 @@ public class ChordMatrix extends JPanel
 		Component obj = e.getComponent();
 		if( obj instanceof ChordLabel ) {
 			ChordLabel cl = (ChordLabel)obj;
-			Chord chord = cl.chord.clone();
+			List<Chord.Interval> intervals = new ArrayList<>(cl.chord.intervals());
 			if( (e.getModifiersEx() & InputEvent.BUTTON3_DOWN_MASK) != 0 ) {
 				if( e.isShiftDown() )
-					chord.set(Chord.Interval.MAJOR_SEVENTH);
+					intervals.add(Chord.Interval.MAJOR_SEVENTH);
 				else
-					chord.set(Chord.Interval.SEVENTH);
+					intervals.add(Chord.Interval.SEVENTH);
 			}
 			else if( e.isShiftDown() )
-				chord.set(Chord.Interval.SIXTH);
+				intervals.add(Chord.Interval.SIXTH);
 			if( e.isControlDown() )
-				chord.set(Chord.Interval.NINTH);
+				intervals.add(Chord.Interval.NINTH);
 			else
-				chord.clear(Chord.Interval.NINTH);
+				intervals.remove(Chord.Interval.NINTH);
 
 			if( e.isAltDown() ) {
 				if( cl.isSus4 ) {
-					chord.set(Chord.Interval.MAJOR); // To cancel sus4
-					chord.set(Chord.Interval.SHARP5);
+					intervals.add(Chord.Interval.MAJOR); // To cancel sus4
+					intervals.add(Chord.Interval.SHARP5);
 				}
-				else chord.set(Chord.Interval.FLAT5);
+				else intervals.add(Chord.Interval.FLAT5);
 			}
 			if( selectedChordLabel != null ) {
 				selectedChordLabel.setSelection(false);
 			}
 			(selectedChordLabel = cl).setSelection(true);
-			setSelectedChord(chord);
+			setSelectedChord(new Chord(cl.chord, intervals));
 		}
 		else if( obj instanceof KeySignatureLabel ) {
 			int v = ((KeySignatureLabel)obj).co5Value;
@@ -603,19 +602,19 @@ public class ChordMatrix extends JPanel
 				destinationChordLabel = null; return;
 			}
 			if( destinationChordLabel != null ) return;
-			Chord chord = labelDraggedFrom.chord.clone();
+			List<Chord.Interval> intervals = new ArrayList<>(labelDraggedFrom.chord.intervals());
 			if( labelDraggedFrom.isMinor ) {
 				if( labelDraggedTo == null ) { // Out of chord buttons
 					// mM7
-					chord.set(Chord.Interval.MAJOR_SEVENTH);
+					intervals.add(Chord.Interval.MAJOR_SEVENTH);
 				}
 				else if( labelDraggedFrom.co5Value < labelDraggedTo.co5Value ) { // Right
 					// m6
-					chord.set(Chord.Interval.SIXTH);
+					intervals.add(Chord.Interval.SIXTH);
 				}
 				else { // Left or up from minor to major
 					// m7
-					chord.set(Chord.Interval.SEVENTH);
+					intervals.add(Chord.Interval.SEVENTH);
 				}
 			}
 			else if( labelDraggedFrom.isSus4 ) {
@@ -623,14 +622,14 @@ public class ChordMatrix extends JPanel
 					return;
 				}
 				else if( ! labelDraggedTo.isSus4 ) { // Down from sus4 to major
-					chord.set(Chord.Interval.MAJOR);
+					intervals.add(Chord.Interval.MAJOR);
 				}
 				else if( labelDraggedFrom.co5Value < labelDraggedTo.co5Value ) { // Right
-					chord.set(Chord.Interval.NINTH);
+					intervals.add(Chord.Interval.NINTH);
 				}
 				else { // Left
 					// 7sus4
-					chord.set(Chord.Interval.SEVENTH);
+					intervals.add(Chord.Interval.SEVENTH);
 				}
 			}
 			else {
@@ -638,50 +637,50 @@ public class ChordMatrix extends JPanel
 					return;
 				}
 				else if( labelDraggedTo.isSus4 ) { // Up from major to sus4
-					chord.set(Chord.Interval.NINTH);
+					intervals.add(Chord.Interval.NINTH);
 				}
 				else if( labelDraggedFrom.co5Value < labelDraggedTo.co5Value ) { // Right
 					// M7
-					chord.set(Chord.Interval.MAJOR_SEVENTH);
+					intervals.add(Chord.Interval.MAJOR_SEVENTH);
 				}
 				else if( labelDraggedTo.isMinor ) { // Down from major to minor
 					// 6
-					chord.set(Chord.Interval.SIXTH);
+					intervals.add(Chord.Interval.SIXTH);
 				}
 				else { // Left
 					// 7
-					chord.set(Chord.Interval.SEVENTH);
+					intervals.add(Chord.Interval.SEVENTH);
 				}
 			}
-			if( chord.isSet(Chord.Interval.NINTH) || (labelDraggedFrom.isSus4 && (labelDraggedTo == null || ! labelDraggedTo.isSus4) ) ) {
+			if( intervals.contains(Chord.Interval.NINTH) || (labelDraggedFrom.isSus4 && (labelDraggedTo == null || ! labelDraggedTo.isSus4) ) ) {
 				if( (e.getModifiersEx() & InputEvent.BUTTON3_DOWN_MASK) != 0 ) {
 					if( e.isShiftDown() ) {
-						chord.set(Chord.Interval.MAJOR_SEVENTH);
+						intervals.add(Chord.Interval.MAJOR_SEVENTH);
 					}
 					else {
-						chord.set(Chord.Interval.SEVENTH);
+						intervals.add(Chord.Interval.SEVENTH);
 					}
 				}
 				else if( e.isShiftDown() ) {
-					chord.set(Chord.Interval.SIXTH);
+					intervals.add(Chord.Interval.SIXTH);
 				}
 			}
 			else {
 				if( e.isControlDown() )
-					chord.set(Chord.Interval.NINTH);
+					intervals.add(Chord.Interval.NINTH);
 				else
-					chord.clear(Chord.Interval.NINTH);
+					intervals.remove(Chord.Interval.NINTH);
 			}
 			if( e.isAltDown() ) {
 				if( labelDraggedFrom.isSus4 ) {
-					chord.set(Chord.Interval.MAJOR);
-					chord.set(Chord.Interval.SHARP5);
+					intervals.add(Chord.Interval.MAJOR);
+					intervals.add(Chord.Interval.SHARP5);
 				}
 				else {
-					chord.set(Chord.Interval.FLAT5);
+					intervals.add(Chord.Interval.FLAT5);
 				}
 			}
-			setSelectedChord(chord);
+			setSelectedChord(new Chord(labelDraggedFrom.chord, intervals));
 			destinationChordLabel = (labelDraggedTo == null ? labelDraggedFrom : labelDraggedTo ) ;
 		}
 		else if( draggedFrom instanceof KeySignatureLabel ) {
@@ -788,7 +787,7 @@ public class ChordMatrix extends JPanel
 		if( i < 0 ) return; // No key char found
 		if( iCol < 0 ) iCol += 12; else if( iCol > N_COLUMNS ) iCol -= 12;
 		cl = chordLabels[iCol + N_COLUMNS * iRow];
-		List<Chord.Interval> intervals = new ArrayList<Chord.Interval>(Arrays.asList(cl.chord.intervals()));
+		List<Chord.Interval> intervals = new ArrayList<>(cl.chord.intervals());
 		if( shiftPressed ) {
 			if( ! intervals.contains(Chord.Interval.SEVENTH) ) {
 				intervals.add(Chord.Interval.SEVENTH);
@@ -897,7 +896,7 @@ public class ChordMatrix extends JPanel
 	protected void capoChanged(int newCapo) {
 		if(capo == newCapo) return;
 		capoKey = key.transposedKey(capo = newCapo);
-		selectedChordCapo = (selectedChord == null ? null : selectedChord.transposedChord(newCapo));
+		selectedChordCapo = (selectedChord == null ? null : selectedChord.transposedNewChord(newCapo));
 		for( ChordLabel cl : chordLabels ) cl.keyChanged();
 		fireKeySignatureChanged();
 	}
@@ -966,14 +965,14 @@ public class ChordMatrix extends JPanel
 	}
 	public void setSelectedChordCapo( Chord chord ) {
 		setNoteIndex(-1); // Cancel arpeggio mode
-		selectedChord = (chord == null ? null : chord.transposedChord(-capo,capoKey));
+		selectedChord = (chord == null ? null : chord.transposedNewChord(-capo,capoKey));
 		selectedChordCapo = chord;
 		fireChordChanged();
 	}
 	public void setSelectedChord( Chord chord ) {
 		setNoteIndex(-1); // Cancel arpeggio mode
 		selectedChord = chord;
-		selectedChordCapo = (chord == null ? null : chord.transposedChord(capo,key));
+		selectedChordCapo = (chord == null ? null : chord.transposedNewChord(capo,key));
 		fireChordChanged();
 	}
 	/**

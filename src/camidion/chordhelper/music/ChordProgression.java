@@ -364,7 +364,7 @@ public class ChordProgression {
 						// キーが未設定のときは、最初のコードから推測して設定
 						if( key == null ) key = new Key(cs.chord);
 						//
-						Chord newChord = cs.chord.transposedChord(chromaticOffset, key);
+						Chord newChord = cs.chord.transposedNewChord(chromaticOffset, key);
 						measure.set(i, new ChordStroke(newChord, cs.beatLength));
 					}
 				}

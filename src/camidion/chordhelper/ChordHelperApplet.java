@@ -283,7 +283,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public static class VersionInfo {
 		public static final String	NAME = "MIDI Chord Helper";
-		public static final String	VERSION = "Ver.20161230.1";
+		public static final String	VERSION = "Ver.20161231.1";
 		public static final String	COPYRIGHT = "Copyright (C) 2004-2016";
 		public static final String	AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String	URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";
@@ -796,7 +796,7 @@ public class ChordHelperApplet extends JApplet {
 		}
 		// コードボタンからのコードを、カポつき演奏キーからオリジナルキーへ変換
 		Key originalKey = chordMatrix.getKeySignatureCapo();
-		Chord originalChord = playChord.transposedChord(
+		Chord originalChord = playChord.transposedNewChord(
 			chordMatrix.capoSelecter.getCapo(),
 			chordMatrix.getKeySignature()
 		);
@@ -862,7 +862,7 @@ public class ChordHelperApplet extends JApplet {
 		if( chordDiagramCapo == chordMatrix.capoSelecter.getCapo() )
 			diagramChord = playChord;
 		else
-			diagramChord = originalChord.transposedChord(-chordDiagramCapo, originalKey);
+			diagramChord = originalChord.transposedNewChord(-chordDiagramCapo, originalKey);
 		chordDiagram.setChord(diagramChord);
 		if( chordDiagram.recordTextButton.isSelected() )
 			lyricDisplay.appendChord(diagramChord);
