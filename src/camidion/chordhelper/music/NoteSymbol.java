@@ -216,7 +216,18 @@ public class NoteSymbol {
 	 * @param language 言語モード
 	 * @return 文字列表現
 	 */
-	public String toStringIn(Language language) {
+	public String toStringIn(Language language) { return stringOf(majorCo5, language); }
+
+	/**
+	 * 指定された五度圏インデックス値（メジャーキー基準）に対応する音階の文字列表現を、
+	 * 指定された言語モードで返します。
+	 * @param majorCo5 五度圏インデックス値（メジャーキー基準、すなわち0のときC）
+	 * @param language 言語モード
+	 * @return 文字列表現
+	 * @throws IndexOutOfBoundsException
+	 * 五度圏インデックス値がダブルフラット（F♭♭,C♭♭,…）からダブルシャープ（…,Ex,Bx）までの範囲（-15 ～ 19）を外れている場合
+	 */
+	public static String stringOf(int majorCo5, Language language) {
 		return language.stringOf(majorCo5 + INDEX_OF_C);
 	}
 	/**
@@ -245,14 +256,14 @@ public class NoteSymbol {
 	public static String noteNumberToSymbol(int noteNumber, int maxChars) {
 		int co5 = Music.mod12(Music.toggleCo5(noteNumber));
 		if( co5 == 11 ) co5 -= Music.SEMITONES_PER_OCTAVE; // E# -> F
-		if( co5 < 6 ) return (new NoteSymbol(co5)).toString(); // F C G D A E B
+		if( co5 < 6 ) return stringOf(co5, Language.SYMBOL); // F C G D A E B
 
 		if( maxChars < 0 || maxChars >= "F# / Gb".length() ) return
-				(new NoteSymbol(co5)).toString() + " / " +
-				(new NoteSymbol(co5 - Music.SEMITONES_PER_OCTAVE)).toString();
+				stringOf(co5, Language.SYMBOL) + " / " +
+				stringOf(co5 - Music.SEMITONES_PER_OCTAVE, Language.SYMBOL);
 
 		if( co5 >= 8 ) co5 -= Music.SEMITONES_PER_OCTAVE; // G# -> Ab, D# -> Eb, A# -> Bb
-		return (new NoteSymbol(co5)).toString(); // C# Eb F# Ab Bb
+		return stringOf(co5, Language.SYMBOL); // C# Eb F# Ab Bb
 	}
 	/**
 	 * MIDIノート番号が示す音名を返します。

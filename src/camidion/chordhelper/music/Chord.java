@@ -8,7 +8,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Vector;
+import java.util.StringJoiner;
 
 import javax.swing.JLabel;
 
@@ -117,13 +117,12 @@ public class Chord {
 		if( i7 != null ) suffix += i7.getSymbol();
 		if( SUSPENDED.contains(i3) ) suffix += i3.getSymbol();
 		if( Interval.PARFECT5 != i5 ) suffix += i5.getSymbol();
-		Vector<String> inParen = new Vector<String>();
+		StringJoiner inParen = new StringJoiner(",","(",")").setEmptyValue("");
 		for( IntervalGroup group : EXTENDED ) {
-			Interval interval = intervalMap.get(group);
-			if( interval != null ) inParen.add(interval.getSymbol());
+			Interval i9 = intervalMap.get(group);
+			if( i9 != null ) inParen.add(i9.getSymbol());
 		}
-		if( ! inParen.isEmpty() ) suffix += "("+String.join(",",inParen)+")";
-		String alias = symbolSuffixAliases.get(suffix);
+		String alias = symbolSuffixAliases.get(suffix += inParen);
 		return alias == null ? suffix : alias;
 	}
 	/**
@@ -139,13 +138,12 @@ public class Chord {
 		if( i7 != null ) suffix += " " + i7.getDescription();
 		if( SUSPENDED.contains(i3) ) suffix += " " + i3.getDescription();
 		if( Interval.PARFECT5 != i5 ) suffix += " " + i5.getDescription();
-		Vector<String> inParen = new Vector<String>();
+		StringJoiner inParen = new StringJoiner(",","(",")").setEmptyValue("");
 		for( IntervalGroup index : EXTENDED ) {
 			Interval i9 = intervalMap.get(index);
 			if( i9 != null ) inParen.add(i9.getDescription());
 		}
-		if( ! inParen.isEmpty() ) suffix += "("+String.join(",",inParen)+")";
-		String alias = nameSuffixAliases.get(suffix);
+		String alias = nameSuffixAliases.get(suffix += inParen);
 		return alias == null ? suffix : alias;
 	}
 	private static final List<Interval> SUSPENDED = Arrays.asList(
