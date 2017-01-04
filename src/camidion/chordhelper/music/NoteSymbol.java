@@ -144,8 +144,6 @@ public class NoteSymbol {
 	private int majorCo5;
 	/** ノート番号（0～11） */
 	private int noteNumber;
-	/** 音名 C（ハ音）を構築します。 */
-	public NoteSymbol() { }
 	/**
 	 * 五度圏インデックス値（メジャーキー基準）から音名を構築します。
 	 * @param majorCo5 五度圏インデックス値
@@ -156,6 +154,7 @@ public class NoteSymbol {
 	/**
 	 * 音名を文字列から構築します。
 	 * @param noteSymbol 音名の文字列
+	 * @throws NullPointerException 引数がnullの場合
 	 * @throws IllegalArgumentException 引数が空文字列の場合、または音名で始まっていない場合
 	 */
 	public NoteSymbol(String noteSymbol) { this(co5OfSymbol(noteSymbol)); }
@@ -215,6 +214,7 @@ public class NoteSymbol {
 	 * この音階の文字列表現を、引数で指定された言語モードで返します。
 	 * @param language 言語モード
 	 * @return 文字列表現
+	 * @throws NullPointerException 言語モードがnullの場合
 	 */
 	public String toStringIn(Language language) { return stringOf(majorCo5, language); }
 
@@ -224,6 +224,7 @@ public class NoteSymbol {
 	 * @param majorCo5 五度圏インデックス値（メジャーキー基準、すなわち0のときC）
 	 * @param language 言語モード
 	 * @return 文字列表現
+	 * @throws NullPointerException 言語モードがnullの場合
 	 * @throws IndexOutOfBoundsException
 	 * 五度圏インデックス値がダブルフラット（F♭♭,C♭♭,…）からダブルシャープ（…,Ex,Bx）までの範囲（-15 ～ 19）を外れている場合
 	 */
@@ -234,6 +235,7 @@ public class NoteSymbol {
 	 * 引数で指定された音名のメジャーキー基準の五度圏インデックスを返します。
 	 * @param noteSymbol 音名の文字列
 	 * @return メジャーキー基準の五度圏インデックス
+	 * @throws NullPointerException 引数がnullの場合
 	 * @throws IllegalArgumentException 引数が空文字列の場合、または音名で始まっていない場合
 	 */
 	public static int co5OfSymbol(String noteSymbol) {
@@ -246,8 +248,7 @@ public class NoteSymbol {
 	 * 五度圏のC/Amに近いキーでよく使われるほうの表記（C# Eb F# Ab Bb）だけを返します。
 	 * </p>
 	 * <p>ノート番号だけでは物理的な音階情報しか得られないため、
-	 * 白鍵で＃♭のついた音階表現（B#、Cb など）、
-	 * ダブルシャープ、ダブルフラットを使った表現は返しません。
+	 * 白鍵で＃♭のついた音階表現（B#、Cb など）、ダブルシャープ、ダブルフラットを使った表現は返しません。
 	 * </p>
 	 * @param noteNumber MIDIノート番号
 	 * @param maxChars 最大文字数（最大がない場合は負数を指定）
@@ -276,15 +277,13 @@ public class NoteSymbol {
 		return noteNumberToSymbol(noteNumber, -1);
 	}
 	/**
-	 * 指定された五度圏インデックス値（メジャーキー基準）を
-	 * ノート番号（0～11）に変換します。
+	 * 指定された五度圏インデックス値（メジャーキー基準、すなわち0のときC）をノート番号（0～11 : C～B）に変換します。
 	 *
 	 * <p>これはMIDIノート番号からオクターブ情報を抜いた値と同じです。
-	 * 五度圏インデックス値をノート番号に変換した場合、
-	 * 異名同音、すなわち同じ音階が♭表記、♯表記のどちらだったか
-	 * という情報は失われます。
+	 * 五度圏インデックス値をノート番号に変換した場合、異名同音、すなわち同じ音階が♭表記、♯表記のどちらだったか、という情報は失われます。
 	 * </p>
-	 * @return ノート番号（0～11）
+	 * @param majorCo5 五度圏インデックス値
+	 * @return ノート番号
 	 */
 	public static int majorCo5ToNoteNumber(int majorCo5) {
 		return Music.mod12(Music.toggleCo5(majorCo5));

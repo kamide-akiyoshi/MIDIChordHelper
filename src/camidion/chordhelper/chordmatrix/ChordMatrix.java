@@ -43,7 +43,7 @@ import camidion.chordhelper.music.NoteSymbol;
  * MIDI Chord Helper 用のコードボタンマトリクス
  *
  * @author
- *	Copyright (C) 2004-2016 Akiyoshi Kamide
+ *	Copyright (C) 2004-2017 Akiyoshi Kamide
  *	http://www.yk.rim.or.jp/~kamide/music/chordhelper/
  */
 public class ChordMatrix extends JPanel
@@ -721,10 +721,10 @@ public class ChordMatrix extends JPanel
 		boolean shiftPressed = false; // True if Shift-key pressed or CapsLocked
 		char keyChar = e.getKeyChar();
 		int keyCode = e.getKeyCode();
+		//System.out.println("keyChar="+((int)keyChar)+" keyCode="+keyCode);
 		ChordLabel cl = null;
 		Chord chord = null;
 		int keyCo5 = key.toCo5();
-		// System.out.println( keyChar + " Pressed on chord matrix" );
 		//
 		if( (i = "6 ".indexOf(keyChar)) >= 0 ) {
 			selectedChord = selectedChordCapo = null;
@@ -732,6 +732,7 @@ public class ChordMatrix extends JPanel
 			pcKeyNextShift7 = null;
 			return;
 		}
+		// Center (Major)
 		else if( (i = "asdfghjkl;:]".indexOf(keyChar)) >= 0 ) {
 			iCol = i + keyCo5 + 7;
 		}
@@ -739,6 +740,7 @@ public class ChordMatrix extends JPanel
 			iCol = i + keyCo5 + 7;
 			shiftPressed = true;
 		}
+		// Bottom (minor)
 		else if( (i = "zxcvbnm,./\\".indexOf(keyChar)) >=0 ) {
 			iCol = i + keyCo5 + 7;
 			iRow = 2;
@@ -748,6 +750,7 @@ public class ChordMatrix extends JPanel
 			iRow = 2;
 			shiftPressed = true;
 		}
+		// Top (sus4)
 		else if( (i = "qwertyuiop@[".indexOf(keyChar)) >= 0 ) {
 			iCol = i + keyCo5 + 7;
 			iRow = 0;
@@ -757,20 +760,21 @@ public class ChordMatrix extends JPanel
 			iRow = 0;
 			shiftPressed = true;
 		}
+		// Number
 		else if( keyChar == '5' ) {
 			pcKeyNextShift7 = Chord.Interval.MAJOR_SEVENTH; return;
 		}
 		else if( keyChar == '7' ) {
 			pcKeyNextShift7 = Chord.Interval.SEVENTH; return;
 		}
-		// Shift current key-signature
+		// Shift current key-signature with arrow key
 		else if( keyCode == KeyEvent.VK_LEFT || keyCode == KeyEvent.VK_KP_LEFT ) {
-			// Add a flat
+			// Add a flat to key-signature (Parfect-5th down)
 			setKeySignature(new Key(keyCo5 - 1));
 			return;
 		}
 		else if( keyCode == KeyEvent.VK_RIGHT || keyCode == KeyEvent.VK_KP_RIGHT ) {
-			// Add a sharp
+			// Add a sharp to key-signature (Parfect-5th up)
 			setKeySignature(new Key(keyCo5 + 1));
 			return;
 		}
@@ -803,10 +807,6 @@ public class ChordMatrix extends JPanel
 				intervals.add(Chord.Interval.SHARP5);
 			}
 			else intervals.add(Chord.Interval.FLAT5);
-		}
-		if( e.isControlDown() ) {
-			// TODO: ^Hなど、ここに到達する前に特殊な keyChar がやってきてしまうことがある
-			intervals.add(Chord.Interval.NINTH);
 		}
 		chord = new Chord(cl.chord, intervals);
 		if( selectedChordLabel != null ) clear();

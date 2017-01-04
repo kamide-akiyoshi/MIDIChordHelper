@@ -185,14 +185,14 @@ public class ChordProgression {
 	 * @param timeSignatureUpper 拍子の分子
 	 */
 	public ChordProgression( int measureLength, int timeSignatureUpper ) {
-		int keyCo5 = (int)(Math.random() * 12) - 5;
-		key = new Key(keyCo5, Key.MajorMinor.MAJOR);
 		lines = new Vector<Line>();
 		Line line = new Line();
 		boolean isEnd;
-		Chord chord, prevChord = new Chord(new NoteSymbol(keyCo5));
+		double r = Math.random();
+		int keyCo5 = (int)(r * 12) - 5;
+		Chord prevChord = new Chord(key = new Key(keyCo5, Key.MajorMinor.MAJOR));
+		Chord chord;
 		int co5Offset, prevCo5Offset;
-		double r;
 		for( int mp=0; mp<measureLength; mp++ ) {
 			isEnd = (mp == 0 || mp == measureLength - 1); // 最初または最後の小節かを覚えておく
 			Measure measure = new Measure();

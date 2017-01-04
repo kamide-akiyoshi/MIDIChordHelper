@@ -342,23 +342,20 @@ public class Chord {
 	 * コード名からコードを構築します。
 	 * @param chordSymbol コード名
 	 * @throws NullPointerException コード名にnullが指定された場合
+	 * @throws IllegalArgumentException コード名が空文字列の場合、または音名で始まっていない場合
 	 */
 	public Chord(String chordSymbol) {
+		String rootOnBass[] = Objects.requireNonNull(chordSymbol, "Chord symbol must not be null").trim().split("(/|on)");
+		String root = (rootOnBass.length > 0 ? rootOnBass[0].trim() : "");
+		bassNoteSymbol = rootNoteSymbol = new NoteSymbol(root);
+		if( rootOnBass.length > 1 ) {
+			String bass = rootOnBass[1].trim();
+			if( ! root.equals(bass) ) bassNoteSymbol = new NoteSymbol(bass);
+		}
 		intervalMap = new HashMap<>();
 		set(Interval.MAJOR);
 		set(Interval.PARFECT5);
-		String rootOnBass[] = chordSymbol.trim().split("(/|on)");
-		if( rootOnBass.length == 0 ) {
-			bassNoteSymbol = rootNoteSymbol = new NoteSymbol();
-		} else {
-			String root = rootOnBass[0].trim();
-			bassNoteSymbol = rootNoteSymbol = new NoteSymbol(root);
-			if( rootOnBass.length > 1 ) {
-				String bass = rootOnBass[1].trim();
-				if( ! root.equals(bass) ) bassNoteSymbol = new NoteSymbol(bass);
-			}
-			setSymbolSuffix(root.replaceFirst("^[A-G][#bx]*",""));
-		}
+		setSymbolSuffix(root.replaceFirst("^[A-G][#bx]*",""));
 		fixIntervals();
 	}
 	/**
@@ -509,10 +506,7 @@ public class Chord {
 		return new Chord(root, bass, intervals);
 	}
 
-	/**
-	 * この和音の文字列表現としてコード名を返します。
-	 * @return この和音のコード名
-	 */
+	/** この和音の文字列表現としてコード名（例： C、Am、G7）を返します。 */
 	@Override
 	public String toString() {
 		String chordSymbol = rootNoteSymbol + symbolSuffix();
