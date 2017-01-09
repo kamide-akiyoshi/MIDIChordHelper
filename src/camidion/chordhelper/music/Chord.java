@@ -230,14 +230,14 @@ public class Chord {
 	 * ルート音を返します。
 	 * @return ルート音
 	 */
-	public NoteSymbol rootNoteSymbol() { return rootNoteSymbol; }
-	private NoteSymbol rootNoteSymbol;
+	public Note rootNoteSymbol() { return rootNoteSymbol; }
+	private Note rootNoteSymbol;
 	/**
 	 * ベース音を返します。オンコードの場合はルート音と異なります。
 	 * @return ベース音
 	 */
-	public NoteSymbol bassNoteSymbol() { return bassNoteSymbol; }
-	private NoteSymbol bassNoteSymbol;
+	public Note bassNoteSymbol() { return bassNoteSymbol; }
+	private Note bassNoteSymbol;
 	/**
 	 * 指定した音程が設定されているか調べます。
 	 * @param interval 音程
@@ -272,7 +272,7 @@ public class Chord {
 	 * （メジャーコードの構成音である長三度・完全五度は、指定しなくてもデフォルトで設定されます）
 	 * @throws NullPointerException ルート音にnullが指定された場合
 	 */
-	public Chord(NoteSymbol root, Interval... intervals) {
+	public Chord(Note root, Interval... intervals) {
 		this(root, root, intervals);
 	}
 	/**
@@ -283,7 +283,7 @@ public class Chord {
 	 * （メジャーコードの構成音である長三度・完全五度は、指定しなくてもデフォルトで設定されます）
 	 * @throws NullPointerException ルート音にnullが指定された場合
 	 */
-	public Chord(NoteSymbol root, NoteSymbol bass, Interval... intervals) {
+	public Chord(Note root, Note bass, Interval... intervals) {
 		this(root, bass, Arrays.asList(intervals));
 	}
 	/**
@@ -294,7 +294,7 @@ public class Chord {
 	 * （メジャーコードの構成音である長三度・完全五度は、指定しなくてもデフォルトで設定されます）
 	 * @throws NullPointerException ルート音、または構成音コレクションにnullが指定された場合
 	 */
-	public Chord(NoteSymbol root, NoteSymbol bass, Collection<Interval> intervals) {
+	public Chord(Note root, Note bass, Collection<Interval> intervals) {
 		rootNoteSymbol = Objects.requireNonNull(root);
 		bassNoteSymbol = (bass==null ? root : bass);
 		intervalMap = new HashMap<>();
@@ -335,7 +335,7 @@ public class Chord {
 		int keyCo5 = key.toCo5(); if( key.majorMinor() == Key.MajorMinor.MINOR ) {
 			keyCo5 += 3; set(Interval.MINOR);
 		} else set(Interval.MAJOR);
-		bassNoteSymbol = rootNoteSymbol = new NoteSymbol(keyCo5);
+		bassNoteSymbol = rootNoteSymbol = new Note(keyCo5);
 		fixIntervals();
 	}
 	/**
@@ -347,10 +347,10 @@ public class Chord {
 	public Chord(String chordSymbol) {
 		String rootOnBass[] = Objects.requireNonNull(chordSymbol, "Chord symbol must not be null").trim().split("(/|on)");
 		String root = (rootOnBass.length > 0 ? rootOnBass[0].trim() : "");
-		bassNoteSymbol = rootNoteSymbol = new NoteSymbol(root);
+		bassNoteSymbol = rootNoteSymbol = new Note(root);
 		if( rootOnBass.length > 1 ) {
 			String bass = rootOnBass[1].trim();
-			if( ! root.equals(bass) ) bassNoteSymbol = new NoteSymbol(bass);
+			if( ! root.equals(bass) ) bassNoteSymbol = new Note(bass);
 		}
 		intervalMap = new HashMap<>();
 		set(Interval.MAJOR);
@@ -440,13 +440,13 @@ public class Chord {
 	 */
 	public int indexOf(int noteNumber) {
 		int relativeNote = noteNumber - rootNoteSymbol.toNoteNumber();
-		if( Music.mod12(relativeNote) == 0 ) return 0;
+		if( Note.mod12(relativeNote) == 0 ) return 0;
 		Interval itv;
 		int i=0;
 		for( IntervalGroup offsetIndex : IntervalGroup.values() ) {
 			if( (itv = intervalMap.get(offsetIndex)) != null ) {
 				i++;
-				if( Music.mod12(relativeNote - itv.getChromaticOffset()) == 0 )
+				if( Note.mod12(relativeNote - itv.getChromaticOffset()) == 0 )
 					return i;
 			}
 		}
@@ -459,13 +459,12 @@ public class Chord {
 	 * @throws NullPointerException キーにnullが指定された場合
 	 */
 	public boolean isOnScaleIn(Key key) {
-		int keyCo5 = key.toCo5();
-		int rootnote = rootNoteSymbol.toNoteNumber();
-		if( ! Music.isOnScale(rootnote, keyCo5) ) return false;
+		int root = rootNoteSymbol.toNoteNumber();
+		if( ! key.isOnScale(root) ) return false;
 		Interval itv;
 		for( IntervalGroup offsetIndex : IntervalGroup.values() ) {
 			if( (itv = intervalMap.get(offsetIndex)) == null ) continue;
-			if( ! Music.isOnScale(rootnote + itv.getChromaticOffset(), keyCo5) ) return false;
+			if( ! key.isOnScale(root + itv.getChromaticOffset()) ) return false;
 		}
 		return true;
 	}
@@ -488,7 +487,7 @@ public class Chord {
 	}
 	private Chord transposedNewChord(int chromaticOffset, int originalKeyCo5) {
 		if( chromaticOffset == 0 ) return this;
-		int offsetCo5 = Music.mod12(Music.toggleCo5(chromaticOffset));
+		int offsetCo5 = Note.mod12(Note.toggleCo5(chromaticOffset));
 		if( offsetCo5 > 6 ) offsetCo5 -= 12;
 		int keyCo5 = originalKeyCo5 + offsetCo5;
 		int newRootCo5 = rootNoteSymbol.toCo5() + offsetCo5;
@@ -501,8 +500,8 @@ public class Chord {
 			newRootCo5 += 12;
 			newBassCo5 += 12;
 		}
-		NoteSymbol root = new NoteSymbol(newRootCo5);
-		NoteSymbol bass = (newBassCo5 == newRootCo5 ? root : new NoteSymbol(newBassCo5));
+		Note root = new Note(newRootCo5);
+		Note bass = (newBassCo5 == newRootCo5 ? root : new Note(newBassCo5));
 		return new Chord(root, bass, intervals);
 	}
 
@@ -554,9 +553,9 @@ public class Chord {
 	 * @return コードの説明（英語）
 	 */
 	public String toName() {
-		String name = rootNoteSymbol.toStringIn(NoteSymbol.Language.NAME) + nameSuffix() ;
+		String name = rootNoteSymbol.toStringIn(Note.Language.NAME) + nameSuffix() ;
 		if( ! rootNoteSymbol.equals(bassNoteSymbol) ) {
-			name += " on " + bassNoteSymbol.toStringIn(NoteSymbol.Language.NAME);
+			name += " on " + bassNoteSymbol.toStringIn(Note.Language.NAME);
 		}
 		return name;
 	}

@@ -36,8 +36,7 @@ import camidion.chordhelper.chorddiagram.CapoSelecterView;
 import camidion.chordhelper.midieditor.SequenceTickIndex;
 import camidion.chordhelper.music.Chord;
 import camidion.chordhelper.music.Key;
-import camidion.chordhelper.music.Music;
-import camidion.chordhelper.music.NoteSymbol;
+import camidion.chordhelper.music.Note;
 
 /**
  * MIDI Chord Helper 用のコードボタンマトリクス
@@ -50,7 +49,7 @@ public class ChordMatrix extends JPanel
 	implements MouseListener, KeyListener, MouseMotionListener, MouseWheelListener
 {
 	/** 列数 */
-	public static final int	N_COLUMNS = Music.SEMITONES_PER_OCTAVE * 2 + 1;
+	public static final int	N_COLUMNS = Note.SEMITONES_PER_OCTAVE * 2 + 1;
 	/** 行数 */
 	public static final int	CHORD_BUTTON_ROWS = 3;
 	/** 調号ボタン */
@@ -60,7 +59,7 @@ public class ChordMatrix extends JPanel
 	/** コードボタンの下のコード表示部 */
 	public ChordDisplayLabel chordDisplay = new ChordDisplayLabel("Chord Pad", this, null);
 
-	private NoteWeight noteWeightArray[] = new NoteWeight[Music.SEMITONES_PER_OCTAVE];
+	private NoteWeight noteWeightArray[] = new NoteWeight[Note.SEMITONES_PER_OCTAVE];
 	/**
 	 * 発音中のノート表示をクリアします。
 	 */
@@ -75,7 +74,7 @@ public class ChordMatrix extends JPanel
 	 */
 	public void note(boolean isNoteOn, int noteNumber) {
 		int diff = (isNoteOn ? 1 : -1);
-		NoteWeight w = noteWeightArray[Music.mod12(noteNumber)];
+		NoteWeight w = noteWeightArray[Note.mod12(noteNumber)];
 		if( noteNumber < 49 ) w.addBass(diff); else w.add(diff);
 	}
 
@@ -95,7 +94,7 @@ public class ChordMatrix extends JPanel
 			String tip = "Key signature: ";
 			if(v != key.toCo5()) tip += "out of range" ; else {
 				tip += key.signatureDescription() + " " +
-					key.toStringIn(NoteSymbol.Language.IN_JAPANESE);
+					key.toStringIn(Note.Language.IN_JAPANESE);
 				if( v == 0 ) {
 					setIcon(new ButtonIcon(ButtonIcon.NATURAL_ICON));
 				}
@@ -369,27 +368,26 @@ public class ChordMatrix extends JPanel
 			setFont(isBold ? boldFont : plainFont);
 		}
 		public void keyChanged() {
-			int co5Key = capoKey.toCo5();
-			int co5Offset = co5Value - co5Key;
+			int co5Offset = co5Value - capoKey.toCo5();
 			inActiveZone = (co5Offset <= 6 && co5Offset >= -6) ;
-			int rootNote = chord.rootNoteSymbol().toNoteNumber();
+			int root = chord.rootNoteSymbol().toNoteNumber();
 			//
 			// Reconstruct color index
 			//
 			// Root
-			indicatorColorIndices[0] = Music.isOnScale(rootNote, co5Key) ? 0 : co5Offset > 0 ? 1 : 2;
+			indicatorColorIndices[0] = capoKey.isOnScale(root) ? 0 : co5Offset > 0 ? 1 : 2;
 			//
 			// 3rd / sus4
-			indicatorColorIndices[1] = Music.isOnScale(rootNote+(isMinor?3:isSus4?5:4), co5Key) ? 0 : co5Offset > 0 ? 1 : 2;
+			indicatorColorIndices[1] = capoKey.isOnScale(root+(isMinor?3:isSus4?5:4)) ? 0 : co5Offset > 0 ? 1 : 2;
 			//
 			// P5th
-			indicatorColorIndices[2] = Music.isOnScale(rootNote+7, co5Key) ? 0 : co5Offset > 0 ? 1 : 2;
+			indicatorColorIndices[2] = capoKey.isOnScale(root+7) ? 0 : co5Offset > 0 ? 1 : 2;
 			//
 			// dim5th
-			indicatorColorIndices[3] = Music.isOnScale(rootNote+6, co5Key) ? 0 : co5Offset > 4 ? 1 : 2;
+			indicatorColorIndices[3] = capoKey.isOnScale(root+6) ? 0 : co5Offset > 4 ? 1 : 2;
 			//
 			// aug5th
-			indicatorColorIndices[4] = Music.isOnScale(rootNote+8, co5Key) ? 0 : co5Offset > -3 ? 1 : 2;
+			indicatorColorIndices[4] = capoKey.isOnScale(root+8) ? 0 : co5Offset > -3 ? 1 : 2;
 		}
 	}
 
@@ -448,7 +446,7 @@ public class ChordMatrix extends JPanel
 		// Make key-signature labels and chord labels
 		KeySignatureLabel l;
 		int i, v;
-		for (i=0, v= -Music.SEMITONES_PER_OCTAVE; i<N_COLUMNS; i++, v++) {
+		for (i=0, v= -Note.SEMITONES_PER_OCTAVE; i<N_COLUMNS; i++, v++) {
 			l = new KeySignatureLabel(v);
 			l.addMouseListener(this);
 			l.addMouseMotionListener(this);
@@ -461,9 +459,9 @@ public class ChordMatrix extends JPanel
 			v = i - (N_COLUMNS * row) - 12;
 			Chord chord;
 			switch(row) {
-			case 0: chord = new Chord(new NoteSymbol(v), Chord.Interval.SUS4); break;
-			case 2: chord = new Chord(new NoteSymbol(v+3), Chord.Interval.MINOR); break;
-			default: chord = new Chord(new NoteSymbol(v)); break;
+			case 0: chord = new Chord(new Note(v), Chord.Interval.SUS4); break;
+			case 2: chord = new Chord(new Note(v+3), Chord.Interval.MINOR); break;
+			default: chord = new Chord(new Note(v)); break;
 			}
 			ChordLabel cl = new ChordLabel(chord);
 			cl.addMouseListener(this);
@@ -484,7 +482,7 @@ public class ChordMatrix extends JPanel
 			}
 		});
 		setLayout(new GridLayout( 4, N_COLUMNS, 2, 2 ));
-		setKeySignature(new Key());
+		setKeySignature(Key.C_MAJOR_OR_A_MINOR);
 		//
 		// Setup note weight array
 		//
@@ -568,7 +566,7 @@ public class ChordMatrix extends JPanel
 		else if( obj instanceof KeySignatureLabel ) {
 			int v = ((KeySignatureLabel)obj).co5Value;
 			if( (e.getModifiersEx() & InputEvent.BUTTON3_DOWN_MASK) != 0 ) {
-				setKeySignature( new Key(Music.oppositeCo5(v)) );
+				setKeySignature( new Key(Note.oppositeCo5(v)) );
 			}
 			else if ( v == key.toCo5() ) {
 				//
@@ -693,7 +691,7 @@ public class ChordMatrix extends JPanel
 			KeySignatureLabel keyDraggedTo = (KeySignatureLabel)draggedTo;
 			int v = keyDraggedTo.co5Value;
 			if( (e.getModifiersEx() & InputEvent.BUTTON3_DOWN_MASK) != 0 ) {
-				v = Music.oppositeCo5(v);
+				v = Note.oppositeCo5(v);
 			}
 			setKeySignature(new Key(v));
 			repaint();
@@ -780,12 +778,12 @@ public class ChordMatrix extends JPanel
 		}
 		else if( keyCode == KeyEvent.VK_DOWN || keyCode == KeyEvent.VK_KP_DOWN ) {
 			// Semitone down
-			setKeySignature(new Key(Music.transposeCo5(keyCo5, -1)));
+			setKeySignature(new Key(Note.transposeCo5(keyCo5, -1)));
 			return;
 		}
 		else if( keyCode == KeyEvent.VK_UP || keyCode == KeyEvent.VK_KP_UP ) {
 			// Semitone up
-			setKeySignature(new Key(Music.transposeCo5(keyCo5, 1)));
+			setKeySignature(new Key(Note.transposeCo5(keyCo5, 1)));
 			return;
 		}
 		if( i < 0 ) return; // No key char found
@@ -857,13 +855,13 @@ public class ChordMatrix extends JPanel
 		}
 		else {
 			keysigLabels[this.key.toCo5() + 12].setSelection(false);
-			for( i = Music.mod12(this.key.toCo5()); i < N_COLUMNS; i+=12 ) {
+			for( i = Note.mod12(this.key.toCo5()); i < N_COLUMNS; i+=12 ) {
 				keysigLabels[i].setBackground(false);
 			}
 		}
 		// Set new value
 		keysigLabels[i = key.toCo5() + 12].setSelection(true);
-		for( i = Music.mod12(key.toCo5()); i < N_COLUMNS; i+=12 ) {
+		for( i = Note.mod12(key.toCo5()); i < N_COLUMNS; i+=12 ) {
 			keysigLabels[i].setBackground(true);
 		}
 		// Change chord-label's color & font
@@ -878,9 +876,9 @@ public class ChordMatrix extends JPanel
 			}
 			else cl.setBackground(i_color);
 			if( !(cl.isSus4) ) {
-				if( this.key != null && Music.mod12(cl.co5Value - this.key.toCo5()) == 0)
+				if( this.key != null && Note.mod12(cl.co5Value - this.key.toCo5()) == 0)
 					cl.setBold(false);
-				if( Music.mod12( cl.co5Value - key.toCo5() ) == 0 )
+				if( Note.mod12( cl.co5Value - key.toCo5() ) == 0 )
 					cl.setBold(true);
 			}
 		}

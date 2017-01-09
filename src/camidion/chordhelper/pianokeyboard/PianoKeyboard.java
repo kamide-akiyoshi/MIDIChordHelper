@@ -43,7 +43,7 @@ import camidion.chordhelper.midieditor.MidiChannelComboBoxModel;
 import camidion.chordhelper.music.Chord;
 import camidion.chordhelper.music.Key;
 import camidion.chordhelper.music.MIDISpec;
-import camidion.chordhelper.music.Music;
+import camidion.chordhelper.music.Note;
 
 /**
  * Piano Keyboard class for MIDI Chord Helper
@@ -67,7 +67,7 @@ public class PianoKeyboard extends JComponent {
 	public static final Color DARK_PINK = new Color(0xFF,0x50,0x80);
 
 	/** １オクターブあたりの幅 */
-	private static float WIDTH_PER_OCTAVE = Music.SEMITONES_PER_OCTAVE * 10;
+	private static float WIDTH_PER_OCTAVE = Note.SEMITONES_PER_OCTAVE * 10;
 	/** 白鍵のサイズ */
 	private Dimension	whiteKeySize;
 	/** 黒鍵のサイズ */
@@ -698,13 +698,13 @@ public class PianoKeyboard extends JComponent {
 		int i = noteNumber - getChromaticOffset();
 		if( i < 0 ) {
 			octaveRangeModel.setValue(
-				octaveRangeModel.getValue() - (-i)/Music.SEMITONES_PER_OCTAVE - 1
+				octaveRangeModel.getValue() - (-i)/Note.SEMITONES_PER_OCTAVE - 1
 			);
 			return true;
 		}
 		if( i >= keys.length ) {
 			octaveRangeModel.setValue(
-				octaveRangeModel.getValue() + (i-keys.length)/Music.SEMITONES_PER_OCTAVE + 1
+				octaveRangeModel.getValue() + (i-keys.length)/Note.SEMITONES_PER_OCTAVE + 1
 			);
 			return true;
 		}
@@ -789,7 +789,7 @@ public class PianoKeyboard extends JComponent {
 	}
 	int getMaxSelectable() { return maxSelectable; }
 	public int getChromaticOffset() {
-		return octaveRangeModel.getValue() * Music.SEMITONES_PER_OCTAVE ;
+		return octaveRangeModel.getValue() * Note.SEMITONES_PER_OCTAVE ;
 	}
 	public int getOctaves() { return octaveSizeModel.getValue(); }
 	private int getPerferredOctaves() {
@@ -841,9 +841,9 @@ public class PianoKeyboard extends JComponent {
 			default: break;
 			}
 			keyPoint.x = whiteKeySize.width * (
-				i / Music.SEMITONES_PER_OCTAVE * 7 + (i12+(is_CDE?1:2))/2
+				i / Note.SEMITONES_PER_OCTAVE * 7 + (i12+(is_CDE?1:2))/2
 			);
-			if( Music.isOnScale(i12,0) ) {
+			if( Key.C_MAJOR_OR_A_MINOR.isOnScale(i12) ) {
 				k = new PianoKey( keyPoint, whiteKeySize, indicatorSize );
 				k.isBlack = false;
 				vWhiteKeys.add(k);

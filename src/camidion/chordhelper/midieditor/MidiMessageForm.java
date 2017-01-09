@@ -24,7 +24,7 @@ import javax.swing.event.ChangeListener;
 
 import camidion.chordhelper.music.Key;
 import camidion.chordhelper.music.MIDISpec;
-import camidion.chordhelper.music.NoteSymbol;
+import camidion.chordhelper.music.Note;
 import camidion.chordhelper.pianokeyboard.PianoKeyboardAdapter;
 import camidion.chordhelper.pianokeyboard.PianoKeyboardPanel;
 
@@ -60,7 +60,7 @@ public class MidiMessageForm extends JPanel implements ActionListener {
 		new DefaultComboBoxModel<String>() {
 			{
 				for( int i = 0; i<=0x7F; i++ ) addElement(
-					String.format("0x%02X : %d : %s", i, i, NoteSymbol.noteNumberToSymbol(i))
+					String.format("0x%02X : %d : %s", i, i, Note.noteNumberToSymbol(i))
 				);
 				// Center note C
 				setSelectedItem(getElementAt(60));

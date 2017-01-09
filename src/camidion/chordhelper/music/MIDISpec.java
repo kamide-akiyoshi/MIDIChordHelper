@@ -20,6 +20,14 @@ public class MIDISpec {
 	public static final int MAX_CHANNELS = 16;
 	public static final int PITCH_BEND_NONE = 8192;
 	/**
+	 * 指定されたMIDIノート番号の音の周波数（A=440Hzチューニング時）を返します。
+	 * @param noteNumber MIDIノート番号
+	 * @return 音の周波数[Hz]
+	 */
+	public static double noteNumberToFrequency(int noteNumber) {
+		return 55 * Math.pow( 2, (double)(noteNumber - 33)/12 );
+	}
+	/**
 	 * メタメッセージタイプ名マップ
 	 */
 	private static final Map<Integer,String>
@@ -713,7 +721,7 @@ public class MIDISpec {
 						str += getPercussionName(data1);
 					}
 					else {
-						str += NoteSymbol.noteNumberToSymbol(data1);
+						str += Note.noteNumberToSymbol(data1);
 					}
 					str +="] Velocity=" + data2;
 					break;
@@ -851,7 +859,7 @@ public class MIDISpec {
 				if( msgdata.length == 2 ) {
 					Key key = new Key(msgdata);
 					str += ": " + key.signatureDescription();
-					str += " (" + key.toStringIn(NoteSymbol.Language.NAME) + ")";
+					str += " (" + key.toStringIn(Note.Language.NAME) + ")";
 					break;
 				}
 				str += ": Size not 2 byte : data=(";

@@ -21,8 +21,7 @@ import javax.swing.event.ChangeListener;
 
 import camidion.chordhelper.chorddiagram.ChordDiagram.Instrument;
 import camidion.chordhelper.music.Chord;
-import camidion.chordhelper.music.Music;
-import camidion.chordhelper.music.NoteSymbol;
+import camidion.chordhelper.music.Note;
 
 /**
  * コードダイアグラム表示部
@@ -382,7 +381,7 @@ class ChordDiagramDisplay extends JComponent implements MouseListener, MouseMoti
 			}
 			g2.setColor(getForeground());
 			g2.drawString(
-				NoteSymbol.noteNumberToSymbol(notesWhenOpen[i], 2),
+				Note.noteNumberToSymbol(notesWhenOpen[i], 2),
 				LEFT_MARGIN_WIDTH,
 				string_y + (fm.getHeight() - fm.getDescent())/2
 			);
@@ -517,7 +516,7 @@ class ChordDiagramDisplay extends JComponent implements MouseListener, MouseMoti
 				continue;
 			int note = notesWhenOpen[button.stringIndex];
 			note += (e.getButton()==MouseEvent.BUTTON3 ? 11 : 1);
-			notesWhenOpen[button.stringIndex] = Music.mod12(note);
+			notesWhenOpen[button.stringIndex] = Note.mod12(note);
 			setChord();
 			return;
 		}

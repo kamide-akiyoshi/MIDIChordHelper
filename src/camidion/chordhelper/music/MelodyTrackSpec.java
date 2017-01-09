@@ -40,7 +40,7 @@ public class MelodyTrackSpec extends AbstractNoteTrackSpec {
 	 */
 	public MelodyTrackSpec(int ch, String name) {
 		super(ch,name);
-		range = new Range(Music.SEMITONES_PER_OCTAVE * 5, Music.SEMITONES_PER_OCTAVE * 6 );
+		range = new Range(Note.SEMITONES_PER_OCTAVE * 5, Note.SEMITONES_PER_OCTAVE * 6 );
 	}
 	/**
 	 * 音域を指定してメロディトラック仕様を構築
@@ -122,7 +122,7 @@ public class MelodyTrackSpec extends AbstractNoteTrackSpec {
 						int totalWeight = 0;
 						for( i=0; i<noteWeights.length; i++ ) {
 							noteNumber = range.minNote + i;
-							int m12 = Music.mod12(noteNumber - chord.rootNoteSymbol().toNoteNumber());
+							int m12 = Note.mod12(noteNumber - chord.rootNoteSymbol().toNoteNumber());
 							int w;
 							if( chord.indexOf(noteNumber) >= 0 ) {
 								// コード構成音は確率を上げる

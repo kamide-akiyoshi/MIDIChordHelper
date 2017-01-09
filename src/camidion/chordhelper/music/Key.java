@@ -18,6 +18,11 @@ public class Key {
 	 */
 	public static final int MAX_SHARPS_OR_FLATS = 7;
 	/**
+	 * 調号が空（C/Am ハ長調またはイ短調）で、メジャー・マイナーの区別のない調
+	 */
+	public static final Key C_MAJOR_OR_A_MINOR = new Key();
+	private Key() { }
+	/**
 	 * キー指定（メジャー／マイナー／両方）
 	 */
 	public enum MajorMinor {
@@ -59,10 +64,6 @@ public class Key {
 	 * メジャー・マイナーの区別
 	 */
 	private MajorMinor majorMinor = MajorMinor.MAJOR_OR_MINOR;
-	/**
-	 * 調号が空（C/Am ハ長調またはイ短調）で、メジャー・マイナーの区別のない調を構築します。
-	 */
-	public Key() { }
 	/**
 	 * 指定の五度圏インデックス値を持つ、メジャー・マイナーの区別のない調を構築します。
 	 *
@@ -108,7 +109,7 @@ public class Key {
 	 * @throw IllegalArgumentException 引数が空文字列の場合、または音名で始まっていない場合
 	 */
 	public Key(String keySymbol) throws IllegalArgumentException {
-		co5 = NoteSymbol.co5OfSymbol(keySymbol);
+		co5 = Note.toCo5Of(keySymbol);
 		if( keySymbol.matches(".*m") ) { majorMinor = MajorMinor.MINOR; co5 -= 3; }
 		else majorMinor = MajorMinor.MAJOR;
 		normalize();
@@ -134,7 +135,7 @@ public class Key {
 	 */
 	private void normalize() {
 		if( co5 >= -MAX_SHARPS_OR_FLATS && co5 <= MAX_SHARPS_OR_FLATS ) return;
-		if( (co5 = Music.mod12(co5)) > 6 ) co5 -= Music.SEMITONES_PER_OCTAVE;
+		if( (co5 = Note.mod12(co5)) > 6 ) co5 -= Note.SEMITONES_PER_OCTAVE;
 	}
 	/**
 	 * 五度圏インデックス値を返します。
@@ -164,15 +165,16 @@ public class Key {
 	 */
 	@Override
 	public String toString() {
-		String s = toStringIn(NoteSymbol.Language.SYMBOL);
-		if(majorMinor == MajorMinor.MAJOR_OR_MINOR) s = signature() + " : " + s;
+		String s = toStringIn(Note.Language.SYMBOL);
+		if( majorMinor == MajorMinor.MAJOR_OR_MINOR ) s = signature() + " : " + s;
 		return s;
 	}
 	/**
-	 * この調の文字列表現を、指定された形式で返します。
+	 * この調の文字列表現を、指定された言語モードで返します。
+	 * @param language 言語モード
 	 * @return この調の文字列表現
 	 */
-	public String toStringIn(NoteSymbol.Language language) {
+	public String toStringIn(Note.Language language) {
 		return language.stringOf(this);
 	}
 	/**
@@ -214,30 +216,31 @@ public class Key {
 		return new byte[] {(byte) co5, (byte) ((majorMinor == MajorMinor.MINOR) ? 1 : 0)};
 	}
 	/**
-	 * 相対ドの音階を返します。
+	 * この調の相対ドの音階を返します。
 	 * @return 相対ドの音階（0～11）
 	 */
-	public int relativeDo() { return NoteSymbol.majorCo5ToNoteNumber(co5); }
+	public int relativeDo() { return Note.mod12(Note.toggleCo5(co5)); }
 	/**
 	 * この調のルート音を表すノート番号（オクターブ抜き）を返します。
-	 * メジャーキーの場合は相対ド、
-	 * マイナーキーの場合は相対ラの音階です。
+	 * メジャーキーの場合は相対ド、マイナーキーの場合は相対ラの音階です。
 	 *
 	 * @return キーのルート音（0～11）
 	 */
 	public int rootNoteNumber() {
-		int n = relativeDo();
-		return majorMinor==MajorMinor.MINOR ? Music.mod12(n-3) : n;
+		return majorMinor==MajorMinor.MINOR ? Note.mod12(Note.toggleCo5(co5) - 3) : relativeDo();
 	}
 	/**
-	 * 指定されたノート番号の音が、この調のスケールの構成音か調べます。
-	 * メジャーキーの場合はメジャースケール、
-	 * マイナーキーの場合はナチュラルマイナースケールとして判断されます。
+	 * 指定されたMIDIノート番号の示す音階が、この調のメジャースケールまたは
+	 * ナチュラルマイナースケールの構成音に該当するか調べます。
+	 *
+	 * キーがハ長調またはイ短調の場合、白鍵のときにtrue、黒鍵のときにfalseを返します。
 	 *
 	 * @param noteNumber ノート番号
 	 * @return 指定されたノート番号がこのキーのスケールの構成音ならtrue
 	 */
-	public boolean isOnScale(int noteNumber) { return Music.isOnScale(noteNumber, co5); }
+	public boolean isOnScale(int noteNumber) {
+		return Note.mod12(Note.toggleCo5(noteNumber) - co5 + 1) < 7 ;
+	}
 	/**
 	 * この調に対する平行調を返します。
 	 * これは元の調と同じ調号を持つ、メジャーとマイナーが異なる調です。
@@ -280,13 +283,13 @@ public class Key {
 	 * @return 移調した調
 	 */
 	public Key transposedKey(int chromaticOffset) {
-		return chromaticOffset == 0 ? this : new Key(Music.transposeCo5(co5, chromaticOffset), majorMinor);
+		return chromaticOffset == 0 ? this : new Key(Note.transposeCo5(co5, chromaticOffset), majorMinor);
 	}
 	/**
 	 * 五度圏で真裏にあたる調を返します。
 	 * @return 五度圏で真裏にあたる調
 	 */
 	public Key createOppositeKey() {
-		return new Key(Music.oppositeCo5(co5), majorMinor);
+		return new Key(Note.oppositeCo5(co5), majorMinor);
 	}
 }

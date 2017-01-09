@@ -16,9 +16,7 @@ import java.util.Objects;
  * 非常に高い親和性を持ちます。
  * </p>
  */
-public class NoteSymbol {
-	private static final int INDEX_OF_A = Language.SYMBOL.indexOf("A");
-	private static final int INDEX_OF_C = Language.SYMBOL.indexOf("C");
+public class Note {
 	/**
 	 * 音階や調を表すシンボルの言語モードによる違いを定義します。
 	 * <p>音名には、下記のような五度圏順のインデックス値（0～34）が割り当てられます。
@@ -123,9 +121,8 @@ public class NoteSymbol {
 		 */
 		private String majorMinorDelimiter;
 		/**
-		 * 調の文字列表現を返します。メジャー／マイナーの区別がない場合、両方の表現を返します。
-		 * @param majorCo5 調の五度圏の値（0 == C/Am）
-		 * @param majorMinor メジャー／マイナーの区別
+		 * 調の文字列表現を返します。メジャー／マイナーの区別がない場合、両方の表現を返します（例： "A / F#m"）。
+		 * @param key 対象の調
 		 * @return 調の文字列表現
 		 */
 		public String stringOf(Key key) {
@@ -140,16 +137,22 @@ public class NoteSymbol {
 			return s + stringOf(co5 + INDEX_OF_A) + minor;
 		}
 	}
+	private static final int INDEX_OF_A = Language.SYMBOL.indexOf("A");
+	private static final int INDEX_OF_C = Language.SYMBOL.indexOf("C");
 	/** メジャーキー基準の五度圏インデックス値 */
 	private int majorCo5;
 	/** ノート番号（0～11） */
 	private int noteNumber;
 	/**
+	 * １オクターブの半音数
+	 */
+	public static final int SEMITONES_PER_OCTAVE = 12;
+	/**
 	 * 五度圏インデックス値（メジャーキー基準）から音名を構築します。
 	 * @param majorCo5 五度圏インデックス値
 	 */
-	public NoteSymbol(int majorCo5) {
-		noteNumber = majorCo5ToNoteNumber(this.majorCo5 = majorCo5);
+	public Note(int majorCo5) {
+		noteNumber = mod12(toggleCo5(this.majorCo5 = majorCo5));
 	}
 	/**
 	 * 音名を文字列から構築します。
@@ -157,7 +160,7 @@ public class NoteSymbol {
 	 * @throws NullPointerException 引数がnullの場合
 	 * @throws IllegalArgumentException 引数が空文字列の場合、または音名で始まっていない場合
 	 */
-	public NoteSymbol(String noteSymbol) { this(co5OfSymbol(noteSymbol)); }
+	public Note(String noteSymbol) { this(toCo5Of(noteSymbol)); }
 	/**
 	 * この音階が指定されたオブジェクトと等しいか調べます。
 	 *
@@ -170,8 +173,8 @@ public class NoteSymbol {
 	@Override
 	public boolean equals(Object anObject) {
 		if( this == anObject ) return true;
-		if( ! (anObject instanceof NoteSymbol) ) return false;
-		return majorCo5 == ((NoteSymbol)anObject).majorCo5;
+		if( ! (anObject instanceof Note) ) return false;
+		return majorCo5 == ((Note)anObject).majorCo5;
 	}
 	/**
 	 * この音階のハッシュコード値として、
@@ -186,7 +189,7 @@ public class NoteSymbol {
 	 * @param another 比較対象の音階
 	 * @return 等しければtrue
 	 */
-	public boolean equalsEnharmonically(NoteSymbol another) {
+	public boolean equalsEnharmonically(Note another) {
 		return this == another || this.noteNumber == another.noteNumber;
 	}
 	/**
@@ -195,13 +198,18 @@ public class NoteSymbol {
 	 */
 	public int toCo5() { return majorCo5; }
 	/**
-	 * ノート番号（0～11）を返します。
-	 * <p>これはMIDIノート番号からオクターブ情報を抜いた値と同じです。
-	 * 五度圏インデックス値をノート番号に変換した場合、
-	 * 異名同音、すなわち同じ音階が♭表記、♯表記のどちらだったか
-	 * という情報は失われます。
-	 * </p>
-	 * @return ノート番号（0～11）
+	 * 引数で指定された音名のメジャーキー基準の五度圏インデックスを返します。
+	 * @param noteSymbol 音名の文字列
+	 * @return メジャーキー基準の五度圏インデックス
+	 * @throws NullPointerException 引数がnullの場合
+	 * @throws IllegalArgumentException 引数が空文字列の場合、または音名で始まっていない場合
+	 */
+	public static int toCo5Of(String noteSymbol) {
+		return Language.SYMBOL.indexOf(noteSymbol) - INDEX_OF_C;
+	}
+	/**
+	 * この音階に対応するMIDIノート番号（0オリジン表記）の最小値（オクターブの最も低い値）を返します。
+	 * @return MIDIノート番号の最小値（0～11）
 	 */
 	public int toNoteNumber() { return noteNumber; }
 	/**
@@ -216,31 +224,58 @@ public class NoteSymbol {
 	 * @return 文字列表現
 	 * @throws NullPointerException 言語モードがnullの場合
 	 */
-	public String toStringIn(Language language) { return stringOf(majorCo5, language); }
-
-	/**
-	 * 指定された五度圏インデックス値（メジャーキー基準）に対応する音階の文字列表現を、
-	 * 指定された言語モードで返します。
-	 * @param majorCo5 五度圏インデックス値（メジャーキー基準、すなわち0のときC）
-	 * @param language 言語モード
-	 * @return 文字列表現
-	 * @throws NullPointerException 言語モードがnullの場合
-	 * @throws IndexOutOfBoundsException
-	 * 五度圏インデックス値がダブルフラット（F♭♭,C♭♭,…）からダブルシャープ（…,Ex,Bx）までの範囲（-15 ～ 19）を外れている場合
-	 */
-	public static String stringOf(int majorCo5, Language language) {
+	public String toStringIn(Language language) {
 		return language.stringOf(majorCo5 + INDEX_OF_C);
 	}
 	/**
-	 * 引数で指定された音名のメジャーキー基準の五度圏インデックスを返します。
-	 * @param noteSymbol 音名の文字列
-	 * @return メジャーキー基準の五度圏インデックス
-	 * @throws NullPointerException 引数がnullの場合
-	 * @throws IllegalArgumentException 引数が空文字列の場合、または音名で始まっていない場合
+	 * MIDIノート番号と、メジャーキー基準の五度圏インデックス値との間の変換を行います。
+	 *
+	 * <p>双方向の変換に対応しています。
+	 * 内部的には、元の値が奇数のときに6（半オクターブ）を足し、偶数のときにそのまま返しているだけです。
+	 * 値は0～11であるとは限りません。その範囲に補正したい場合は {@link #mod12(int)} を併用します。
+	 * </p>
+	 *
+	 * @param n 元の値
+	 * @return 変換結果
 	 */
-	public static int co5OfSymbol(String noteSymbol) {
-		return Language.SYMBOL.indexOf(noteSymbol) - INDEX_OF_C;
+	public static int toggleCo5(int n) { return (n & 1) == 0 ? n : n+6 ; }
+	/**
+	 * ノート番号からオクターブ成分を抜きます。
+	 * <p>n % 12 と似ていますが、Java の % 演算子では、左辺に負数を与えると答えも負数になってしまうため、
+	 * n % 12 で計算しても 0～11 の範囲を外れてしまうことがあります。
+	 * そこで、負数の場合に12を足すことにより 0～11 の範囲に入るよう補正します。
+	 * </p>
+	 * @param n 元のノート番号
+	 * @return オクターブ成分を抜いたノート番号（0～11）
+	 */
+	public static int mod12(int n) {
+		int qn = n % SEMITONES_PER_OCTAVE;
+		return qn < 0 ? qn + 12 : qn ;
 	}
+	/**
+	 * 五度圏インデックス値で表された音階を、
+	 * 指定された半音数だけ移調した結果を返します。
+	 *
+	 * <p>移調する半音数が０の場合、指定の五度圏インデックス値をそのまま返します。
+	 * それ以外の場合、移調結果を -5 ～ 6 の範囲で返します。
+	 * </p>
+	 *
+	 * @param co5 五度圏インデックス値
+	 * @param chromaticOffset 移調する半音数
+	 * @return 移調結果
+	 */
+	public static int transposeCo5(int co5, int chromaticOffset) {
+		if( chromaticOffset == 0 ) return co5;
+		int transposedCo5 = mod12( co5 + toggleCo5(chromaticOffset) );
+		if( transposedCo5 > 6 ) transposedCo5 -= Note.SEMITONES_PER_OCTAVE;
+		return transposedCo5;
+	}
+	/**
+	 * 指定の五度圏インデックス値の真裏にあたる値を返します。
+	 * @param co5 五度圏インデックス値
+	 * @return 真裏の五度圏インデックス値
+	 */
+	public static int oppositeCo5(int co5) { return co5 > 0 ? co5 - 6 : co5 + 6; }
 	/**
 	 * 指定の最大文字数の範囲で、MIDIノート番号が示す音名を返します。
 	 * <p>白鍵の場合は A ～ G までの文字、黒鍵の場合は＃と♭の両方の表現を返します。
@@ -255,16 +290,16 @@ public class NoteSymbol {
 	 * @return MIDIノート番号が示す音名
 	 */
 	public static String noteNumberToSymbol(int noteNumber, int maxChars) {
-		int co5 = Music.mod12(Music.toggleCo5(noteNumber));
-		if( co5 == 11 ) co5 -= Music.SEMITONES_PER_OCTAVE; // E# -> F
-		if( co5 < 6 ) return stringOf(co5, Language.SYMBOL); // F C G D A E B
+		int co5 = mod12(toggleCo5(noteNumber));
+		if( co5 == 11 ) co5 -= Note.SEMITONES_PER_OCTAVE; // E# -> F
+		if( co5 < 6 ) return Language.SYMBOL.stringOf(co5 + INDEX_OF_C); // F C G D A E B
 
 		if( maxChars < 0 || maxChars >= "F# / Gb".length() ) return
-				stringOf(co5, Language.SYMBOL) + " / " +
-				stringOf(co5 - Music.SEMITONES_PER_OCTAVE, Language.SYMBOL);
+				Language.SYMBOL.stringOf(co5 + INDEX_OF_C) + " / " +
+				Language.SYMBOL.stringOf(co5 + INDEX_OF_C - Note.SEMITONES_PER_OCTAVE);
 
-		if( co5 >= 8 ) co5 -= Music.SEMITONES_PER_OCTAVE; // G# -> Ab, D# -> Eb, A# -> Bb
-		return stringOf(co5, Language.SYMBOL); // C# Eb F# Ab Bb
+		if( co5 >= 8 ) co5 -= Note.SEMITONES_PER_OCTAVE; // G# -> Ab, D# -> Eb, A# -> Bb
+		return Language.SYMBOL.stringOf(co5 + INDEX_OF_C); // C# Eb F# Ab Bb
 	}
 	/**
 	 * MIDIノート番号が示す音名を返します。
@@ -275,17 +310,5 @@ public class NoteSymbol {
 	 */
 	public static String noteNumberToSymbol(int noteNumber) {
 		return noteNumberToSymbol(noteNumber, -1);
-	}
-	/**
-	 * 指定された五度圏インデックス値（メジャーキー基準、すなわち0のときC）をノート番号（0～11 : C～B）に変換します。
-	 *
-	 * <p>これはMIDIノート番号からオクターブ情報を抜いた値と同じです。
-	 * 五度圏インデックス値をノート番号に変換した場合、異名同音、すなわち同じ音階が♭表記、♯表記のどちらだったか、という情報は失われます。
-	 * </p>
-	 * @param majorCo5 五度圏インデックス値
-	 * @return ノート番号
-	 */
-	public static int majorCo5ToNoteNumber(int majorCo5) {
-		return Music.mod12(Music.toggleCo5(majorCo5));
 	}
 }

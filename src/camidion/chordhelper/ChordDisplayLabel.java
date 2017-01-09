@@ -12,8 +12,7 @@ import javax.swing.JLabel;
 import camidion.chordhelper.chordmatrix.ChordMatrix;
 import camidion.chordhelper.music.Chord;
 import camidion.chordhelper.music.MIDISpec;
-import camidion.chordhelper.music.Music;
-import camidion.chordhelper.music.NoteSymbol;
+import camidion.chordhelper.music.Note;
 import camidion.chordhelper.pianokeyboard.PianoKeyboard;
 
 /**
@@ -96,8 +95,8 @@ public class ChordDisplayLabel extends JLabel {
 			setText("MIDI note No." + noteNumber + " : " + pn);
 		}
 		else {
-			String ns = NoteSymbol.noteNumberToSymbol(noteNumber);
-			double f = Music.noteNumberToFrequency(noteNumber);
+			String ns = Note.noteNumberToSymbol(noteNumber);
+			double f = MIDISpec.noteNumberToFrequency(noteNumber);
 			setText("Note: "+ns+"  -  MIDI note No."+noteNumber+" : "+Math.round(f)+"Hz");
 		}
 	}

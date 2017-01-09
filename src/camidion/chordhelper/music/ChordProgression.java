@@ -227,7 +227,7 @@ public class ChordProgression {
 						} while( co5Offset == prevCo5Offset );
 					}
 				}
-				NoteSymbol rootNote = new NoteSymbol(keyCo5 + co5Offset);
+				Note rootNote = new Note(keyCo5 + co5Offset);
 				List<Chord.Interval> intervals = new ArrayList<>();
 				switch(co5Offset) {
 				// ルート音ごとに、7th などの付加や、メジャーマイナー反転を行う確率を決める
@@ -378,10 +378,10 @@ public class ChordProgression {
 		int original_key_co5 = key.toCo5();
 		int co5Offset = 0;
 		if( original_key_co5 > 4 ) {
-			co5Offset = -Music.SEMITONES_PER_OCTAVE;
+			co5Offset = -Note.SEMITONES_PER_OCTAVE;
 		}
 		else if( original_key_co5 < -4 ) {
-			co5Offset = Music.SEMITONES_PER_OCTAVE;
+			co5Offset = Note.SEMITONES_PER_OCTAVE;
 		}
 		else {
 			return;
@@ -393,13 +393,13 @@ public class ChordProgression {
 					Object element = measure.get(i);
 					if( element instanceof ChordStroke ) {
 						ChordStroke cs = (ChordStroke)element;
-						NoteSymbol root = cs.chord.rootNoteSymbol();
-						NoteSymbol bass = cs.chord.bassNoteSymbol();
+						Note root = cs.chord.rootNoteSymbol();
+						Note bass = cs.chord.bassNoteSymbol();
 						if( root.equals(bass) ) {
-							bass = root = new NoteSymbol(root.toCo5() + co5Offset);
+							bass = root = new Note(root.toCo5() + co5Offset);
 						} else {
-							root = new NoteSymbol(root.toCo5() + co5Offset);
-							bass = new NoteSymbol(bass.toCo5() + co5Offset);
+							root = new Note(root.toCo5() + co5Offset);
+							bass = new Note(bass.toCo5() + co5Offset);
 						}
 						Chord newChord = new Chord(root, bass, cs.chord.intervals());
 						measure.set(i, new ChordStroke(newChord, cs.beatLength));

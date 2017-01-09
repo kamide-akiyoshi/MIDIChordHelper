@@ -45,25 +45,25 @@ public class Range {
 		int offset = 0;
 		if( key != null ) {
 			offset = key.relativeDo();
-			if( minKeyOffset < 0 && offset >= Music.mod12(minKeyOffset) ) {
+			if( minKeyOffset < 0 && offset >= Note.mod12(minKeyOffset) ) {
 				offset -= 12;
 			}
-			else if( minKeyOffset > 0 && offset < Music.mod12(minKeyOffset) ) {
+			else if( minKeyOffset > 0 && offset < Note.mod12(minKeyOffset) ) {
 				offset += 12;
 			}
 			minNote += offset;
 			maxNote += offset;
 		}
-		int octave = minNote / Music.SEMITONES_PER_OCTAVE;
+		int octave = minNote / Note.SEMITONES_PER_OCTAVE;
 		noteNumber += 12 * octave;
 		while( noteNumber > maxNote )
-			noteNumber -= Music.SEMITONES_PER_OCTAVE;
+			noteNumber -= Note.SEMITONES_PER_OCTAVE;
 		while( noteNumber > MIDISpec.MAX_NOTE_NO )
-			noteNumber -= Music.SEMITONES_PER_OCTAVE;
+			noteNumber -= Note.SEMITONES_PER_OCTAVE;
 		while( noteNumber < minNote )
-			noteNumber += Music.SEMITONES_PER_OCTAVE;
+			noteNumber += Note.SEMITONES_PER_OCTAVE;
 		while( noteNumber < 0 )
-			noteNumber += Music.SEMITONES_PER_OCTAVE;
+			noteNumber += Note.SEMITONES_PER_OCTAVE;
 		return noteNumber;
 	}
 	public void invertNotesOf(int[] notes, Key key) {

@@ -3,7 +3,7 @@ package camidion.chordhelper.midieditor;
 import javax.swing.JLabel;
 
 import camidion.chordhelper.music.Key;
-import camidion.chordhelper.music.NoteSymbol;
+import camidion.chordhelper.music.Note;
 
 /**
  * 調表示ラベル
@@ -22,8 +22,8 @@ public class KeySignatureLabel extends JLabel {
 		}
 		setText( "key:" + key.toString() );
 		setToolTipText(
-			"Key: " + key.toStringIn(NoteSymbol.Language.NAME)
-			+ " "  + key.toStringIn(NoteSymbol.Language.IN_JAPANESE)
+			"Key: " + key.toStringIn(Note.Language.NAME)
+			+ " "  + key.toStringIn(Note.Language.IN_JAPANESE)
 			+ " (" + key.signatureDescription() + ")"
 		);
 		setEnabled(true);
