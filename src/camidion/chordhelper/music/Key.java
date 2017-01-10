@@ -6,11 +6,10 @@ package camidion.chordhelper.music;
  *
  * <p>内部的には次の値を持っています。</p>
  * <ul>
- * <li>五度圏インデックス値。これは調号の♯の数（♭の数は負数）と同じです。</li>
+ * <li>五度圏インデックス値。この値は調号の♯の数（♭の数は負数）と同じで、
+ * MIDIメタメッセージの調号パラメータと互換性があります。</li>
  * <li>メジャー／マイナーの区別、区別なしの３値（{@link MajorMinor}で定義）</li>
  * </ul>
- * <p>これらの値はMIDIのメタメッセージにある調号のパラメータに対応します。
- * </p>
  */
 public class Key {
 	/**
@@ -73,7 +72,7 @@ public class Key {
 	/**
 	 * 指定の五度圏インデックス値を持つ、メジャー・マイナーの区別を指定した調を構築します。
 	 *
-	 * @param co5 五度圏インデックス値
+	 * @param co5 五度圏インデックス値（Index based Circle Of 5th)
 	 * @param majorMinor メジャー・マイナーの区別
 	 */
 	public Key(int co5, MajorMinor majorMinor) {

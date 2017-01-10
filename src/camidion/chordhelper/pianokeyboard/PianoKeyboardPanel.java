@@ -57,9 +57,9 @@ public class PianoKeyboardPanel extends JPanel {
 	private JPanel octaveBar;
 	public void setDarkMode(boolean isDark) {
 		Color col = isDark ? Color.black : null;
-		octaveSelecter.setBackground( col );
-		octaveSizeSlider.setBackground( col );
-		octaveBar.setBackground( col );
-		keyboard.setDarkMode( isDark );
+		octaveSelecter.setBackground(col);
+		octaveSizeSlider.setBackground(col);
+		octaveBar.setBackground(col);
+		keyboard.setDarkMode(isDark);
 	}
 }

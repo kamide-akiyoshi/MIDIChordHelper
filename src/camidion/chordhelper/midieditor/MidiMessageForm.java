@@ -235,9 +235,6 @@ public class MidiMessageForm extends JPanel implements ActionListener {
 	 * 調号選択
 	 */
 	private KeySignatureSelecter keysigSelecter = new KeySignatureSelecter(new Key("C")) {
-		private void update() {
-			dataText.setValue(getSelectedKey().getBytes());
-		}
 		{
 			keysigCombobox.addActionListener(new ActionListener() {
 				@Override
@@ -248,6 +245,7 @@ public class MidiMessageForm extends JPanel implements ActionListener {
 				public void itemStateChanged(ItemEvent e) { update(); }
 			});
 		}
+		private void update() { dataText.setValue(getSelectedKey().getBytes()); }
 	};
 
 	/**

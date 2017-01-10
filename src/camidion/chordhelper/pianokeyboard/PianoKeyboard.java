@@ -49,7 +49,7 @@ import camidion.chordhelper.music.Note;
  * Piano Keyboard class for MIDI Chord Helper
  *
  * @author
- *	Copyright (C) 2004-2013 Akiyoshi Kamide
+ *	Copyright (C) 2004-2017 Akiyoshi Kamide
  *	http://www.yk.rim.or.jp/~kamide/music/chordhelper/
  */
 public class PianoKeyboard extends JComponent {
@@ -60,7 +60,7 @@ public class PianoKeyboard extends JComponent {
 	/**
 	 * 最大オクターブ幅（切り上げ）
 	 */
-	public static final int	MAX_OCTAVE_WIDTH = MIDISpec.MAX_NOTE_NO / 12 + 1;
+	public static final int	MAX_OCTAVE_WIDTH = MIDISpec.MAX_NOTE_NO / Note.SEMITONES_PER_OCTAVE + 1;
 	/**
 	 * 濃いピンク
 	 */
@@ -112,11 +112,11 @@ public class PianoKeyboard extends JComponent {
 	/**
 	 * 調号（スケール判定用）
 	 */
-	private Key	keySignature = null;
+	private Key keySignature = null;
 	/**
 	 * 表示中のコード
 	 */
-	private Chord	chord = null;
+	private Chord chord = null;
 	/**
 	 * コードボタンマトリクス
 	 */
@@ -167,19 +167,12 @@ public class PianoKeyboard extends JComponent {
 		@Override
 		public void noteOff(int noteNumber) {
 			keyOff( channel, noteNumber );
-			if( chordMatrix != null ) {
-				if( ! isRhythmPart() )
-					chordMatrix.note(false, noteNumber);
-			}
-			if( midiChannelButtonSelecter != null ) {
-				midiChannelButtonSelecter.repaint();
-			}
+			if(chordMatrix != null && ! isRhythmPart()) chordMatrix.note(false, noteNumber);
+			if(midiChannelButtonSelecter != null) midiChannelButtonSelecter.repaint();
 		}
 		@Override
 		public void noteOn(int noteNumber, int velocity) {
-			if( velocity <= 0 ) {
-				noteOff(noteNumber); return;
-			}
+			if( velocity <= 0 ) { noteOff(noteNumber); return; }
 			keyOn( channel, noteNumber );
 			if( midiChComboboxModel.getSelectedChannel() == channel ) {
 				if( chordDisplay != null ) {
@@ -194,19 +187,13 @@ public class PianoKeyboard extends JComponent {
 						anoGakkiPane.start(PianoKeyboard.this, pienoKey.indicator);
 				}
 			}
-			if( chordMatrix != null ) {
-				if( ! isRhythmPart() )
-					chordMatrix.note(true, noteNumber);
-			}
-			if( midiChannelButtonSelecter != null ) {
-				midiChannelButtonSelecter.repaint();
-			}
+			if(chordMatrix != null && ! isRhythmPart()) chordMatrix.note(true, noteNumber);
+			if(midiChannelButtonSelecter != null) midiChannelButtonSelecter.repaint();
 		}
 		@Override
 		public void allNotesOff() {
 			allKeysOff( channel, -1 );
-			if( chordMatrix != null )
-				chordMatrix.clearIndicators();
+			if( chordMatrix != null ) chordMatrix.clearIndicators();
 		}
 		@Override
 		public void setPitchBend(int bend) {
@@ -236,12 +223,9 @@ public class PianoKeyboard extends JComponent {
 			}
 		}
 		private void repaintNotes() {
-			if( midiChComboboxModel.getSelectedChannel() != channel
-				|| channelNotes[channel] == null
-			)
-				return;
-			if( channelNotes[channel].size() > 0 || selectedKeyNoteList.size() > 0 )
-				repaint();
+			if(midiChComboboxModel.getSelectedChannel() != channel) return;
+			if(channelNotes[channel] == null ) return;
+			if(channelNotes[channel].size() > 0 || selectedKeyNoteList.size() > 0) repaint();
 		}
 	}
 	/**
@@ -318,16 +302,14 @@ public class PianoKeyboard extends JComponent {
 		}
 		int getNote(int chromaticOffset) {
 			int n = position + chromaticOffset;
-			return (outOfBounds = ( n > MIDISpec.MAX_NOTE_NO )) ? -1 : n;
+			return (outOfBounds = (n > MIDISpec.MAX_NOTE_NO)) ? -1 : n;
 		}
 		boolean paintKey(Graphics2D g2, boolean isPressed) {
 			if(outOfBounds) return false;
 			g2.fill3DRect(x, y, width, height, !isPressed);
 			return true;
 		}
-		boolean paintKey(Graphics2D g2) {
-			return paintKey(g2,false);
-		}
+		boolean paintKey(Graphics2D g2) { return paintKey(g2,false); }
 		boolean paintKeyBinding(Graphics2D g2) {
 			if( bindedKeyChar == null ) return false;
 			g2.drawString( bindedKeyChar, x + width/3, indicator.y - 2 );
@@ -363,22 +345,16 @@ public class PianoKeyboard extends JComponent {
 			return true;
 		}
 		boolean paintIndicator(Graphics2D g2, boolean is_small) {
-			return paintIndicator( g2, is_small, 0 );
+			return paintIndicator(g2, is_small, 0);
 		}
 	}
 
-	private class MouseKeyListener
-		implements MouseListener, MouseMotionListener, KeyListener
-	{
+	private class MouseKeyListener implements MouseListener, MouseMotionListener, KeyListener {
 		private void pressed(int c, int n, InputEvent e) {
-			keyOn(c,n);
-			noteOn(n);
-			firePianoKeyPressed(n,e);
+			keyOn(c,n); noteOn(n); firePianoKeyPressed(n,e);
 		}
 		private void released(int c, int n, InputEvent e) {
-			keyOff(c,n);
-			noteOff(n);
-			firePianoKeyReleased(n,e);
+			keyOff(c,n); noteOff(n); firePianoKeyReleased(n,e);
 		}
 		@Override
 		public void mousePressed(MouseEvent e) {
@@ -395,15 +371,12 @@ public class PianoKeyboard extends JComponent {
 		public void mouseReleased(MouseEvent e) {
 			int c = midiChComboboxModel.getSelectedChannel();
 			NoteList nl = channelNotes[c];
-			if( ! nl.isEmpty() )
-				released(c, nl.poll(), e);
+			if( ! nl.isEmpty() ) released(c, nl.poll(), e);
 		}
 		@Override
-		public void mouseEntered(MouseEvent e) {
-		}
+		public void mouseEntered(MouseEvent e) { }
 		@Override
-		public void mouseExited(MouseEvent e) {
-		}
+		public void mouseExited(MouseEvent e) { }
 		@Override
 		public void mouseDragged(MouseEvent e) {
 			int n = getNote(e.getPoint());
@@ -411,16 +384,13 @@ public class PianoKeyboard extends JComponent {
 			int c = midiChComboboxModel.getSelectedChannel();
 			NoteList nl = channelNotes[c];
 			if( nl.contains(n) ) return;
-			if( ! nl.isEmpty() )
-				released(c, nl.poll(), e);
+			if( ! nl.isEmpty() ) released(c, nl.poll(), e);
 			pressed(c,n,e);
 		}
 		@Override
-		public void mouseMoved(MouseEvent e) {
-		}
+		public void mouseMoved(MouseEvent e) { }
 		@Override
-		public void mouseClicked(MouseEvent e) {
-		}
+		public void mouseClicked(MouseEvent e) { }
 		@Override
 		public void keyPressed(KeyEvent e) {
 			int kc = e.getKeyCode();
@@ -446,8 +416,7 @@ public class PianoKeyboard extends JComponent {
 			released(c,n,e);
 		}
 		@Override
-		public void keyTyped(KeyEvent e) {
-		}
+		public void keyTyped(KeyEvent e) { }
 	}
 
 	/**
@@ -465,16 +434,16 @@ public class PianoKeyboard extends JComponent {
 		addMouseMotionListener(mkl);
 		addKeyListener(mkl);
 		int octaves = getPerferredOctaves();
-		octaveSizeModel = new DefaultBoundedRangeModel(
-			octaves, 0, MIN_OCTAVE_WIDTH, MAX_OCTAVE_WIDTH
-		) {{
-			addChangeListener(new ChangeListener() {
-				public void stateChanged(ChangeEvent e) {
-					fireOctaveResized(e);
-					octaveSizeChanged();
-				}
-			});
-		}};
+		octaveSizeModel = new DefaultBoundedRangeModel(octaves, 0, MIN_OCTAVE_WIDTH, MAX_OCTAVE_WIDTH) {
+			{
+				addChangeListener(new ChangeListener() {
+					public void stateChanged(ChangeEvent e) {
+						fireOctaveResized(e);
+						octaveSizeChanged();
+					}
+				});
+			}
+		};
 		octaveRangeModel = new DefaultBoundedRangeModel(
 			(MAX_OCTAVE_WIDTH - octaves) / 2, octaves, 0, MAX_OCTAVE_WIDTH
 		) {{
@@ -497,8 +466,7 @@ public class PianoKeyboard extends JComponent {
 			new ListDataListener() {
 				public void contentsChanged(ListDataEvent e) {
 					int c = midiChComboboxModel.getSelectedChannel();
-					for( int n : channelNotes[c] )
-						if( autoScroll(n) ) break;
+					for( int n : channelNotes[c] ) if( autoScroll(n) ) break;
 					repaint();
 				}
 				public void intervalAdded(ListDataEvent e) {}
@@ -507,59 +475,63 @@ public class PianoKeyboard extends JComponent {
 		);
 	}
 	public void paint(Graphics g) {
-		if( keys == null ) return;
+		if(keys == null) return;
 		Graphics2D g2 = (Graphics2D) g;
 		Dimension d = getSize();
 		//
-		// 鍵盤をクリア
-		g2.setBackground( getBackground() );
-		g2.clearRect( 0, 0, d.width, d.height );
+		// 鍵盤をクリアし、順次塗り重ねていく
+		g2.setBackground(getBackground());
+		g2.clearRect(0, 0, d.width, d.height);
 		//
-		// 白鍵を描画
-		g2.setColor( isDark ? Color.gray : Color.white );
-		for( PianoKey k : whiteKeys ) k.paintKey(g2);
-
+		// 白鍵
+		g2.setColor(isDark ? Color.gray : Color.white);
+		for(PianoKey k : whiteKeys) k.paintKey(g2);
+		//
+		// 選択マーク●をつける鍵と、ノートオン状態の鍵をリストアップ
 		NoteList notesArray[] = {
 			(NoteList)selectedKeyNoteList.clone(),
 			(NoteList)channelNotes[midiChComboboxModel.getSelectedChannel()].clone()
 		};
-		PianoKey key;
+		// ノートオン状態の白鍵
+		for(int n : notesArray[1]) {
+			PianoKey k = getPianoKey(n);
+			if( k == null || k.isBlack ) continue;
+			k.paintKey(g2,true);
+		}
+		// 黒鍵
+		g2.setColor(getForeground()); for(PianoKey k : blackKeys) k.paintKey(g2);
 		//
-		// ノートオン状態の白鍵を塗り重ねる
-		for( int n : notesArray[1] )
-			if( (key=getPianoKey(n)) != null && !(key.isBlack) )
-				key.paintKey(g2,true);
-		//
-		// 黒鍵を描画
-		g2.setColor(getForeground());
-		for( PianoKey k : blackKeys ) k.paintKey(g2);
-		//
-		// ノートオン状態の黒鍵を塗り重ねる
-		g2.setColor( Color.gray );
-		for( int n : notesArray[1] )
-			if( (key=getPianoKey(n)) != null && key.isBlack )
-				key.paintKey(g2,true);
-		//
-		// インジケータの表示
-		for( NoteList nl : notesArray ) {
+		// ノートオン状態の黒鍵
+		g2.setColor(Color.gray);
+		for(int n : notesArray[1]) {
+			PianoKey k = getPianoKey(n);
+			if( k == null || ! k.isBlack ) continue;
+			k.paintKey(g2,true);
+		}
+		// インジケータ
+		for(NoteList nl : notesArray) {
 			if( nl == null ) continue;
-			for( Integer ni : nl ) {
+			for(Integer ni : nl) {
 				if( ni == null ) continue;
 				int n = ni;
-				if( (key=getPianoKey(n)) == null ) continue;
+				PianoKey k = getPianoKey(n);
+				if( k == null ) continue;
 				boolean isOnScale = (keySignature == null || keySignature.isOnScale(n));
 				int chordIndex;
 				if( chord != null && (chordIndex = chord.indexOf(n)) >=0 ) {
+					// コードを鳴らした直後は、その構成音に色を付ける
 					g2.setColor(Chord.NOTE_INDEX_COLORS[chordIndex]);
 				}
 				else {
 					g2.setColor(isDark && isOnScale ? Color.pink : DARK_PINK);
 				}
+				// ●を表示（ピッチベンドしていたら引き伸ばす）
 				int c = midiChComboboxModel.getSelectedChannel();
-				key.paintIndicator(g2, false, pitchBendValues[c]);
+				k.paintIndicator(g2, false, pitchBendValues[c]);
 				if( ! isOnScale ) {
+					// スケールを外れた音は白抜き
 					g2.setColor(Color.white);
-					key.paintIndicator(g2, true);
+					k.paintIndicator(g2, true);
 				}
 			}
 		}
@@ -575,7 +547,6 @@ public class PianoKeyboard extends JComponent {
 			}
 		}
 	}
-	//
 	protected void firePianoKeyPressed(int note_no, InputEvent event) {
 		Object[] listeners = listenerList.getListenerList();
 		for (int i = listeners.length-2; i>=0; i-=2) {
@@ -637,20 +608,16 @@ public class PianoKeyboard extends JComponent {
 		int indexOctave = indexWhite / 7;
 		int i = (indexWhite -= indexOctave * 7) * 2 + indexOctave * 12;
 		if( indexWhite >= 3 ) i--;
-		if( i < 0 || i > keys.length-1 )
-			return null;
-		if( point.y > blackKeySize.height )
-			return keys[i];
+		if( i < 0 || i > keys.length-1 ) return null;
+		if( point.y > blackKeySize.height ) return keys[i];
 		PianoKey k;
 		if( i > 0 ) {
 			k = keys[i-1];
-			if( k.isBlack && !(k.outOfBounds) && k.contains(point) )
-				return k;
+			if( k.isBlack && !(k.outOfBounds) && k.contains(point) ) return k;
 		}
 		if( i < keys.length-1 ) {
 			k = keys[i+1];
-			if( k.isBlack && !(k.outOfBounds) && k.contains(point) )
-				return k;
+			if( k.isBlack && !(k.outOfBounds) && k.contains(point) ) return k;
 		}
 		return keys[i];
 	}
@@ -678,14 +645,12 @@ public class PianoKeyboard extends JComponent {
 	}
 
 	private void checkOutOfBounds() {
-		if( keys == null ) return;
-		for( PianoKey k : keys ) k.getNote(getChromaticOffset());
+		if(keys != null) for(PianoKey k : keys) k.getNote(getChromaticOffset());
 	}
 	private void keyOff(int ch, int noteNumber) {
 		if( noteNumber < 0 || ch < 0 || ch >= channelNotes.length ) return;
 		channelNotes[ch].remove((Object)noteNumber);
-		if( ch == midiChComboboxModel.getSelectedChannel() )
-			repaint();
+		if( ch == midiChComboboxModel.getSelectedChannel() ) repaint();
 	}
 	private void keyOn(int ch, int noteNumber) {
 		if( noteNumber < 0 || ch < 0 || ch >= channelNotes.length ) return;
@@ -697,15 +662,11 @@ public class PianoKeyboard extends JComponent {
 			return false;
 		int i = noteNumber - getChromaticOffset();
 		if( i < 0 ) {
-			octaveRangeModel.setValue(
-				octaveRangeModel.getValue() - (-i)/Note.SEMITONES_PER_OCTAVE - 1
-			);
+			octaveRangeModel.setValue(octaveRangeModel.getValue() - (-i)/Note.SEMITONES_PER_OCTAVE - 1);
 			return true;
 		}
 		if( i >= keys.length ) {
-			octaveRangeModel.setValue(
-				octaveRangeModel.getValue() + (i-keys.length)/Note.SEMITONES_PER_OCTAVE + 1
-			);
+			octaveRangeModel.setValue(octaveRangeModel.getValue() + (i-keys.length)/Note.SEMITONES_PER_OCTAVE + 1);
 			return true;
 		}
 		return false;
@@ -729,15 +690,12 @@ public class PianoKeyboard extends JComponent {
 			selectedKeyNoteList = (NoteList)(channelNotes[ch].clone());
 			break;
 		case  1:
-			selectedKeyNoteList.add(
-				channelNotes[ch].get(channelNotes[ch].size()-1)
-			);
+			selectedKeyNoteList.add(channelNotes[ch].get(channelNotes[ch].size()-1));
 			break;
 		default: break;
 		}
 		channelNotes[ch].clear();
-		if( midiChComboboxModel.getSelectedChannel() == ch )
-			repaint();
+		if( midiChComboboxModel.getSelectedChannel() == ch ) repaint();
 	}
 	public void clear() {
 		selectedKeyNoteList.clear();
@@ -750,9 +708,8 @@ public class PianoKeyboard extends JComponent {
 		switch( channelNotes[current_channel].size() ) {
 		case 1: return channelNotes[current_channel].get(0);
 		case 0:
-			if( selectedKeyNoteList.size() == 1 )
-				return selectedKeyNoteList.get(0);
-			return -1;
+			if( selectedKeyNoteList.size() == 1 ) return selectedKeyNoteList.get(0);
+			// no break
 		default:
 			return -1;
 		}
@@ -761,12 +718,10 @@ public class PianoKeyboard extends JComponent {
 		setSelectedNote(midiChComboboxModel.getSelectedChannel(), noteNumber);
 	}
 	void setSelectedNote(int ch, int note_no) {
-		if( ch != midiChComboboxModel.getSelectedChannel() )
-			return;
+		if( ch != midiChComboboxModel.getSelectedChannel() ) return;
 		selectedKeyNoteList.add(note_no);
 		int maxSel = (chord == null ? maxSelectable : chord.numberOfNotes());
-		while( selectedKeyNoteList.size() > maxSel )
-			selectedKeyNoteList.poll();
+		while(selectedKeyNoteList.size() > maxSel) selectedKeyNoteList.poll();
 		if( !autoScroll(note_no) ) {
 			// When autoScroll() returned false, stateChanged() not invoked - need repaint()
 			repaint();
@@ -776,15 +731,10 @@ public class PianoKeyboard extends JComponent {
 		return selectedKeyNoteList.toArray(new Integer[0]);
 	}
 	Chord getChord() { return chord; }
-	public void setChord(Chord c) {
-		chordDisplay.setChord(chord = c);
-	}
-	public void setKeySignature(Key ks) {
-		keySignature = ks;
-		repaint();
-	}
+	public void setChord(Chord c) { chordDisplay.setChord(chord = c); }
+	public void setKeySignature(Key ks) { keySignature = ks; repaint(); }
 	private int	maxSelectable = 1;
-	public void setMaxSelectable( int maxSelectable ) {
+	public void setMaxSelectable(int maxSelectable) {
 		this.maxSelectable = maxSelectable;
 	}
 	int getMaxSelectable() { return maxSelectable; }
@@ -794,21 +744,15 @@ public class PianoKeyboard extends JComponent {
 	public int getOctaves() { return octaveSizeModel.getValue(); }
 	private int getPerferredOctaves() {
 		int octaves = Math.round( (float)getWidth() / WIDTH_PER_OCTAVE );
-		if( octaves > MAX_OCTAVE_WIDTH ) {
-			octaves = MAX_OCTAVE_WIDTH;
-		}
-		else if( octaves < MIN_OCTAVE_WIDTH ) {
-			octaves = MIN_OCTAVE_WIDTH;
-		}
+		if( octaves > MAX_OCTAVE_WIDTH ) octaves = MAX_OCTAVE_WIDTH;
+		else if( octaves < MIN_OCTAVE_WIDTH ) octaves = MIN_OCTAVE_WIDTH;
 		return octaves;
 	}
 	private void octaveSizeChanged() {
 		int octaves = octaveSizeModel.getValue();
 		String defaultBindedKeyChars = "zsxdcvgbhnjm,l.;/\\]";
 		Dimension keyboard_size = getSize();
-		if( keyboard_size.width == 0 ) {
-			return;
-		}
+		if( keyboard_size.width == 0 ) return;
 		whiteKeySize = new Dimension(
 			(keyboard_size.width - 1) / (octaves * 7 + 1),
 			keyboard_size.height - 1
@@ -833,24 +777,21 @@ public class PianoKeyboard extends JComponent {
 		Point keyPoint = new Point(1,1);
 		PianoKey k;
 		int i, i12;
-		boolean is_CDE = true;
+		boolean isCDE = true;
 		for( i = i12 = 0; i < keys.length; i++, i12++ ) {
 			switch(i12) {
-			case 12: is_CDE = true; i12 = 0; break;
-			case  5: is_CDE = false; break;
+			case 12: isCDE = true; i12 = 0; break;
+			case  5: isCDE = false; break;
 			default: break;
 			}
-			keyPoint.x = whiteKeySize.width * (
-				i / Note.SEMITONES_PER_OCTAVE * 7 + (i12+(is_CDE?1:2))/2
-			);
+			keyPoint.x = whiteKeySize.width * ( i / Note.SEMITONES_PER_OCTAVE * 7 + (i12+(isCDE?1:2))/2 );
 			if( Key.C_MAJOR_OR_A_MINOR.isOnScale(i12) ) {
-				k = new PianoKey( keyPoint, whiteKeySize, indicatorSize );
+				k = new PianoKey(keyPoint, whiteKeySize, indicatorSize);
 				k.isBlack = false;
 				vWhiteKeys.add(k);
-			}
-			else {
-				keyPoint.x -= ( (is_CDE?5:12) - i12 )/2 * blackKeySize.width / (is_CDE?3:4);
-				k = new PianoKey( keyPoint, blackKeySize, indicatorSize );
+			} else {
+				keyPoint.x -= ( (isCDE?5:12) - i12 )/2 * blackKeySize.width / (isCDE?3:4);
+				k = new PianoKey(keyPoint, blackKeySize, indicatorSize);
 				k.isBlack = true;
 				vBlackKeys.add(k);
 			}
@@ -858,12 +799,12 @@ public class PianoKeyboard extends JComponent {
 		}
 		whiteKeys = vWhiteKeys.toArray(new PianoKey[1]);
 		blackKeys = vBlackKeys.toArray(new PianoKey[1]);
-		changeKeyBinding(((octaves - 1) / 2) * 12, defaultBindedKeyChars);
+		changeKeyBinding( ((octaves - 1) / 2) * 12, defaultBindedKeyChars );
 		checkOutOfBounds();
 	}
 	//
 	void setDarkMode(boolean isDark) {
 		this.isDark = isDark;
-		setBackground( isDark ? Color.black : null );
+		setBackground(isDark ? Color.black : null);
 	}
 }

@@ -1,7 +1,6 @@
 package camidion.chordhelper.pianokeyboard;
 
 import java.awt.Color;
-import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.nio.charset.Charset;
 
@@ -13,6 +12,7 @@ import javax.swing.JButton;
 import javax.swing.JPanel;
 
 import camidion.chordhelper.ChordDisplayLabel;
+import camidion.chordhelper.ChordHelperApplet;
 import camidion.chordhelper.chordmatrix.ChordMatrix;
 import camidion.chordhelper.mididevice.VirtualMidiDevice;
 import camidion.chordhelper.midieditor.KeySignatureSelecter;
@@ -36,25 +36,20 @@ public class MidiKeyboardPanel extends JPanel {
 	MidiChannelButtonSelecter midiChannelButtons;
 	VelocitySelecter velocitySelecter;
 
-	private static final Insets ZERO_INSETS = new Insets(0,0,0,0);
-
 	public MidiKeyboardPanel(ChordMatrix chordMatrix) {
 		keyboardCenterPanel = new PianoKeyboardPanel();
 		keyboardCenterPanel.keyboard.chordMatrix = chordMatrix;
 		keyboardCenterPanel.keyboard.chordDisplay =
-			new ChordDisplayLabel(
-				"MIDI Keyboard", chordMatrix, keyboardCenterPanel.keyboard
-			);
-		//
-		setLayout( new BoxLayout( this, BoxLayout.Y_AXIS ) );
+			new ChordDisplayLabel("MIDI Keyboard", chordMatrix, keyboardCenterPanel.keyboard);
+		setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
 		add(keyboardChordPanel = new JPanel() {
 			{
 				setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
-				add( Box.createHorizontalStrut(5) );
+				add(Box.createHorizontalStrut(5));
 				add(velocitySelecter = new VelocitySelecter(keyboardCenterPanel.keyboard.velocityModel));
 				add(keySelecter = new KeySignatureSelecter(Key.C_MAJOR_OR_A_MINOR));
-				add( keyboardCenterPanel.keyboard.chordDisplay );
-				add( Box.createHorizontalStrut(5) );
+				add(keyboardCenterPanel.keyboard.chordDisplay);
+				add(Box.createHorizontalStrut(5));
 			}
 		});
 		add(keyboardCenterPanel);
@@ -86,7 +81,7 @@ public class MidiKeyboardPanel extends JPanel {
 					);
 				}
 			}) {
-				{ setMargin(ZERO_INSETS); }
+				{ setMargin(ChordHelperApplet.ZERO_INSETS); }
 			});
 		}});
 	}
@@ -101,7 +96,7 @@ public class MidiKeyboardPanel extends JPanel {
 		midiChannelCombobox.setBackground(col);
 		midiChannelCombobox.comboBox.setBackground(col);
 		keySelecter.setBackground(col);
-		keySelecter.keysigCombobox.setBackground(col);
+		keySelecter.getKeysigCombobox().setBackground(col);
 		velocitySelecter.setBackground(col);
 		keyboardCenterPanel.keyboard.chordDisplay.setDarkMode(isDark);
 		sendEventButton.setBackground(col);
