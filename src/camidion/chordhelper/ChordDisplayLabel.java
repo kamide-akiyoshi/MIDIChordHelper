@@ -32,6 +32,7 @@ public class ChordDisplayLabel extends JLabel {
 	 */
 	public ChordDisplayLabel(String defaultString, ChordMatrix chordMatrix, PianoKeyboard keyboard) {
 		super(defaultString, JLabel.CENTER);
+		this.defaultString = defaultString;
 		if( chordMatrix == null ) return;
 		addMouseListener(new MouseAdapter() {
 			@Override

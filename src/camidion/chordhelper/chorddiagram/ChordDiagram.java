@@ -8,7 +8,7 @@ import java.awt.event.AdjustmentEvent;
 import java.awt.event.AdjustmentListener;
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
@@ -27,37 +27,38 @@ import javax.swing.SwingConstants;
 import camidion.chordhelper.ButtonIcon;
 import camidion.chordhelper.ChordDisplayLabel;
 import camidion.chordhelper.music.Chord;
+import camidion.chordhelper.music.Note;
 
 /**
  * ChordDiagram class for MIDI Chord Helper
  *
  * @auther
- *	Copyright (C) 2004-2014 Akiyoshi Kamide
+ *	Copyright (C) 2004-2017 Akiyoshi Kamide
  *	http://www.yk.rim.or.jp/~kamide/music/chordhelper/
  */
 public class ChordDiagram extends JPanel {
-	/**
-	 * コードダイヤグラムの対象楽器
-	 */
+	/** コードダイアグラムの対象楽器を示す値 */
 	public static enum Instrument {
-		/** ウクレレ  */
-		Ukulele(Arrays.asList(9,4,0,7)), // AECG
-		/** ギター */
-		Guitar(Arrays.asList(4,11,7,2,9,4)); // EBGDAE
-		private Instrument(List<Integer> defaultOpenNotes) {
-			this.defaultOpenNotes = Collections.unmodifiableList(defaultOpenNotes);
+		Ukulele("A,E,C,G"),
+		Guitar("E,B,G,D,A,E");
+		/**
+		 * コードダイアグラムの対象楽器を示す値を構築します。
+		 * @param defaultOpenNotes 解放弦の音名（カンマ区切り）
+		 */
+		private Instrument(String defaultOpenNotes) {
+			List<Integer> notes = new ArrayList<>();
+			for( String note : defaultOpenNotes.split(",") )
+				notes.add(Note.mod12(Note.toggleCo5(Note.co5Of(note))));
+			this.defaultOpenNotes = Collections.unmodifiableList(notes);
 		}
 		/**
-		 * デフォルトの開放弦の音階を表すノート番号リストを返します。
-		 * このリストは書き換えできません。
-		 *
+		 * デフォルトの開放弦の音階を表す、変更不可能なノート番号リストを返します。
 		 * @return 開放弦の音階（固定値）を表すノート番号リスト
 		 */
 		public List<Integer> getDefaultOpenNotes() { return defaultOpenNotes; }
 		private List<Integer> defaultOpenNotes;
 		/**
-		 * 開放弦の音階を表す、書き換え（チューニング）可能な
-		 * ノート番号の配列を生成します。
+		 * 開放弦の音階を表す、変更（チューニング）可能な ノート番号の配列を生成します。
 		 *
 		 * @return 開放弦の音階（デフォルト値）を表すノート番号の配列
 		 */

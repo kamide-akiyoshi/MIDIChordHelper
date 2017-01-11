@@ -6,7 +6,7 @@ package camidion.chordhelper.music;
  *
  * <p>内部的には次の値を持っています。</p>
  * <ul>
- * <li>五度圏インデックス値。この値は調号の♯の数（♭の数は負数）と同じで、
+ * <li>五度圏インデックス。この値は調号の♯の数（♭の数は負数）と同じで、
  * MIDIメタメッセージの調号パラメータと互換性があります。</li>
  * <li>メジャー／マイナーの区別、区別なしの３値（{@link MajorMinor}で定義）</li>
  * </ul>
@@ -56,7 +56,7 @@ public class Key {
 		public boolean includes(MajorMinor mm) { return equals(mm); }
 	}
 	/**
-	 * この調の五度圏インデックス値
+	 * この調の五度圏インデックス
 	 */
 	private int co5;
 	/**
@@ -64,15 +64,15 @@ public class Key {
 	 */
 	private MajorMinor majorMinor = MajorMinor.MAJOR_OR_MINOR;
 	/**
-	 * 指定の五度圏インデックス値を持つ、メジャー・マイナーの区別のない調を構築します。
+	 * 指定の五度圏インデックスを持つ、メジャー・マイナーの区別のない調を構築します。
 	 *
-	 * @param co5 五度圏インデックス値
+	 * @param co5 五度圏インデックス
 	 */
 	public Key(int co5) { this.co5 = co5; normalize(); }
 	/**
-	 * 指定の五度圏インデックス値を持つ、メジャー・マイナーの区別を指定した調を構築します。
+	 * 指定の五度圏インデックスを持つ、メジャー・マイナーの区別を指定した調を構築します。
 	 *
-	 * @param co5 五度圏インデックス値（Index based Circle Of 5th)
+	 * @param co5 五度圏インデックス（Index based Circle Of 5th)
 	 * @param majorMinor メジャー・マイナーの区別
 	 */
 	public Key(int co5, MajorMinor majorMinor) {
@@ -108,7 +108,7 @@ public class Key {
 	 * @throw IllegalArgumentException 引数が空文字列の場合、または音名で始まっていない場合
 	 */
 	public Key(String keySymbol) throws IllegalArgumentException {
-		co5 = Note.toCo5Of(keySymbol);
+		co5 = Note.co5Of(keySymbol);
 		if( keySymbol.matches(".*m") ) { majorMinor = MajorMinor.MINOR; co5 -= 3; }
 		else majorMinor = MajorMinor.MAJOR;
 		normalize();
@@ -128,17 +128,15 @@ public class Key {
 		normalize();
 	}
 	/**
-	 * この調を正規化します。
-	 * 調が７♭～７♯の範囲に入っていない場合、
-	 * その範囲に入るよう調整されます。
+	 * この調を正規化します。調が７♭～７♯の範囲に入っていない場合、その範囲に入るよう調整されます。
 	 */
 	private void normalize() {
 		if( co5 >= -MAX_SHARPS_OR_FLATS && co5 <= MAX_SHARPS_OR_FLATS ) return;
 		if( (co5 = Note.mod12(co5)) > 6 ) co5 -= Note.SEMITONES_PER_OCTAVE;
 	}
 	/**
-	 * 五度圏インデックス値を返します。
-	 * @return 五度圏インデックス値
+	 * 五度圏インデックスを返します。
+	 * @return 五度圏インデックス
 	 */
 	public int toCo5() { return co5; }
 	/**

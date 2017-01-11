@@ -7,19 +7,18 @@ import java.util.Objects;
 /**
  * 音名（オクターブ抜き）を表すクラスです。値は不変です。
  *
- * <p>この音名は、メジャーキーの調号にした場合に
- * 「♭、＃が何個つくか」という数値
- * 「五度圏インデックス値」で保持することを基本としています。
- * こうすれば異名同音を明確に区別でき、
- * しかも音楽理論的な計算を極めて単純な数式で行えるようになります。
- * この方式はMIDIメタメッセージで調号を指定するときにも使われていて、
- * 非常に高い親和性を持ちます。
+ * <p>この音名は、メジャーキーの調号にした場合に「♭、＃が何個つくか」という
+ * 「五度圏インデックス」で保持することを基本としています。
+ * こうすれば異名同音を明確に区別でき、しかも音楽理論的な計算を極めて単純な数式で行えるようになります。
+ * この方式はMIDIメタメッセージで調号を指定するときにも使われていて、非常に高い親和性を持ちます。
  * </p>
  */
 public class Note {
 	/**
 	 * 音階や調を表すシンボルの言語モードによる違いを定義します。
-	 * <p>音名には、下記のような五度圏順のインデックス値（0～34）が割り当てられます。
+	 * <p>音名には、下記のようなインデックス（0～34）が割り当てられます。
+	 * これは五度圏インデックスを負数にならないようシフトした値で、
+	 * ダブルフラットからダブルシャープまでを含めたすべての音階をカバーしています。</p>
 	 * <pre>Fbb=0, Cbb=1, .. Bb=13, F=14, C=15, .. B=20, F#=21, C#=22, .. B#=27, Fx=28, .. Bx=34</pre>
 	 */
 	public static enum Language {
@@ -61,7 +60,7 @@ public class Note {
 		 * <li>ダブルフラット：0</li>
 		 * </ul>
 		 * @param s 変化記号で始まる文字列
-		 * @return インデックス
+		 * @return 変化記号のインデックス
 		 */
 		private int sharpFlatIndexOf(String s) {
 			int index = 0;
@@ -76,10 +75,10 @@ public class Note {
 		 */
 		private String notes;
 		/**
-		 * インデックス値に該当する音名を返します。
-		 * @param index インデックス値（定義は{@link Language}参照）
+		 * インデックスに該当する音名を返します。
+		 * @param index インデックス（定義は{@link Language}参照）
 		 * @return 音名（例：Bb、B flat、変ロ）
-		 * @throws IndexOutOfBoundsException インデックス値が範囲を外れている場合
+		 * @throws IndexOutOfBoundsException インデックスが範囲を外れている場合
 		 */
 		private String stringOf(int index) {
 			int sharpFlatIndex = index / 7;
@@ -88,12 +87,11 @@ public class Note {
 			return this == IN_JAPANESE ? sharpFlat + note : note + sharpFlat;
 		}
 		/**
-		 * 音名に対するインデックス値を返します。
-		 * 音名は通常、英大文字（ABCDEFG）ですが、英小文字（abcdefg）も認識します。
+		 * 音名に対するインデックスを返します。
 		 * 日本語名（イロハニホヘト）はサポートしていません。
 		 *
-		 * @param noteSymbol 音名で始まる文字列
-		 * @return インデックス値（定義は{@link Language}参照）
+		 * @param noteSymbol 音名で始まる文字列（音名は大文字・小文字どちらも可）
+		 * @return インデックス（定義は{@link Language}参照）
 		 * @throws UnsupportedOperationException このオブジェクトが {@link #IN_JAPANESE} の場合
 		 * @throws NullPointerException 引数がnullの場合
 		 * @throws IllegalArgumentException 引数が空文字列の場合、または音名で始まっていない場合
@@ -139,7 +137,7 @@ public class Note {
 	}
 	private static final int INDEX_OF_A = Language.SYMBOL.indexOf("A");
 	private static final int INDEX_OF_C = Language.SYMBOL.indexOf("C");
-	/** メジャーキー基準の五度圏インデックス値 */
+	/** メジャーキー基準の五度圏インデックス */
 	private int majorCo5;
 	/** ノート番号（0～11） */
 	private int noteNumber;
@@ -148,8 +146,8 @@ public class Note {
 	 */
 	public static final int SEMITONES_PER_OCTAVE = 12;
 	/**
-	 * 五度圏インデックス値（メジャーキー基準）から音名を構築します。
-	 * @param majorCo5 五度圏インデックス値
+	 * 五度圏インデックス（メジャーキー基準）から音名を構築します。
+	 * @param majorCo5 五度圏インデックス
 	 */
 	public Note(int majorCo5) {
 		noteNumber = mod12(toggleCo5(this.majorCo5 = majorCo5));
@@ -160,11 +158,11 @@ public class Note {
 	 * @throws NullPointerException 引数がnullの場合
 	 * @throws IllegalArgumentException 引数が空文字列の場合、または音名で始まっていない場合
 	 */
-	public Note(String noteSymbol) { this(toCo5Of(noteSymbol)); }
+	public Note(String noteSymbol) { this(co5Of(noteSymbol)); }
 	/**
 	 * この音階が指定されたオブジェクトと等しいか調べます。
 	 *
-	 * <p>双方の五度圏インデックス値が等しい場合のみtrueを返します。
+	 * <p>双方の五度圏インデックスが等しい場合のみtrueを返します。
 	 * すなわち、異名同音は等しくないものとして判定されます。
 	 * </p>
 	 *
@@ -177,9 +175,7 @@ public class Note {
 		return majorCo5 == ((Note)anObject).majorCo5;
 	}
 	/**
-	 * この音階のハッシュコード値として、
-	 * 五度圏インデックス値をそのまま返します。
-	 *
+	 * この音階のハッシュコード値として、五度圏インデックス値をそのまま返します。
 	 * @return この音階のハッシュコード値
 	 */
 	@Override
@@ -190,23 +186,13 @@ public class Note {
 	 * @return 等しければtrue
 	 */
 	public boolean equalsEnharmonically(Note another) {
-		return this == another || this.noteNumber == another.noteNumber;
+		return this == another || another != null && this.noteNumber == another.noteNumber;
 	}
 	/**
-	 * 五度圏インデックス値（メジャーキー基準）を返します。
-	 * @return 五度圏インデックス値
+	 * 五度圏インデックス（メジャーキー基準）を返します。
+	 * @return 五度圏インデックス
 	 */
 	public int toCo5() { return majorCo5; }
-	/**
-	 * 引数で指定された音名のメジャーキー基準の五度圏インデックスを返します。
-	 * @param noteSymbol 音名の文字列
-	 * @return メジャーキー基準の五度圏インデックス
-	 * @throws NullPointerException 引数がnullの場合
-	 * @throws IllegalArgumentException 引数が空文字列の場合、または音名で始まっていない場合
-	 */
-	public static int toCo5Of(String noteSymbol) {
-		return Language.SYMBOL.indexOf(noteSymbol) - INDEX_OF_C;
-	}
 	/**
 	 * この音階に対応するMIDIノート番号（0オリジン表記）の最小値（オクターブの最も低い値）を返します。
 	 * @return MIDIノート番号の最小値（0～11）
@@ -228,19 +214,37 @@ public class Note {
 		return language.stringOf(majorCo5 + INDEX_OF_C);
 	}
 	/**
-	 * MIDIノート番号と、メジャーキー基準の五度圏インデックス値との間の変換を行います。
-	 *
-	 * <p>双方向の変換に対応しています。
-	 * 内部的には、元の値が奇数のときに6（半オクターブ）を足し、偶数のときにそのまま返しているだけです。
-	 * 値は0～11であるとは限りません。その範囲に補正したい場合は {@link #mod12(int)} を併用します。
+	 * 引数で指定された音名のメジャーキー基準の五度圏インデックスを返します。
+	 * @param noteSymbol 音名の文字列
+	 * @return メジャーキー基準の五度圏インデックス
+	 * @throws NullPointerException 引数がnullの場合
+	 * @throws IllegalArgumentException 引数が空文字列の場合、または音名で始まっていない場合
+	 */
+	public static int co5Of(String noteSymbol) {
+		return Language.SYMBOL.indexOf(noteSymbol) - INDEX_OF_C;
+	}
+	/**
+	 * 音階を表す下記2種類の順序値（インデックス）を切り替えます。
+	 * <ul>
+	 * <li>五度圏インデックス（メジャーキー基準）： メジャーキーにおける調号の♯の数（♭の場合負数）を表す値</li>
+	 * <li>半音インデックス： MIDIノート番号からオクターブ成分を抜いた値</li>
+	 * </ul>
+	 * <p>どちらのインデックスも 0 が C を表します。</p>
+	 * <p>実際の処理は、下記に示すシンプルなものです。</p>
+	 * <ul>
+	 * <li>元の値が奇数の場合： 6（半オクターブ＝6半音）を足した値を返す</li>
+	 * <li>元の値が偶数の場合： 元の値をそのまま返す</li>
+	 * </ul>
+	 * <p>戻り値は必ずしも0～11の範囲に入るとは限りません。
+	 * 値の範囲を明確ににするには {@link #mod12(int)} を併用する必要があります。
 	 * </p>
 	 *
-	 * @param n 元の値
-	 * @return 変換結果
+	 * @param i 元の値
+	 * @return 切り替え後の値
 	 */
-	public static int toggleCo5(int n) { return (n & 1) == 0 ? n : n+6 ; }
+	public static int toggleCo5(int i) { return (i & 1) == 0 ? i : i+6 ; }
 	/**
-	 * ノート番号からオクターブ成分を抜きます。
+	 * MIDIノート番号からオクターブ成分を抜きます。
 	 * <p>n % 12 と似ていますが、Java の % 演算子では、左辺に負数を与えると答えも負数になってしまうため、
 	 * n % 12 で計算しても 0～11 の範囲を外れてしまうことがあります。
 	 * そこで、負数の場合に12を足すことにより 0～11 の範囲に入るよう補正します。
@@ -253,16 +257,15 @@ public class Note {
 		return qn < 0 ? qn + 12 : qn ;
 	}
 	/**
-	 * 五度圏インデックス値で表された音階を、
-	 * 指定された半音数だけ移調した結果を返します。
+	 * 五度圏インデックスで表された音階を、指定された半音数だけ移調した結果を返します。
 	 *
-	 * <p>移調する半音数が０の場合、指定の五度圏インデックス値をそのまま返します。
+	 * <p>移調する半音数が０の場合、指定の五度圏インデックスをそのまま返します。
 	 * それ以外の場合、移調結果を -5 ～ 6 の範囲で返します。
 	 * </p>
 	 *
-	 * @param co5 五度圏インデックス値
+	 * @param co5 五度圏インデックス
 	 * @param chromaticOffset 移調する半音数
-	 * @return 移調結果
+	 * @return 移調後の五度圏インデックス
 	 */
 	public static int transposeCo5(int co5, int chromaticOffset) {
 		if( chromaticOffset == 0 ) return co5;
@@ -271,13 +274,13 @@ public class Note {
 		return transposedCo5;
 	}
 	/**
-	 * 指定の五度圏インデックス値の真裏にあたる値を返します。
-	 * @param co5 五度圏インデックス値
-	 * @return 真裏の五度圏インデックス値
+	 * 指定の五度圏インデックスの真裏にあたる値を返します。
+	 * @param co5 五度圏インデックス
+	 * @return 真裏の五度圏インデックス
 	 */
 	public static int oppositeCo5(int co5) { return co5 > 0 ? co5 - 6 : co5 + 6; }
 	/**
-	 * 指定の最大文字数の範囲で、MIDIノート番号が示す音名を返します。
+	 * MIDIノート番号が示す音名を返します。
 	 * <p>白鍵の場合は A ～ G までの文字、黒鍵の場合は＃と♭の両方の表現を返します。
 	 * ただし、制限文字数の指定により＃と♭の両方を返せないことがわかった場合、
 	 * 五度圏のC/Amに近いキーでよく使われるほうの表記（C# Eb F# Ab Bb）だけを返します。
@@ -286,15 +289,15 @@ public class Note {
 	 * 白鍵で＃♭のついた音階表現（B#、Cb など）、ダブルシャープ、ダブルフラットを使った表現は返しません。
 	 * </p>
 	 * @param noteNumber MIDIノート番号
-	 * @param maxChars 最大文字数（最大がない場合は負数を指定）
+	 * @param maxChars 最大文字数（無制限の場合nullを指定）
 	 * @return MIDIノート番号が示す音名
 	 */
-	public static String noteNumberToSymbol(int noteNumber, int maxChars) {
+	public static String noteNumberToSymbol(int noteNumber, Integer maxChars) {
 		int co5 = mod12(toggleCo5(noteNumber));
 		if( co5 == 11 ) co5 -= Note.SEMITONES_PER_OCTAVE; // E# -> F
 		if( co5 < 6 ) return Language.SYMBOL.stringOf(co5 + INDEX_OF_C); // F C G D A E B
 
-		if( maxChars < 0 || maxChars >= "F# / Gb".length() ) return
+		if( maxChars == null || maxChars >= "F# / Gb".length() ) return
 				Language.SYMBOL.stringOf(co5 + INDEX_OF_C) + " / " +
 				Language.SYMBOL.stringOf(co5 + INDEX_OF_C - Note.SEMITONES_PER_OCTAVE);
 
@@ -303,12 +306,12 @@ public class Note {
 	}
 	/**
 	 * MIDIノート番号が示す音名を返します。
-	 * 内部的には{@link #noteNumberToSymbol(int,int)}を呼び出しているだけです。
+	 * 内部的には{@link #noteNumberToSymbol(int,Integer)}を呼び出しているだけです。
 	 * </p>
 	 * @param noteNumber MIDIノート番号
 	 * @return MIDIノート番号が示す音名
 	 */
 	public static String noteNumberToSymbol(int noteNumber) {
-		return noteNumberToSymbol(noteNumber, -1);
+		return noteNumberToSymbol(noteNumber, null);
 	}
 }
