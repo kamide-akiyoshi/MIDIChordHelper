@@ -20,6 +20,7 @@ import camidion.chordhelper.pianokeyboard.PianoKeyboard;
  */
 public class ChordDisplayLabel extends JLabel {
 	private String defaultString = null;
+	private String defaultToolTip = null;
 	private Chord chord = null;
 	private int noteNumber = -1;
 	private boolean isDark = false;
@@ -27,12 +28,14 @@ public class ChordDisplayLabel extends JLabel {
 	/**
 	 * 和音表示ラベルを構築します。
 	 * @param defaultString 初期表示する文字列
+	 * @param defaultToolTip 初期設定するツールチップ
 	 * @param chordMatrix このラベルをクリックしたときに鳴らす和音ボタンマトリクス
 	 * @param keyboard このラベルをクリックしたときに鳴らす鍵盤
 	 */
-	public ChordDisplayLabel(String defaultString, ChordMatrix chordMatrix, PianoKeyboard keyboard) {
+	public ChordDisplayLabel(String defaultString, String defaultToolTip, ChordMatrix chordMatrix, PianoKeyboard keyboard) {
 		super(defaultString, JLabel.CENTER);
 		this.defaultString = defaultString;
+		setToolTipText(this.defaultToolTip = defaultToolTip);
 		if( chordMatrix == null ) return;
 		addMouseListener(new MouseAdapter() {
 			@Override
@@ -109,7 +112,7 @@ public class ChordDisplayLabel extends JLabel {
 		this.noteNumber = -1;
 		if( (this.chord = chord) == null ) {
 			setText(defaultString);
-			setToolTipText(null);
+			setToolTipText(defaultToolTip);
 		}
 		else {
 			setChordText();

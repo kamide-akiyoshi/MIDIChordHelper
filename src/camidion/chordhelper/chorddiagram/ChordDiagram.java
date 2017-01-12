@@ -133,7 +133,10 @@ public class ChordDiagram extends JPanel {
 	 * コードダイアグラムのタイトルラベル
 	 */
 	public ChordDisplayLabel titleLabel =
-		new ChordDisplayLabel("Chord Diagram",null,null) {
+		new ChordDisplayLabel(
+			"<html><span style=\"font-size: 170%\">N.C.</span></html>",
+			"Non Chord",null,null
+		) {
 			{
 				setHorizontalAlignment(SwingConstants.CENTER);
 				setVerticalAlignment(SwingConstants.BOTTOM);

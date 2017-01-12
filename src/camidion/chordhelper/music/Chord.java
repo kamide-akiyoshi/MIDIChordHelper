@@ -522,20 +522,20 @@ public class Chord {
 	 * @return コード名のHTML
 	 */
 	public String toHtmlString(String colorName) {
-		String span = "<span style=\"font-size: 120%\">";
+		String smallSpan = "<span style=\"font-size: 120%\">";
 		String endSpan = "</span>";
 		String root = rootNoteSymbol.toString();
-		String formattedRoot = (root.length() == 1) ? root + span :
-			root.replace("#",span+"<sup>#</sup>").
-			replace("b",span+"<sup>b</sup>").
-			replace("x",span+"<sup>x</sup>");
+		String formattedRoot = (root.length() == 1) ? root + smallSpan :
+			root.replace("#",smallSpan+"<sup>#</sup>").
+			replace("b",smallSpan+"<sup>b</sup>").
+			replace("x",smallSpan+"<sup>x</sup>");
 		String formattedBass = "";
 		if( ! rootNoteSymbol.equals(bassNoteSymbol) ) {
 			String bass = bassNoteSymbol.toString();
-			formattedBass = (bass.length() == 1) ? bass + span :
-				bass.replace("#",span+"<sup>#</sup>").
-				replace("b",span+"<sup>b</sup>").
-				replace("x",span+"<sup>x</sup>");
+			formattedBass = (bass.length() == 1) ? bass + smallSpan :
+				bass.replace("#",smallSpan+"<sup>#</sup>").
+				replace("b",smallSpan+"<sup>b</sup>").
+				replace("x",smallSpan+"<sup>x</sup>");
 			formattedBass = "/" + formattedBass + endSpan;
 		}
 		String suffix = symbolSuffix().

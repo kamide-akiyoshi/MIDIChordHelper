@@ -20,7 +20,6 @@ public class Key {
 	 * 調号が空（C/Am ハ長調またはイ短調）で、メジャー・マイナーの区別のない調
 	 */
 	public static final Key C_MAJOR_OR_A_MINOR = new Key();
-	private Key() { }
 	/**
 	 * キー指定（メジャー／マイナー／両方）
 	 */
@@ -81,16 +80,20 @@ public class Key {
 		normalize();
 	}
 	/**
-	 * MIDIの調データ（メタメッセージ2byteの配列）から調を構築します。
+	 * MIDIの調データ（メタメッセージ2byte配列）から調を構築します。
+	 * <p>デフォルト値は、ハ長調またはイ短調（両者の区別なし）です。
+	 * 引数から取得できた値だけが、デフォルト値から変更されます。
+	 * 例えば次のような場合、取得できなかった値はデフォルト値のままとなります。
+	 * </p>
 	 * <ul>
-	 * <li>長さ0の配列が与えられた場合は{@link #Key() 引数のないコンストラクタ}と同じ動作になります。</li>
-	 * <li>メジャー・マイナーの区別を表す有効な値が見つからなかった場合、区別なしとして構築されます。</li>
+	 * <li>引数がnull</li>
+	 * <li>引数の配列が2byteに満たない</li>
+	 * <li>長調・短調の区別が不明確（配列インデックス1の値が、0:長調、1:短調、のどちらでもない）</li>
 	 * </ul>
-	 *
 	 * @param midiData MIDIの調データ
 	 */
-	public Key(byte midiData[]) {
-		if( midiData.length == 0 ) return;
+	public Key(byte ... midiData) {
+		if( midiData == null || midiData.length == 0 ) return;
 		co5 = midiData[0];
 		if( midiData.length > 1 ) {
 			switch(midiData[1]) {
@@ -207,7 +210,7 @@ public class Key {
 	}
 	/**
 	 * MIDIの調データ（メタメッセージ2byte）を生成して返します。
-	 * @return  MIDIの調データ
+	 * @return MIDIの調データ
 	 */
 	public byte[] getBytes() {
 		return new byte[] {(byte) co5, (byte) ((majorMinor == MajorMinor.MINOR) ? 1 : 0)};

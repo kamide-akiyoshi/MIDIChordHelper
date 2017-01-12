@@ -40,7 +40,7 @@ public class MidiKeyboardPanel extends JPanel {
 		keyboardCenterPanel = new PianoKeyboardPanel();
 		keyboardCenterPanel.keyboard.chordMatrix = chordMatrix;
 		keyboardCenterPanel.keyboard.chordDisplay =
-			new ChordDisplayLabel("MIDI Keyboard", chordMatrix, keyboardCenterPanel.keyboard);
+			new ChordDisplayLabel("MIDI Keyboard", null, chordMatrix, keyboardCenterPanel.keyboard);
 		setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
 		add(keyboardChordPanel = new JPanel() {
 			{

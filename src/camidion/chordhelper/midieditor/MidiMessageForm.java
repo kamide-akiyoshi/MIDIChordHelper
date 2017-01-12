@@ -41,14 +41,12 @@ public class MidiMessageForm extends JPanel implements ActionListener {
 				int i; String s;
 				// チャンネルメッセージ
 				for( i = 0x80; i <= 0xE0 ; i += 0x10 ) {
-					if( (s = MIDISpec.getStatusName(i)) == null )
-						continue;
+					if((s = MIDISpec.getStatusName(i)) == null) continue;
 					addElement(String.format("0x%02X : %s", i, s));
 				}
 				// チャンネルを持たない SysEx やメタメッセージなど
 				for( i = 0xF0; i <= 0xFF ; i++ ) {
-					if( (s = MIDISpec.getStatusName(i)) == null )
-						continue;
+					if((s = MIDISpec.getStatusName(i)) == null) continue;
 					addElement(String.format("0x%02X : %s", i, s));
 				}
 			}
@@ -59,9 +57,8 @@ public class MidiMessageForm extends JPanel implements ActionListener {
 	private ComboBoxModel<String> noteComboBoxModel =
 		new DefaultComboBoxModel<String>() {
 			{
-				for( int i = 0; i<=0x7F; i++ ) addElement(
-					String.format("0x%02X : %d : %s", i, i, Note.noteNumberToSymbol(i))
-				);
+				for(int i=0; i<=0x7F; i++)
+					addElement(String.format("0x%02X : %d : %s", i, i, Note.noteNumberToSymbol(i)));
 				// Center note C
 				setSelectedItem(getElementAt(60));
 			}
@@ -72,11 +69,8 @@ public class MidiMessageForm extends JPanel implements ActionListener {
 	private ComboBoxModel<String> percussionComboBoxModel =
 		new DefaultComboBoxModel<String>() {
 			{
-				for( int i = 0; i<=0x7F; i++ ) addElement(
-					String.format(
-						"0x%02X : %d : %s", i, i, MIDISpec.getPercussionName(i)
-					)
-				);
+				for( int i = 0; i<=0x7F; i++ )
+					addElement(String.format("0x%02X : %d : %s", i, i, MIDISpec.getPercussionName(i)));
 				setSelectedItem(getElementAt(35)); // Acoustic Bass Drum
 			}
 		};
@@ -88,8 +82,7 @@ public class MidiMessageForm extends JPanel implements ActionListener {
 			{
 				String s;
 				for( int i = 0; i<=0x7F; i++ ) {
-					if( (s = MIDISpec.getControllerName(i)) == null )
-						continue;
+					if((s = MIDISpec.getControllerName(i)) == null) continue;
 					addElement(String.format("0x%02X : %d : %s", i, i, s));
 				}
 			}
@@ -100,11 +93,8 @@ public class MidiMessageForm extends JPanel implements ActionListener {
 	private ComboBoxModel<String> instrumentComboBoxModel =
 		new DefaultComboBoxModel<String>() {
 			{
-				for( int i = 0; i<=0x7F; i++ ) addElement(
-					String.format(
-						"0x%02X : %s", i, MIDISpec.instrumentNames[i]
-					)
-				);
+				for(int i = 0; i<=0x7F; i++)
+					addElement(String.format("0x%02X : %s", i, MIDISpec.instrumentNames[i]));
 			}
 		};
 	/**
@@ -114,17 +104,13 @@ public class MidiMessageForm extends JPanel implements ActionListener {
 		new DefaultComboBoxModel<String>() {
 			{
 				String s;
-				String initial_type_string = null;
-				for( int type = 0; type < 0x80 ; type++ ) {
-					if( (s = MIDISpec.getMetaName(type)) == null ) {
-						continue;
-					}
-					s = String.format("0x%02X : %s", type, s);
-					addElement(s);
-					if( type == 0x51 )
-						initial_type_string = s; // Tempo
+				String initialTypeString = null;
+				for(int type=0; type < 0x80 ; type++) {
+					if((s = MIDISpec.getMetaName(type)) == null) continue;
+					addElement(s = String.format("0x%02X : %s", type, s));
+					if( type == 0x51 ) initialTypeString = s; // Tempo
 				}
-				setSelectedItem(initial_type_string);
+				setSelectedItem(initialTypeString);
 			}
 		};
 	/**
@@ -133,9 +119,7 @@ public class MidiMessageForm extends JPanel implements ActionListener {
 	private ComboBoxModel<String> hexData1ComboBoxModel =
 		new DefaultComboBoxModel<String>() {
 			{
-				for( int i = 0; i<=0x7F; i++ ) {
-					addElement(String.format("0x%02X : %d", i, i ));
-				}
+				for(int i=0; i<=0x7F; i++) addElement(String.format("0x%02X : %d", i, i));
 			}
 		};
 	/**
@@ -144,17 +128,14 @@ public class MidiMessageForm extends JPanel implements ActionListener {
 	private ComboBoxModel<String> hexData2ComboBoxModel =
 		new DefaultComboBoxModel<String>() {
 			{
-				for( int i = 0; i<=0x7F; i++ ) {
-					addElement(String.format("0x%02X : %d", i, i ));
-				}
+				for(int i=0; i<=0x7F; i++) addElement(String.format("0x%02X : %d", i, i));
 			}
 		};
 	// データ選択操作部
 	private HexSelecter statusText = new HexSelecter("Status/Command");
 	private HexSelecter data1Text = new HexSelecter("[Data1] ");
 	private HexSelecter data2Text = new HexSelecter("[Data2] ");
-	MidiChannelComboSelecter channelText =
-		new MidiChannelComboSelecter("MIDI Channel");
+	MidiChannelComboSelecter channelText = new MidiChannelComboSelecter("MIDI Channel");
 
 	private JComboBox<String> statusComboBox = statusText.getComboBox();
 	private JComboBox<String> data1ComboBox = data1Text.getComboBox();
@@ -175,15 +156,12 @@ public class MidiMessageForm extends JPanel implements ActionListener {
 				new PianoKeyboardAdapter() {
 					public void pianoKeyPressed(int n, InputEvent e) {
 						data1Text.setValue(n);
-						if( midiChannels != null )
-							midiChannels[channelText.getSelectedChannel()].
-							noteOn( n, data2Text.getValue() );
+						if( midiChannels == null ) return;
+						midiChannels[channelText.getSelectedChannel()].noteOn(n, data2Text.getValue());
 					}
 					public void pianoKeyReleased(int n, InputEvent e) {
-						if( midiChannels != null ) {
-							midiChannels[channelText.getSelectedChannel()].
-							noteOff( n, data2Text.getValue() );
-						}
+						if( midiChannels == null ) return;
+						midiChannels[channelText.getSelectedChannel()].noteOff(n, data2Text.getValue());
 					}
 				}
 			);
@@ -198,14 +176,12 @@ public class MidiMessageForm extends JPanel implements ActionListener {
 	 */
 	private TempoSelecter tempoSelecter = new TempoSelecter() {
 		{
-			tempoSpinnerModel.addChangeListener(
-				new ChangeListener() {
-					@Override
-					public void stateChanged(ChangeEvent e) {
-						dataText.setValue(getTempoByteArray());
-					}
+			tempoSpinnerModel.addChangeListener(new ChangeListener() {
+				@Override
+				public void stateChanged(ChangeEvent e) {
+					dataText.setValue(getTempoByteArray());
 				}
-			);
+			});
 		}
 	};
 	/**
@@ -213,23 +189,16 @@ public class MidiMessageForm extends JPanel implements ActionListener {
 	 */
 	private TimeSignatureSelecter timesigSelecter = new TimeSignatureSelecter() {
 		{
-			upperTimesigSpinnerModel.addChangeListener(
-				new ChangeListener() {
-					@Override
-					public void stateChanged(ChangeEvent e) {
-						dataText.setValue(getByteArray());
-					}
-				}
-			);
-			lowerTimesigCombobox.addActionListener(
-				new ActionListener() {
-					@Override
-					public void actionPerformed(ActionEvent e) {
-						dataText.setValue(getByteArray());
-					}
-				}
-			);
+			upperTimesigModel.addChangeListener(new ChangeListener() {
+				@Override
+				public void stateChanged(ChangeEvent e) { update(); }
+			});
+			lowerTimesigView.addActionListener(new ActionListener() {
+				@Override
+				public void actionPerformed(ActionEvent e) { update(); }
+			});
 		}
+		private void update() { dataText.setValue(getByteArray()); }
 	};
 	/**
 	 * 調号選択
@@ -266,15 +235,15 @@ public class MidiMessageForm extends JPanel implements ActionListener {
 		statusComboBox.addActionListener(this);
 		channelComboBox.addActionListener(this);
 		data1ComboBox.addActionListener(this);
-		setLayout(new BoxLayout( this, BoxLayout.Y_AXIS ));
+		setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
 		add(new JPanel() {{ add(statusText); add(channelText); }});
 		add(durationForm);
 		add(new JPanel() {{ add(data1Text); add(keyboardPanel); }});
 		add(new JPanel() {{ add(data2Text); }});
-		add( tempoSelecter );
-		add( timesigSelecter );
-		add( keysigSelecter );
-		add( dataText );
+		add(tempoSelecter);
+		add(timesigSelecter);
+		add(keysigSelecter);
+		add(dataText);
 		updateVisible();
 	}
 	@Override
@@ -300,14 +269,13 @@ public class MidiMessageForm extends JPanel implements ActionListener {
 	/**
 	 * このMIDIメッセージフォームにMIDIチャンネルを設定します。
 	 *
-	 * <p>設定したMIDIチャンネルには、
-	 * ダイアログ内のピアノキーボードで音階を入力したときに
+	 * <p>設定したMIDIチャンネルには、ダイアログ内のピアノキーボードで音階を入力したときに
 	 * ノートON/OFFが出力されます。これにより実際に音として聞けるようになります。
 	 * </p>
 	 *
 	 * @param midiChannels MIDIチャンネル
 	 */
-	public void setOutputMidiChannels( MidiChannel midiChannels[] ) {
+	public void setOutputMidiChannels(MidiChannel midiChannels[]) {
 		this.midiChannels = midiChannels;
 	}
 	/**
@@ -315,16 +283,13 @@ public class MidiMessageForm extends JPanel implements ActionListener {
 	 * @param isVisible trueで表示、falseで非表示
 	 */
 	public void setDurationVisible(boolean isVisible) {
-		isDurationVisible = isVisible;
-		updateVisible();
+		isDurationVisible = isVisible; updateVisible();
 	}
 	/**
 	 * 時間間隔入力の表示状態を返します。
 	 * @return true：表示中 false：非表示中
 	 */
-	public boolean isDurationVisible() {
-		return isDurationVisible;
-	}
+	public boolean isDurationVisible() { return isDurationVisible; }
 	/**
 	 * 各入力欄の表示状態を更新します。
 	 */
@@ -400,17 +365,14 @@ public class MidiMessageForm extends JPanel implements ActionListener {
 				data1Text.setTitle("[Data1] MetaEvent Type");
 				data1ComboBox.setModel(metaTypeComboBoxModel);
 				int msgType = data1Text.getValue();
-				tempoSelecter.setVisible( msgType == 0x51 );
-				timesigSelecter.setVisible( msgType == 0x58 );
-				keysigSelecter.setVisible( msgType == 0x59 );
-				//
+				tempoSelecter.setVisible(msgType == 0x51);
+				timesigSelecter.setVisible(msgType == 0x58);
+				keysigSelecter.setVisible(msgType == 0x59);
 				if( MIDISpec.isEOT(msgType) ) {
 					dataText.clear();
 					dataText.setVisible(false);
 				}
-				else {
-					dataText.setTitle(MIDISpec.hasMetaMessageText(msgType)?"Text:":"Data:");
-				}
+				else dataText.setTitle(MIDISpec.hasMetaMessageText(msgType)?"Text:":"Data:");
 			}
 			else {
 				data1Text.setTitle("[Data1] ");
@@ -441,9 +403,7 @@ public class MidiMessageForm extends JPanel implements ActionListener {
 				msgData = new byte[0];
 			}
 			else {
-				if( (msgData = dataText.getBytes() ) == null ) {
-					return null;
-				}
+				if( (msgData = dataText.getBytes() ) == null ) return null;
 			}
 			MetaMessage msg = new MetaMessage();
 			try {
@@ -472,12 +432,10 @@ public class MidiMessageForm extends JPanel implements ActionListener {
 		int msgData2 = data2Text.getValue();
 		if( msgData2 < 0 ) msgData2 = 0;
 		try {
-			if( MIDISpec.isChannelMessage(msgStatus) ) {
+			if( MIDISpec.isChannelMessage(msgStatus) )
 				msg.setMessage((msgStatus & 0xF0), channelText.getSelectedChannel(), msgData1, msgData2);
-			}
-			else {
+			else
 				msg.setMessage(msgStatus, msgData1, msgData2);
-			}
 		} catch( InvalidMidiDataException e ) {
 			e.printStackTrace();
 			return null;
@@ -497,21 +455,21 @@ public class MidiMessageForm extends JPanel implements ActionListener {
 				msgStatus = smsg.getCommand();
 				msgChannel = smsg.getChannel();
 			}
-			statusText.setValue( msgStatus );
-			channelText.setSelectedChannel( msgChannel );
-			data1Text.setValue( smsg.getData1() );
-			data2Text.setValue( smsg.getData2() );
+			statusText.setValue(msgStatus);
+			channelText.setSelectedChannel(msgChannel);
+			data1Text.setValue(smsg.getData1());
+			data2Text.setValue(smsg.getData2());
 		}
 		else if( msg instanceof SysexMessage ) {
 			SysexMessage sysexMsg = (SysexMessage)msg;
-			statusText.setValue( sysexMsg.getStatus() );
-			dataText.setValue( sysexMsg.getData() );
+			statusText.setValue(sysexMsg.getStatus());
+			dataText.setValue(sysexMsg.getData());
 		}
 		else if( msg instanceof MetaMessage ) {
 			MetaMessage metaMsg = (MetaMessage)msg;
 			int msgType = metaMsg.getType();
 			byte data[] = metaMsg.getData();
-			statusText.setValue( 0xFF );
+			statusText.setValue(0xFF);
 			data1Text.setValue(msgType);
 			switch(msgType) {
 			case 0x51: tempoSelecter.setTempo(data); break;
@@ -519,12 +477,10 @@ public class MidiMessageForm extends JPanel implements ActionListener {
 			case 0x59: keysigSelecter.setSelectedKey(new Key(data)); break;
 			default: break;
 			}
-			if( MIDISpec.hasMetaMessageText(msgType) ) {
+			if( MIDISpec.hasMetaMessageText(msgType) )
 				dataText.setString(new String(data,charset));
-			}
-			else {
+			else
 				dataText.setValue(data);
-			}
 			updateVisible();
 		}
 	}
@@ -545,9 +501,7 @@ public class MidiMessageForm extends JPanel implements ActionListener {
 	 * 入力内容がノートメッセージかどうか調べます。
 	 * @return ノートメッセージのときtrue
 	 */
-	public boolean isNote() {
-		return isNote(statusText.getValue());
-	}
+	public boolean isNote() { return isNote(statusText.getValue()); }
 	/**
 	 * 入力内容がノートメッセージかどうか調べます。
 	 * @param status MIDIメッセージのステータス

@@ -282,42 +282,37 @@ public class ChordHelperApplet extends JApplet {
 	 * バージョン情報
 	 */
 	public static class VersionInfo {
-		public static final String	NAME = "MIDI Chord Helper";
-		public static final String	VERSION = "Ver.20170111.1";
-		public static final String	COPYRIGHT = "Copyright (C) 2004-2017";
-		public static final String	AUTHER = "＠きよし - Akiyoshi Kamide";
-		public static final String	URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";
-		/**
-		 * バージョン情報を返します。
-		 * @return バージョン情報
-		 */
-		public static String getInfo() {
-			return NAME + " " + VERSION + " " + COPYRIGHT + " " + AUTHER + " " + URL;
-		}
+		public static final String NAME = "MIDI Chord Helper";
+		public static final String VERSION = "Ver.20170112.1";
+		public static final String COPYRIGHT = "Copyright (C) 2004-2017";
+		public static final String AUTHER = "＠きよし - Akiyoshi Kamide";
+		public static final String URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";
 	}
 	@Override
-	public String getAppletInfo() { return VersionInfo.getInfo(); }
+	public String getAppletInfo() {
+		return VersionInfo.NAME
+				+ " " + VersionInfo.VERSION
+				+ " " + VersionInfo.COPYRIGHT
+				+ " " + VersionInfo.AUTHER
+				+ " " + VersionInfo.URL;
+	}
 	private class AboutMessagePane extends JEditorPane {
-		URI uri = null;
-		public AboutMessagePane() { this(true); }
-		public AboutMessagePane(boolean link_enabled) {
-			super( "text/html", "" );
-			String link_string, tooltip = null;
-			if( link_enabled && Desktop.isDesktopSupported() ) {
+		URI uri;
+		public AboutMessagePane() {
+			super("text/html", "");
+			boolean linkEnabled = Desktop.isDesktopSupported();
+			String linkString = VersionInfo.URL;
+			String tooltip = null;
+			if( linkEnabled ) {
 				tooltip = "Click this URL to open with your web browser - URLをクリックしてWebブラウザで開く";
-				link_string =
-					"<a href=\"" + VersionInfo.URL + "\" title=\"" +
-					tooltip + "\">" + VersionInfo.URL + "</a>" ;
+				linkString = "<a href=\""+linkString+"\" title=\""+tooltip+"\">"+linkString+"</a>";
 			}
-			else {
-				link_enabled = false; link_string = VersionInfo.URL;
-			}
-			setText(
-				"<html><center><font size=\"+1\">" + VersionInfo.NAME + "</font>  " +
-						VersionInfo.VERSION + "<br/><br/>" +
-						VersionInfo.COPYRIGHT + " " + VersionInfo.AUTHER + "<br/>" +
-						link_string + "</center></html>"
-			);
+			setText("<html><center><font size=\"+1\">" +
+					VersionInfo.NAME + "</font> " +
+					VersionInfo.VERSION + "<br/><br/>" +
+					VersionInfo.COPYRIGHT + " " +
+					VersionInfo.AUTHER + "<br/>" +
+					linkString + "</center></html>");
 			setToolTipText(tooltip);
 			setOpaque(false);
 			putClientProperty(JEditorPane.HONOR_DISPLAY_PROPERTIES, Boolean.TRUE);
@@ -326,7 +321,7 @@ public class ChordHelperApplet extends JApplet {
 			// メッセージ内の <a href=""> ～ </a> によるリンクを
 			// 実際に機能させる（ブラウザで表示されるようにする）ための設定
 			//
-			if( ! link_enabled ) return;
+			if( ! linkEnabled ) return;
 			try {
 				uri = new URI(VersionInfo.URL);
 			}catch( URISyntaxException use ) {
@@ -335,7 +330,7 @@ public class ChordHelperApplet extends JApplet {
 			}
 			addHyperlinkListener(new HyperlinkListener() {
 				public void hyperlinkUpdate(HyperlinkEvent e) {
-					if(e.getEventType()==HyperlinkEvent.EventType.ACTIVATED) {
+					if( e.getEventType() == HyperlinkEvent.EventType.ACTIVATED ) {
 						try{
 							Desktop.getDesktop().browse(uri);
 						}catch(IOException ioe) {
@@ -575,12 +570,8 @@ public class ChordHelperApplet extends JApplet {
 						msg = tickIndex.lastMetaMessageAt(
 							SequenceTickIndex.MetaMessageType.KEY_SIGNATURE, tickPos
 						);
-						if( msg == null ) {
-							keysigLabel.clear();
-						}
-						else {
-							setKeySignature(new Key(msg.getData()));
-						}
+						if(msg == null) keysigLabel.clear();
+						else setKeySignature(new Key(msg.getData()));
 					}
 				}
 			}

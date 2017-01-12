@@ -57,7 +57,7 @@ public class ChordMatrix extends JPanel
 	/** コードボタン */
 	public ChordLabel chordLabels[] = new ChordLabel[N_COLUMNS * CHORD_BUTTON_ROWS];
 	/** コードボタンの下のコード表示部 */
-	public ChordDisplayLabel chordDisplay = new ChordDisplayLabel("Chord Pad", this, null);
+	public ChordDisplayLabel chordDisplay = new ChordDisplayLabel("Chord Pad", null, this, null);
 
 	private NoteWeight noteWeightArray[] = new NoteWeight[Note.SEMITONES_PER_OCTAVE];
 	/**

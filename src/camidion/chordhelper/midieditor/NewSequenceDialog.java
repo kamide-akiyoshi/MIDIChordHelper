@@ -215,7 +215,7 @@ public class NewSequenceDialog extends JDialog {
 			}});
 			add("Track", trackSpecPanel);
 		}});
-		setBounds( 250, 200, 600, 540 );
+		setBounds(250,200,600,540);
 	}
 	/**
 	 * 新しいコード進行を生成して返します。
