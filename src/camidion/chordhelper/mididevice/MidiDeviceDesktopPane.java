@@ -21,6 +21,8 @@ import javax.swing.event.TreeSelectionEvent;
 import javax.swing.event.TreeSelectionListener;
 import javax.swing.tree.TreePath;
 
+import camidion.chordhelper.ChordHelperApplet;
+
 /**
  * 開いているMIDIデバイスを置くためのデスクトップビュー
  */
@@ -201,9 +203,10 @@ public class MidiDeviceDesktopPane extends JDesktopPane implements TreeSelection
 					//   例えば、「Microsort MIDI マッパー」と「Microsoft GS Wavetable SW Synth」は
 					//   連動して開かれるため、同時に開こうとすると、ここにたどり着く。
 					//
-					String title = "Cannot open MIDI device";
-					String message = "MIDIデバイス "+deviceModel+" はすでに使用中です。\n"
-						+"他のデバイスが連動して開いている可能性があります。\n\n"
+					String title = ChordHelperApplet.VersionInfo.NAME;
+					String message = "Cannot open MIDI device '"+deviceModel+"'"
+							+ "\nMIDIデバイス "+deviceModel+" を開くことができません。\n"
+						+"すでに他のデバイスが連動して開いている可能性があります。\n\n"
 						+ e.getMessage();
 					JOptionPane.showMessageDialog(null, message, title, JOptionPane.ERROR_MESSAGE);
 				} catch (Exception ex) {

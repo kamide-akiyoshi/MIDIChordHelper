@@ -18,6 +18,7 @@ import javax.sound.midi.Receiver;
 import javax.sound.midi.Sequencer;
 import javax.sound.midi.Synthesizer;
 import javax.sound.midi.Transmitter;
+import javax.swing.JOptionPane;
 import javax.swing.event.EventListenerList;
 import javax.swing.event.TreeModelEvent;
 import javax.swing.event.TreeModelListener;
@@ -132,22 +133,6 @@ public class MidiDeviceTreeModel extends AbstractList<MidiDeviceModel> implement
 	}
 
 	/**
-	 * 指定されたMIDIデバイスモデルをまとめて開きます。
-	 *
-	 * @param toOpenList 開きたいMIDIデバイスモデルのコレクション
-	 */
-	public void openDevices(Collection<MidiDeviceModel> toOpenList) {
-		for( MidiDeviceModel toOpen : toOpenList ) {
-			try {
-				toOpen.open();
-			} catch( MidiUnavailableException ex ) {
-				System.out.println("Cannot open MIDI device " + toOpen);
-				ex.printStackTrace();
-			}
-		}
-	}
-
-	/**
 	 * このMIDIデバイスツリーモデルに登録されているMIDIシーケンサーモデルを返します。
 	 * @return MIDIシーケンサーモデル
 	 */
@@ -201,7 +186,7 @@ public class MidiDeviceTreeModel extends AbstractList<MidiDeviceModel> implement
 			//
 			addInternally(m);
 		}
-		// 開くMIDIデバイスモデルの一覧を作成
+		// MIDIデバイスモデルを開く
 		//
 		//   NOTE: 必ず MIDI OUT Rx デバイスを先に開くこと。
 		//
@@ -211,21 +196,29 @@ public class MidiDeviceTreeModel extends AbstractList<MidiDeviceModel> implement
 		//
 		//   開く順序が逆になると「進みすぎるから遅らせよう」として無用なレイテンシーが発生する原因になる。
 		//
-		List<MidiDeviceModel> toOpenList = new ArrayList<>();
+		List<MidiDeviceModel> openedMidiDeviceModelList = new ArrayList<>();
 		for( MidiDeviceModel toOpen : Arrays.asList(
 				synthModel, firstMidiOutModel, sequencerModel, guiModel, firstMidiInModel) ) {
-			if( toOpen != null ) toOpenList.add(toOpen);
+			if( toOpen == null ) continue;
+			try {
+ 				toOpen.open();
+			} catch( MidiUnavailableException ex ) {
+				String title = ChordHelperApplet.VersionInfo.NAME;
+				String message = "Cannot open MIDI device '"+toOpen+"'\n"
+						+ "MIDIデバイス "+toOpen+" を開くことができません。\n\n"
+						+ ex.getMessage();
+				JOptionPane.showMessageDialog(null, message, title, JOptionPane.ERROR_MESSAGE);
+				continue;
+			}
+			openedMidiDeviceModelList.add(toOpen);
 		}
-		// MIDIデバイスモデルを開く
-		openDevices(toOpenList);
-		//
 		// 初期接続マップを作成（開いたデバイスを相互に接続する）
 		Map<MidiDeviceModel, Collection<MidiDeviceModel>> initialConnection = new LinkedHashMap<>();
-		for( MidiDeviceModel rxm : toOpenList ) {
+		for( MidiDeviceModel rxm : openedMidiDeviceModelList ) {
 			if( rxm.getReceiverListModel() == null ) continue;
 			List<MidiDeviceModel> txmList;
 			initialConnection.put(rxm, txmList = new ArrayList<>());
-			for( MidiDeviceModel txm : toOpenList ) {
+			for( MidiDeviceModel txm : openedMidiDeviceModelList ) {
 				if( txm.getTransmitterListModel() == null ) continue;
 				//
 				// Tx/Rx両方を持つデバイスでは
