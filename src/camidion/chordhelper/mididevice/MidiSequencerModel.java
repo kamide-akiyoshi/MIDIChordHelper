@@ -1,7 +1,6 @@
 package camidion.chordhelper.mididevice;
 
 import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -27,7 +26,7 @@ import camidion.chordhelper.midieditor.SequenceTrackListTableModel;
 import camidion.chordhelper.midieditor.SequencerSpeedSlider;
 
 /**
- * MIDIシーケンサモデル
+ * MIDIシーケンサモデル（再生位置モデルのインターフェース付き）
  */
 public class MidiSequencerModel extends MidiDeviceModel implements BoundedRangeModel {
 	/**
@@ -43,15 +42,10 @@ public class MidiSequencerModel extends MidiDeviceModel implements BoundedRangeM
 		super(sequencer, deviceModelTree);
 	}
 	/**
-	 * このシーケンサーの再生スピード調整モデル
+	 * このシーケンサーの再生スピード
 	 */
 	public BoundedRangeModel speedSliderModel = new DefaultBoundedRangeModel(0, 0, -7, 7) {{
-		addChangeListener(new ChangeListener() {
-			@Override
-			public void stateChanged(ChangeEvent e) {
-				getSequencer().setTempoFactor(SequencerSpeedSlider.tempoFactorOf(getValue()));
-			}
-		});
+		addChangeListener(e->getSequencer().setTempoFactor(SequencerSpeedSlider.tempoFactorOf(getValue())));
 	}};
 	/**
 	 * MIDIシーケンサを返します。
@@ -61,11 +55,9 @@ public class MidiSequencerModel extends MidiDeviceModel implements BoundedRangeM
 	/**
 	 * 開始終了アクション
 	 */
-	public StartStopAction startStopAction = new StartStopAction();
-	/**
-	 * 開始終了アクション
-	 */
-	class StartStopAction extends AbstractAction {
+	public Action getStartStopAction() { return startStopAction; }
+	private StartStopAction startStopAction = new StartStopAction();
+	private class StartStopAction extends AbstractAction {
 		private Map<Boolean,Icon> iconMap = new HashMap<Boolean,Icon>() {
 			{
 				put(Boolean.FALSE, new ButtonIcon(ButtonIcon.PLAY_ICON));
@@ -73,42 +65,18 @@ public class MidiSequencerModel extends MidiDeviceModel implements BoundedRangeM
 			}
 		};
 		{
-			putValue(
-				SHORT_DESCRIPTION,
-				"Start/Stop recording or playing - 録音または再生の開始／停止"
-			);
+			putValue(SHORT_DESCRIPTION, "Start/Stop recording or playing - 録音または再生の開始／停止");
 			setRunning(false);
 		}
 		@Override
 		public void actionPerformed(ActionEvent event) {
 			if(timeRangeUpdater.isRunning()) stop(); else start();
 		}
-		/**
-		 * 開始されているかどうかを設定します。
-		 * @param isRunning 開始されていたらtrue
-		 */
 		private void setRunning(boolean isRunning) {
 			putValue(LARGE_ICON_KEY, iconMap.get(isRunning));
 			putValue(SELECTED_KEY, isRunning);
 		}
 	}
-	/**
-	 * シーケンサに合わせてミリ秒位置を更新するタイマー
-	 */
-	private javax.swing.Timer timeRangeUpdater = new javax.swing.Timer( 20,
-		new ActionListener(){
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				if( valueIsAdjusting || ! getSequencer().isRunning() ) {
-					// 手動で移動中の場合や、シーケンサが止まっている場合は、
-					// タイマーによる更新は不要
-					return;
-				}
-				// リスナーに読み込みを促す
-				fireStateChanged();
-			}
-		}
-	);
 	/**
 	 * このモデルのMIDIシーケンサを開始します。
 	 *
@@ -198,6 +166,18 @@ public class MidiSequencerModel extends MidiDeviceModel implements BoundedRangeM
 	public void setValueIsAdjusting(boolean valueIsAdjusting) {
 		this.valueIsAdjusting = valueIsAdjusting;
 	}
+	/**
+	 * シーケンサに合わせてミリ秒位置を更新するタイマー
+	 */
+	private javax.swing.Timer timeRangeUpdater = new javax.swing.Timer(20, e->{
+		if( valueIsAdjusting || ! getSequencer().isRunning() ) {
+			// 手動で移動中の場合や、シーケンサが止まっている場合は、
+			// タイマーによる更新は不要
+			return;
+		}
+		// リスナーに読み込みを促す
+		fireStateChanged();
+	});
 	@Override
 	public void setRangeProperties(int value, int extent, int min, int max, boolean valueIsAdjusting) {
 		getSequencer().setMicrosecondPosition(RESOLUTION_MICROSECOND * (long)value);
@@ -301,7 +281,8 @@ public class MidiSequencerModel extends MidiDeviceModel implements BoundedRangeM
 	/**
 	 * １小節戻るアクション
 	 */
-	public Action moveBackwardAction = new AbstractAction() {
+	public Action getMoveBackwardAction() { return moveBackwardAction; }
+	private Action moveBackwardAction = new AbstractAction() {
 		{
 			putValue(SHORT_DESCRIPTION, "Move backward 1 measure - １小節戻る");
 			putValue(LARGE_ICON_KEY, new ButtonIcon(ButtonIcon.BACKWARD_ICON));
@@ -312,7 +293,8 @@ public class MidiSequencerModel extends MidiDeviceModel implements BoundedRangeM
 	/**
 	 *１小節進むアクション
 	 */
-	public Action moveForwardAction = new AbstractAction() {
+	public Action getMoveForwardAction() { return moveForwardAction; }
+	private Action moveForwardAction = new AbstractAction() {
 		{
 			putValue(SHORT_DESCRIPTION, "Move forward 1 measure - １小節進む");
 			putValue(LARGE_ICON_KEY, new ButtonIcon(ButtonIcon.FORWARD_ICON));

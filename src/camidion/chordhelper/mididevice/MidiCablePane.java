@@ -11,8 +11,6 @@ import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
 import java.awt.datatransfer.UnsupportedFlavorException;
 import java.awt.dnd.DragSource;
-import java.awt.dnd.DragSourceDragEvent;
-import java.awt.dnd.DragSourceMotionListener;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.ComponentListener;
@@ -20,7 +18,6 @@ import java.util.Arrays;
 import java.util.Hashtable;
 import java.util.List;
 
-import javax.sound.midi.MidiDevice;
 import javax.sound.midi.Receiver;
 import javax.sound.midi.Transmitter;
 import javax.swing.JComponent;
@@ -129,13 +126,10 @@ public class MidiCablePane extends JComponent {
 		public void internalFrameDeactivated(InternalFrameEvent e) { repaint(); }
 		@Override
 		public void internalFrameClosing(InternalFrameEvent e) {
-			JInternalFrame frame = e.getInternalFrame();
-			if( ! (frame instanceof MidiDeviceFrame) ) return;
-			MidiDeviceFrame f = (MidiDeviceFrame)frame;
-			MidiDeviceModel m = f.getMidiDeviceModel();
-			MidiDevice d = m.getMidiDevice();
-			List<Receiver> rxList = d.getReceivers();
-			for( Receiver rx : rxList ) rxToColor.remove(rx);
+			JInternalFrame f = e.getInternalFrame();
+			if( ! (f instanceof MidiDeviceFrame) ) return;
+			MidiDeviceModel m = ((MidiDeviceFrame)f).getMidiDeviceModel();
+			m.getMidiDevice().getReceivers().forEach(rx->rxToColor.remove(rx));
 			repaint();
 		}
 	};
@@ -157,14 +151,11 @@ public class MidiCablePane extends JComponent {
 		this.desktopPane = desktopPane;
 		setOpaque(false);
 		setVisible(true);
-		DragSource.getDefaultDragSource().addDragSourceMotionListener(new DragSourceMotionListener() {
-			@Override
-		    public void dragMouseMoved(DragSourceDragEvent dsde) {
-				// OSのスクリーン座標系から、このケーブル画面の座標系に変換する
-		    	Point origin = getLocationOnScreen();
-		    	(draggingLocation = dsde.getLocation()).translate(-origin.x, -origin.y);
-		    	repaint();
-		    }
+		DragSource.getDefaultDragSource().addDragSourceMotionListener(dsde->{
+			// OSのスクリーン座標系から、このケーブル画面の座標系に変換する
+	    	Point origin = getLocationOnScreen();
+	    	(draggingLocation = dsde.getLocation()).translate(-origin.x, -origin.y);
+	    	repaint();
 		});
 	}
 

@@ -12,9 +12,8 @@ public class KeySignatureLabel extends JLabel {
 	private Key key;
 	public KeySignatureLabel() { clear(); }
 	public Key getKey() { return key; }
-	public void setKeySignature( Key key ) {
-		this.key = key;
-		if( key == null ) {
+	public void setKey(Key key) {
+		if( (this.key = key) == null ) {
 			setText("Key:C");
 			setToolTipText("Key: Unknown");
 			setEnabled(false);
@@ -28,5 +27,5 @@ public class KeySignatureLabel extends JLabel {
 		);
 		setEnabled(true);
 	}
-	public void clear() { setKeySignature( (Key)null ); }
+	public void clear() { setKey((Key)null); }
 }

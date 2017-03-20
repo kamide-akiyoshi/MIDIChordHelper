@@ -4,8 +4,6 @@ import java.io.UnsupportedEncodingException;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.sound.midi.MetaEventListener;
-import javax.sound.midi.MetaMessage;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 
@@ -26,31 +24,18 @@ public class ChordTextField extends JTextField {
 		// To reduce resized height, set maximum size to screen size.
 		//
 		setMaximumSize(java.awt.Toolkit.getDefaultToolkit().getScreenSize());
-		(this.sequencerModel = sequencerModel).getSequencer().addMetaEventListener(new MetaEventListener() {
-			@Override
-			public void meta(MetaMessage msg) {
-				int t = msg.getType();
-				switch(t) {
-				case 0x01: // Text（任意のテキスト：コメントなど）
-				case 0x05: // Lyrics（歌詞）
-				case 0x02: // Copyright（著作権表示）
-				case 0x03: // Sequence Name / Track Name（曲名またはトラック名）
-				case 0x06: // Marker
-					byte[] d = msg.getData();
-					if( SwingUtilities.isEventDispatchThread() ) {
-						addText(t,d);
-					} else {
-						// MIDIシーケンサのEDTから呼ばれた場合
-						// 表示処理をSwingのEDTに振り直す
-						SwingUtilities.invokeLater(new Runnable() {
-							@Override
-							public void run() { addText(t,d); }
-						});
-					}
-					break;
-				default:
-					break;
-				}
+		(this.sequencerModel = sequencerModel).getSequencer().addMetaEventListener(msg->{
+			int t = msg.getType();
+			switch(t) {
+			case 0x01: // Text（任意のテキスト：コメントなど）
+			case 0x05: // Lyrics（歌詞）
+			case 0x02: // Copyright（著作権表示）
+			case 0x03: // Sequence Name / Track Name（曲名またはトラック名）
+			case 0x06: // Marker
+				SwingUtilities.invokeLater(()->addText(t, msg.getData()));
+				break;
+			default:
+				break;
 			}
 		});
 	}
@@ -99,10 +84,7 @@ public class ChordTextField extends JTextField {
 			String currentText = getText();
 			if(
 				currentText != null && ! currentText.isEmpty()
-				&& (
-					isSoon ||
-					! additionalText.isEmpty() && additionalText.length() <= 8
-				)
+				&& (isSoon || ! additionalText.isEmpty() && additionalText.length() <= 8)
 			) {
 				// 既存歌詞がある場合、頻繁に来たか短い歌詞だったら追加
 				currentText += " " + additionalText;

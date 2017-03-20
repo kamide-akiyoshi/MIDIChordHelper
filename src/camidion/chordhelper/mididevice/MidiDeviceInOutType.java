@@ -31,6 +31,11 @@ public enum MidiDeviceInOutType {
 		this.description = description;
 		this.shortName = shortName;
 	}
+	/**
+	 * 指定されたMIDIデバイスがどの入出力タイプに該当するかを返します。
+	 * @param device MIDIデバイス
+	 * @return 指定されたMIDIデバイスに対する入出力タイプ
+	 */
 	public static MidiDeviceInOutType getValueFor(MidiDevice device) {
 		// tx:IN rx:OUT
 		return device.getMaxReceivers() == 0 ?

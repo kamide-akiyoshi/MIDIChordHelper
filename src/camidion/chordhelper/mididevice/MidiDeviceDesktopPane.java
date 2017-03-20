@@ -4,10 +4,9 @@ import java.awt.datatransfer.DataFlavor;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.beans.PropertyVetoException;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import javax.sound.midi.MidiUnavailableException;
 import javax.swing.JDesktopPane;
@@ -98,29 +97,22 @@ public class MidiDeviceDesktopPane extends JDesktopPane implements TreeSelection
 			public void treeNodesRemoved(TreeModelEvent e) { }
 			@Override
 			public void treeStructureChanged(TreeModelEvent e) {
+				// USBから切断されてツリーから消滅したMIDIデバイスモデルのフレームを削除
+				frameMap.keySet().stream().filter(m-> ! deviceTreeModel.contains(m))
+					.collect(Collectors.toList()).stream().map(m-> frameMap.remove(m))
+					.filter(f-> f != null).forEach(f-> remove(f));
 				//
-				// 削除されたデバイスモデルに対するデバイスフレームをマップから外す
-				List<MidiDeviceModel> deviceModelsToRemove = new ArrayList<>();
-				for( MidiDeviceModel m : frameMap.keySet() ) {
-					if( ! deviceTreeModel.contains(m) ) deviceModelsToRemove.add(m);
-				}
-				for( MidiDeviceModel m : deviceModelsToRemove ) {
-					MidiDeviceFrame frame = frameMap.remove(m);
-					if( frame != null ) remove(frame);
-				}
-				//
-				// 新しいデバイスモデルに対するデバイスフレームを生成してマップに登録
-				for( MidiDeviceModel deviceModel : deviceTreeModel ) {
-					if( frameMap.containsKey(deviceModel) ) continue;
-					MidiDeviceFrame frame = new MidiDeviceFrame(deviceModel, cablePane);
-					frameMap.put(deviceModel, frame);
+				// ツリーに追加されたMIDIデバイスモデルのフレームを生成
+				deviceTreeModel.stream().filter(dm -> ! frameMap.containsKey(dm)).forEach(dm->{
+					MidiDeviceFrame frame = new MidiDeviceFrame(dm, cablePane);
+					frameMap.put(dm, frame);
 					//
 					// トランスミッタリストモデルが変化したときにMIDIケーブルを再描画
-					TransmitterListModel txListModel = deviceModel.getTransmitterListModel();
+					TransmitterListModel txListModel = dm.getTransmitterListModel();
 					if( txListModel != null ) txListModel.addListDataListener(cablePane.midiConnecterListDataListener);
 					//
 					// レシーバリストモデルが変化したときにMIDIケーブルを再描画
-					ReceiverListModel rxListModel = deviceModel.getReceiverListModel();
+					ReceiverListModel rxListModel = dm.getReceiverListModel();
 					if( rxListModel != null ) rxListModel.addListDataListener(cablePane.midiConnecterListDataListener);
 					//
 					// デバイスフレームが開閉したときの動作
@@ -132,14 +124,12 @@ public class MidiDeviceDesktopPane extends JDesktopPane implements TreeSelection
 					frame.addComponentListener(cablePane.midiDeviceFrameComponentListener);
 					//
 					// サイズを設定したフレームをデスクトップに追加
-					frame.setSize(250, deviceModel.getInOutType() == MidiDeviceInOutType.MIDI_IN_OUT ? 90 : 70);
+					frame.setSize(250, dm.getInOutType() == MidiDeviceInOutType.MIDI_IN_OUT ? 90 : 70);
 					add(frame);
 					//
 					// デバイスが開いていたら表示
-					if( deviceModel.getMidiDevice().isOpen() ) {
-						frame.setVisible(true);
-					}
-				}
+					if( dm.getMidiDevice().isOpen() ) frame.setVisible(true);
+				});
 			}
 		};
 		deviceTreeModel.addTreeModelListener(treeModelListener);

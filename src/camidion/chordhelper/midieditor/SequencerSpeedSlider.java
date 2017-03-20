@@ -1,8 +1,6 @@
 package camidion.chordhelper.midieditor;
 
 import java.awt.Dimension;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -91,19 +89,16 @@ public class SequencerSpeedSlider extends JPanel {
 					{
 						setSize(new Dimension(20,20));
 						setMargin(ChordHelperApplet.ZERO_INSETS);
-						addActionListener(new ActionListener() {
-							@Override
-							public void actionPerformed(ActionEvent e) {
-								int max = maxFactors.size() - 1;
-								if( index >= max ) return;
-								changeSliderScale(maxFactors.get(++index));
-								if( index >= max ) {
-									setEnabled(false);
-									push.requestFocusInWindow();
-									return;
-								}
-								push.setEnabled(true);
+						addActionListener(e->{
+							int max = maxFactors.size() - 1;
+							if( index >= max ) return;
+							changeSliderScale(maxFactors.get(++index));
+							if( index >= max ) {
+								setEnabled(false);
+								push.requestFocusInWindow();
+								return;
 							}
+							push.setEnabled(true);
 						});
 					}
 				});
@@ -112,18 +107,15 @@ public class SequencerSpeedSlider extends JPanel {
 						setSize(new Dimension(20,20));
 						setMargin(ChordHelperApplet.ZERO_INSETS);
 						setEnabled(false);
-						addActionListener(new ActionListener() {
-							@Override
-							public void actionPerformed(ActionEvent e) {
-								if( index <= 0 ) return;
-								changeSliderScale(maxFactors.get(--index));
-								if( index <= 0 ) {
-									setEnabled(false);
-									pull.requestFocusInWindow();
-									return;
-								}
-								pull.setEnabled(true);
+						addActionListener(e->{
+							if( index <= 0 ) return;
+							changeSliderScale(maxFactors.get(--index));
+							if( index <= 0 ) {
+								setEnabled(false);
+								pull.requestFocusInWindow();
+								return;
 							}
+							pull.setEnabled(true);
 						});
 					}
 				});

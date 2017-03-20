@@ -16,8 +16,6 @@ import java.util.LinkedList;
 
 import javax.swing.DefaultBoundedRangeModel;
 import javax.swing.JComponent;
-import javax.swing.event.ChangeEvent;
-import javax.swing.event.ChangeListener;
 
 import camidion.chordhelper.chorddiagram.ChordDiagram.Instrument;
 import camidion.chordhelper.music.Chord;
@@ -200,9 +198,7 @@ class ChordDiagramDisplay extends JComponent implements MouseListener, MouseMoti
 					fretIndex++
 				) {
 					if( fretIndex == 0 || fretIndex > fretViewIndexModel.getValue() ) {
-						int chordNoteIndex = chord.indexOf(
-							notesWhenOpen[stringIndex]+fretIndex
-						);
+						int chordNoteIndex = chord.indexOf(notesWhenOpen[stringIndex]+fretIndex);
 						if( chordNoteIndex >= 0 ) {
 							possiblePressingPoints[stringIndex].add(
 								new PressingPoint(fretIndex,chordNoteIndex,stringIndex)
@@ -305,30 +301,13 @@ class ChordDiagramDisplay extends JComponent implements MouseListener, MouseMoti
 	public ChordDiagramDisplay(ChordDiagram.Instrument inst) {
 		addMouseListener(this);
 		addMouseMotionListener(this);
-		addComponentListener(
-			new ComponentAdapter() {
-				@Override
-				public void componentResized(ComponentEvent e) {
-					tune();
-				}
-			}
-		);
-		chordVariations.indexModel.addChangeListener(
-			new ChangeListener() {
-				@Override
-				public void stateChanged(ChangeEvent e) {
-					repaint();
-				}
-			}
-		);
-		fretViewIndexModel.addChangeListener(
-			new ChangeListener() {
-				@Override
-				public void stateChanged(ChangeEvent e) {
-					setChord(); // To reconstruct chord variations
-				}
-			}
-		);
+		addComponentListener(new ComponentAdapter() {
+			@Override
+			public void componentResized(ComponentEvent e) { tune(); }
+		});
+		chordVariations.indexModel.addChangeListener(e->repaint());
+		// To reconstruct chord variations
+		fretViewIndexModel.addChangeListener(e->setChord());
 		setMinimumSize(new Dimension(100,70));
 		tune(inst);
 	}
@@ -438,9 +417,7 @@ class ChordDiagramDisplay extends JComponent implements MouseListener, MouseMoti
 			}
 		}
 	}
-	private void drawIndicator(
-		Graphics2D g2, PressingPoint pp, boolean drawAllPoints
-	) {
+	private void drawIndicator(Graphics2D g2, PressingPoint pp, boolean drawAllPoints) {
 		Rectangle r;
 		int i_chord = pp.chordNoteIndex;
 		g2.setColor(

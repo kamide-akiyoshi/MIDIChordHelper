@@ -10,12 +10,12 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.charset.Charset;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Vector;
 
 import javax.sound.midi.InvalidMidiDataException;
-import javax.sound.midi.MetaEventListener;
-import javax.sound.midi.MetaMessage;
 import javax.sound.midi.MidiSystem;
 import javax.sound.midi.Sequence;
 import javax.sound.midi.Sequencer;
@@ -63,7 +63,7 @@ public class PlaylistTableModel extends AbstractTableModel {
 		}
 	};
 	/** 再生中のシーケンサーの秒位置リスナー */
-	private ChangeListener secondPosition = new ChangeListener() {
+	private ChangeListener mmssPosition = new ChangeListener() {
 		private int value = 0;
 		@Override
 		public void stateChanged(ChangeEvent event) {
@@ -72,8 +72,7 @@ public class PlaylistTableModel extends AbstractTableModel {
 				int newValue = ((MidiSequencerModel)src).getValue() / 1000;
 				if(value == newValue) return;
 				value = newValue;
-				int rowIndex = indexOfSequenceOnSequencer();
-				fireTableCellUpdated(rowIndex, Column.POSITION.ordinal());
+				fireTableCellUpdated(indexOfSequenceOnSequencer(), Column.POSITION.ordinal());
 			}
 		}
 		@Override
@@ -87,30 +86,10 @@ public class PlaylistTableModel extends AbstractTableModel {
 	 */
 	public PlaylistTableModel(MidiSequencerModel sequencerModel) {
 		this.sequencerModel = sequencerModel;
-		sequencerModel.addChangeListener(secondPosition);
-		sequencerModel.getSequencer().addMetaEventListener(new MetaEventListener() {
-			/**
-			 * {@inheritDoc}
-			 *
-			 * <p>EOT (End Of Track、type==0x2F) を受信したとき、次の曲へ進みます。
-			 * </p>
-			 * <p>多くの場合、このメソッドは Swing の EDT(Event Dispatch Thread) ではなく
-			 * MIDI シーケンサの EDT から起動されるので、GUI 処理を Swing EDT に振り直します。
-			 * </p>
-			 */
-			@Override
-			public void meta(MetaMessage msg) {
-				if( msg.getType() == 0x2F ) {
-					if( SwingUtilities.isEventDispatchThread() ) {
-						goNext();
-					} else {
-						SwingUtilities.invokeLater(new Runnable() {
-							@Override
-							public void run() { goNext(); }
-						});
-					}
-				}
-			}
+		sequencerModel.addChangeListener(mmssPosition);
+		// EOF(0x2F)が来たら曲の終わりなので次の曲へ進める
+		sequencerModel.getSequencer().addMetaEventListener(msg->{
+			if(msg.getType() == 0x2F) SwingUtilities.invokeLater(()->goNext());
 		});
 		emptyTrackListTableModel = new SequenceTrackListTableModel(this, null, null);
 		emptyEventListTableModel = new TrackEventListTableModel(emptyTrackListTableModel, null);
@@ -118,41 +97,35 @@ public class PlaylistTableModel extends AbstractTableModel {
 	/**
 	 * 次の曲へ進みます。
 	 *
-	 * <p>リピートモードの場合は同じ曲をもう一度再生、
-	 * そうでない場合は次の曲へ進んで再生します。
-	 * 次の曲がなければ、そこで停止します。
-	 * いずれの場合も曲の先頭へ戻ります。
+	 * <p>リピートモードの場合は同じ曲をもう一度再生、そうでない場合は次の曲へ進んで再生します。
+	 * 次の曲がなければ、そこで停止します。いずれの場合も曲の先頭へ戻ります。
 	 * </p>
 	 */
 	private void goNext() {
 		// とりあえず曲の先頭へ戻る
 		sequencerModel.getSequencer().setMicrosecondPosition(0);
 		if( (Boolean)toggleRepeatAction.getValue(Action.SELECTED_KEY) || loadNext(1) ) {
-			// リピートモードのときはもう一度同じ曲を、
-			// そうでない場合は次の曲を再生開始
+			// リピートモードのときはもう一度同じ曲を、そうでない場合は次の曲を再生開始
 			sequencerModel.start();
 		}
 		else {
 			// 最後の曲が終わったので、停止状態にする
 			sequencerModel.stop();
-			// ここでボタンが停止状態に変わったはずなので、
-			// 通常であれば再生ボタンが自力で再描画するところだが、
-			//
-			// セルのレンダラーが描く再生ボタンには効かないようなので、
-			// セルを突っついて再表示させる。
-			int rowIndex = indexOfSequenceOnSequencer();
-			int colIndex = Column.PLAY.ordinal();
-			fireTableCellUpdated(rowIndex, colIndex);
+			// ここでボタンが停止状態に変わったはずなので、通常であれば再生ボタンが自力で再描画するところだが、
+			// セルのレンダラーが描く再生ボタンには効かないようなので、セルを突っついて再表示させる。
+			fireTableCellUpdated(indexOfSequenceOnSequencer(), Column.PLAY.ordinal());
 		}
 	}
 	/**
 	 * シーケンスリスト
 	 */
-	private List<SequenceTrackListTableModel> sequenceList = new Vector<>();
+	private List<SequenceTrackListTableModel> sequenceModelList = new Vector<>();
 	/**
 	 * このプレイリストが保持している {@link SequenceTrackListTableModel} のリストを返します。
 	 */
-	public List<SequenceTrackListTableModel> getSequenceList() { return sequenceList; }
+	public List<SequenceTrackListTableModel> getSequenceModelList() {
+		return sequenceModelList;
+	}
 	/**
 	 * 行が選択されているときだけイネーブルになるアクション
 	 */
@@ -181,7 +154,8 @@ public class PlaylistTableModel extends AbstractTableModel {
 	/**
 	 * 繰り返し再生ON/OFF切り替えアクション
 	 */
-	public Action toggleRepeatAction = new AbstractAction() {
+	public Action getToggleRepeatAction() { return toggleRepeatAction; }
+	private Action toggleRepeatAction = new AbstractAction() {
 		{
 			putValue(SHORT_DESCRIPTION, "Repeat - 繰り返し再生");
 			putValue(LARGE_ICON_KEY, new ButtonIcon(ButtonIcon.REPEAT_ICON));
@@ -193,7 +167,8 @@ public class PlaylistTableModel extends AbstractTableModel {
 	/**
 	 * 曲の先頭または前の曲へ戻るアクション
 	 */
-	public Action moveToTopAction = new AbstractAction() {
+	public Action getMoveToTopAction() { return moveToTopAction; }
+	private Action moveToTopAction = new AbstractAction() {
 		{
 			putValue(SHORT_DESCRIPTION,
 				"Move to top or previous song - 曲の先頭または前の曲へ戻る"
@@ -208,7 +183,8 @@ public class PlaylistTableModel extends AbstractTableModel {
 	/**
 	 * 次の曲へ進むアクション
 	 */
-	public Action moveToBottomAction = new AbstractAction() {
+	public Action getMoveToBottomAction() { return moveToBottomAction; }
+	private Action moveToBottomAction = new AbstractAction() {
 		{
 			putValue(SHORT_DESCRIPTION, "Move to next song - 次の曲へ進む");
 			putValue(LARGE_ICON_KEY, new ButtonIcon(ButtonIcon.BOTTOM_ICON));
@@ -217,7 +193,6 @@ public class PlaylistTableModel extends AbstractTableModel {
 			if(loadNext(1)) sequencerModel.setValue(0);
 		}
 	};
-
 	/**
 	 * 列の列挙型
 	 */
@@ -235,7 +210,7 @@ public class PlaylistTableModel extends AbstractTableModel {
 			public boolean isCellEditable() { return true; } // ダブルクリックだけ有効
 			@Override
 			public Object getValueOf(SequenceTrackListTableModel sequenceModel) {
-				return sequenceModel.isOnSequencer() ? sequenceModel.getParent().secondPosition : "";
+				return sequenceModel.isOnSequencer() ? sequenceModel.getParent().mmssPosition : "";
 			}
 		},
 		/** シーケンスの時間長（分：秒） */
@@ -301,13 +276,21 @@ public class PlaylistTableModel extends AbstractTableModel {
 		DIVISION_TYPE("DivType", String.class, 50) {
 			@Override
 			public Object getValueOf(SequenceTrackListTableModel sequenceModel) {
-				float divType = sequenceModel.getSequence().getDivisionType();
-				if( divType == Sequence.PPQ ) return "PPQ";
-				else if( divType == Sequence.SMPTE_24 ) return "SMPTE_24";
-				else if( divType == Sequence.SMPTE_25 ) return "SMPTE_25";
-				else if( divType == Sequence.SMPTE_30 ) return "SMPTE_30";
-				else if( divType == Sequence.SMPTE_30DROP ) return "SMPTE_30DROP";
-				else return "[Unknown]";
+				float dt = sequenceModel.getSequence().getDivisionType();
+				String dtLabel = divisionTypeLabels.get(dt);
+				return dtLabel == null ? "[Unknown]" : dtLabel;
+			}
+		};
+		/**
+		 * タイミング分割形式に対応するラベル文字列
+		 */
+		private static final Map<Float,String> divisionTypeLabels = new HashMap<Float,String>() {
+			{
+				put(Sequence.PPQ, "PPQ");
+				put(Sequence.SMPTE_24, "SMPTE_24");
+				put(Sequence.SMPTE_25, "SMPTE_25");
+				put(Sequence.SMPTE_30, "SMPTE_30");
+				put(Sequence.SMPTE_30DROP, "SMPTE_30DROP");
 			}
 		};
 		String title;
@@ -329,7 +312,7 @@ public class PlaylistTableModel extends AbstractTableModel {
 	}
 
 	@Override
-	public int getRowCount() { return sequenceList.size(); }
+	public int getRowCount() { return sequenceModelList.size(); }
 	@Override
 	public int getColumnCount() { return Column.values().length; }
 	@Override
@@ -343,25 +326,25 @@ public class PlaylistTableModel extends AbstractTableModel {
 	@Override
 	public Object getValueAt(int row, int column) {
 		PlaylistTableModel.Column c = Column.values()[column];
-		return c == Column.NUMBER ? row : c.getValueOf(sequenceList.get(row));
+		return c == Column.NUMBER ? row : c.getValueOf(sequenceModelList.get(row));
 	}
 	@Override
 	public void setValueAt(Object val, int row, int column) {
 		switch(Column.values()[column]) {
 		case FILENAME:
 			// ファイル名の変更
-			sequenceList.get(row).setFilename((String)val);
+			sequenceModelList.get(row).setFilename((String)val);
 			fireTableCellUpdated(row, column);
 			break;
 		case NAME:
 			// シーケンス名の設定または変更
-			if( sequenceList.get(row).setName((String)val) )
+			if( sequenceModelList.get(row).setName((String)val) )
 				fireTableCellUpdated(row, Column.MODIFIED.ordinal());
 			fireTableCellUpdated(row, column);
 			break;
 		case CHARSET:
 			// 文字コードの変更
-			SequenceTrackListTableModel seq = sequenceList.get(row);
+			SequenceTrackListTableModel seq = sequenceModelList.get(row);
 			seq.charset = Charset.forName(val.toString());
 			fireTableCellUpdated(row, column);
 			// シーケンス名の表示更新
@@ -376,37 +359,14 @@ public class PlaylistTableModel extends AbstractTableModel {
 	 * このプレイリストに読み込まれた全シーケンスの合計時間長を返します。
 	 * @return 全シーケンスの合計時間長 [秒]
 	 */
-	public int getTotalSeconds() {
+	public int getTotalTimeInSeconds() {
 		int total = 0;
 		long usec;
-		for( SequenceTrackListTableModel m : sequenceList ) {
+		for( SequenceTrackListTableModel m : sequenceModelList ) {
 			usec = m.getSequence().getMicrosecondLength();
 			total += (int)( (usec < 0 ? usec += 0x100000000L : usec)/1000L/1000L );
 		}
 		return total;
-	}
-	/**
-	 * 未保存の修正内容を持つシーケンスがあるか調べます。
-	 * @return 未保存の修正内容を持つシーケンスがあればtrue
-	 */
-	public boolean isModified() {
-		for( SequenceTrackListTableModel m : sequenceList ) if( m.isModified() ) return true;
-		return false;
-	}
-	/**
-	 * 選択したシーケンスに未保存の修正内容があることを記録します。
-	 * @param selModel 選択状態
-	 * @param isModified 未保存の修正内容があるときtrue
-	 */
-	public void setModified(boolean isModified) {
-		int minIndex = sequenceListSelectionModel.getMinSelectionIndex();
-		int maxIndex = sequenceListSelectionModel.getMaxSelectionIndex();
-		for( int i = minIndex; i <= maxIndex; i++ ) {
-			if( sequenceListSelectionModel.isSelectedIndex(i) ) {
-				sequenceList.get(i).setModified(isModified);
-				fireTableCellUpdated(i, Column.MODIFIED.ordinal());
-			}
-		}
 	}
 	/**
 	 * 選択されたMIDIシーケンスのテーブルモデルを返します。
@@ -415,8 +375,8 @@ public class PlaylistTableModel extends AbstractTableModel {
 	public SequenceTrackListTableModel getSelectedSequenceModel() {
 		if( sequenceListSelectionModel.isSelectionEmpty() ) return null;
 		int selectedIndex = sequenceListSelectionModel.getMinSelectionIndex();
-		if( selectedIndex >= sequenceList.size() ) return null;
-		return sequenceList.get(selectedIndex);
+		if( selectedIndex >= sequenceModelList.size() ) return null;
+		return sequenceModelList.get(selectedIndex);
 	}
 	/**
 	 * 指定されたシーケンスの更新済みフラグを変更して全ての列を再表示します。
@@ -424,7 +384,7 @@ public class PlaylistTableModel extends AbstractTableModel {
 	 * @param isModified 更新済みフラグ
 	 */
 	public void fireSequenceModified(SequenceTrackListTableModel sequenceTableModel, boolean isModified) {
-		int index = sequenceList.indexOf(sequenceTableModel);
+		int index = sequenceModelList.indexOf(sequenceTableModel);
 		if( index < 0 ) return;
 		sequenceTableModel.setModified(isModified);
 		fireTableRowsUpdated(index, index);
@@ -438,69 +398,64 @@ public class PlaylistTableModel extends AbstractTableModel {
 		int minIndex = sequenceListSelectionModel.getMinSelectionIndex();
 		int maxIndex = sequenceListSelectionModel.getMaxSelectionIndex();
 		for( int index = minIndex; index <= maxIndex; index++ ) {
-			sequenceList.get(index).setModified(isModified);
+			sequenceModelList.get(index).setModified(isModified);
 		}
 		fireTableRowsUpdated(minIndex, maxIndex);
 	}
 	/**
-	 * ファイル名つきのMIDIシーケンスを追加します。
-	 * @param sequence MIDIシーケンス
-	 * @param filename ファイル名
+	 * MIDIシーケンスを追加します。
+	 * @param sequence MIDIシーケンス（nullの場合、シーケンスを自動生成して追加）
+	 * @param filename ファイル名（nullの場合、ファイル名なし）
 	 * @return 追加されたシーケンスのインデックス（先頭が 0）
 	 */
 	public int addSequence(Sequence sequence, String filename) {
-		sequenceList.add( new SequenceTrackListTableModel(this, sequence, filename) );
-		int lastIndex = sequenceList.size() - 1;
+		if( sequence == null ) sequence = (new ChordProgression()).toMidiSequence();
+		sequenceModelList.add(new SequenceTrackListTableModel(this, sequence, filename));
+		//
+		// 末尾に行が追加されたので、再描画してもらう
+		int lastIndex = sequenceModelList.size() - 1;
 		fireTableRowsInserted(lastIndex, lastIndex);
-		return lastIndex;
-	}
-	/**
-	 * デフォルトの内容でMIDIシーケンスを作成して追加します。
-	 * @return 追加されたMIDIシーケンスのインデックス（先頭が 0）
-	 */
-	public int addSequence() {
-		Sequence seq = (new ChordProgression()).toMidiSequence();
-		return seq == null ? -1 : addSequence(seq,null);
-	}
-	/**
-	 * バイト列とファイル名からMIDIシーケンスを追加します。
-	 * バイト列が null の場合、空のMIDIシーケンスを追加します。
-	 * @param data バイト列
-	 * @param filename ファイル名
-	 * @return 追加先インデックス（先頭が 0）
-	 * @throws IOException ファイル読み込みに失敗した場合
-	 * @throws InvalidMidiDataException MIDIデータが正しくない場合
-	 */
-	public int addSequence(byte[] data, String filename) throws IOException, InvalidMidiDataException {
-		if( data == null ) return addSequence();
-		int lastIndex;
-		try (InputStream in = new ByteArrayInputStream(data)) {
-			lastIndex = addSequence(MidiSystem.getSequence(in), filename);
-		} catch( IOException|InvalidMidiDataException e ) {
-			throw e;
-		}
 		sequenceListSelectionModel.setSelectionInterval(lastIndex, lastIndex);
 		return lastIndex;
 	}
 	/**
-	 * MIDIファイルを追加します。
-	 * ファイルが null の場合、デフォルトのMIDIシーケンスを追加します。
-	 * @param midiFile MIDIファイル
+	 * バイト列とファイル名からMIDIシーケンスを追加します。
+	 * @param data バイト列（nullの場合、シーケンスを自動生成して追加）
+	 * @param filename ファイル名
 	 * @return 追加先インデックス（先頭が 0）
-	 * @throws InvalidMidiDataException ファイル内のMIDIデータが正しくない場合
+	 * @throws IOException バイト列の読み込みに失敗した場合
+	 * @throws InvalidMidiDataException MIDIデータが正しくない場合
+	 */
+	public int addSequence(byte[] data, String filename) throws IOException, InvalidMidiDataException {
+		Sequence sequence = null;
+		if( data != null ) {
+			try (InputStream in = new ByteArrayInputStream(data)) {
+				sequence = MidiSystem.getSequence(in);
+			} catch( IOException|InvalidMidiDataException e ) {
+				throw e;
+			}
+		}
+		return addSequence(sequence, filename);
+	}
+	/**
+	 * MIDIファイルを追加します。
+	 * @param midiFile MIDIファイル（nullの場合、シーケンスを自動生成して追加）
+	 * @return 追加先インデックス（先頭が 0）
 	 * @throws IOException ファイル入出力に失敗した場合
+	 * @throws InvalidMidiDataException ファイル内のMIDIデータが正しくない場合
 	 */
 	public int addSequence(File midiFile) throws InvalidMidiDataException, IOException {
-		if( midiFile == null ) return addSequence();
-		int lastIndex;
-		try (FileInputStream in = new FileInputStream(midiFile)) {
-			Sequence seq = MidiSystem.getSequence(in);
-			String filename = midiFile.getName();
-			lastIndex = addSequence(seq, filename);
-		} catch( InvalidMidiDataException|IOException e ) {
-			throw e;
+		Sequence sequence = null;
+		String filename = null;
+		if( midiFile != null ) {
+			try (FileInputStream in = new FileInputStream(midiFile)) {
+				sequence = MidiSystem.getSequence(in);
+			} catch( IOException|InvalidMidiDataException e ) {
+				throw e;
+			}
+			filename = midiFile.getName();
 		}
-		return lastIndex;
+		return addSequence(sequence, filename);
 	}
 	/**
 	 * MIDIシーケンスを追加し、再生されていなかった場合は追加したシーケンスから再生を開始します。
@@ -555,7 +510,7 @@ public class PlaylistTableModel extends AbstractTableModel {
 	public void removeSelectedSequence() throws InvalidMidiDataException {
 		if( sequenceListSelectionModel.isSelectionEmpty() ) return;
 		int selectedIndex = sequenceListSelectionModel.getMinSelectionIndex();
-		SequenceTrackListTableModel removedSequence = sequenceList.remove(selectedIndex);
+		SequenceTrackListTableModel removedSequence = sequenceModelList.remove(selectedIndex);
 		if( removedSequence.isOnSequencer() ) sequencerModel.setSequenceTrackListTableModel(null);
 		fireTableRowsDeleted(selectedIndex, selectedIndex);
 	}
@@ -569,7 +524,7 @@ public class PlaylistTableModel extends AbstractTableModel {
 	 */
 	public void loadToSequencer(int newRowIndex) throws InvalidMidiDataException {
 		SequenceTrackListTableModel oldSeq = sequencerModel.getSequenceTrackListTableModel();
-		SequenceTrackListTableModel newSeq = (newRowIndex < 0 ? null : sequenceList.get(newRowIndex));
+		SequenceTrackListTableModel newSeq = (newRowIndex < 0 ? null : sequenceModelList.get(newRowIndex));
 		if( oldSeq == newSeq ) return;
 		sequencerModel.setSequenceTrackListTableModel(newSeq);
 		int columnIndices[] = {
@@ -577,7 +532,7 @@ public class PlaylistTableModel extends AbstractTableModel {
 			Column.POSITION.ordinal(),
 		};
 		if( oldSeq != null ) {
-			int oldRowIndex = sequenceList.indexOf(oldSeq);
+			int oldRowIndex = sequenceModelList.indexOf(oldSeq);
 			for( int columnIndex : columnIndices ) fireTableCellUpdated(oldRowIndex, columnIndex);
 		}
 		if( newSeq != null ) {
@@ -590,25 +545,21 @@ public class PlaylistTableModel extends AbstractTableModel {
 	 * @return 現在シーケンサにロードされているシーケンスのインデックス
 	 */
 	public int indexOfSequenceOnSequencer() {
-		return sequenceList.indexOf(sequencerModel.getSequenceTrackListTableModel());
+		return sequenceModelList.indexOf(sequencerModel.getSequenceTrackListTableModel());
 	}
 	/**
 	 * 引数で示された数だけ次へ進めたシーケンスをロードします。
 	 * @param offset 進みたいシーケンス数
 	 * @return true:ロード成功、false:これ以上進めない
-	 * @throws InvalidMidiDataException {@link Sequencer#setSequence(Sequence)} を参照
 	 */
 	public boolean loadNext(int offset) {
 		int loadedIndex = indexOfSequenceOnSequencer();
 		int index = (loadedIndex < 0 ? 0 : loadedIndex + offset);
-		if( index < 0 || index >= sequenceList.size() ) return false;
+		if( index < 0 || index >= sequenceModelList.size() ) return false;
 		try {
 			loadToSequencer(index);
 		} catch (InvalidMidiDataException ex) {
-			ex.printStackTrace();
-			JOptionPane.showMessageDialog(
-				null, ex.getMessage(),
-				ChordHelperApplet.VersionInfo.NAME, JOptionPane.ERROR_MESSAGE);
+			JOptionPane.showMessageDialog(null, ex, ChordHelperApplet.VersionInfo.NAME, JOptionPane.ERROR_MESSAGE);
 			return false;
 		}
 		return true;

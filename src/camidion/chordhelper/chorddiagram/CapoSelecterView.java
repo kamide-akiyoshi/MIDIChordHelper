@@ -1,8 +1,5 @@
 package camidion.chordhelper.chorddiagram;
 
-import java.awt.event.ItemEvent;
-import java.awt.event.ItemListener;
-
 import javax.swing.BoxLayout;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
@@ -27,12 +24,7 @@ public class CapoSelecterView extends JPanel {
 	 * カポ選択ビューを構築します。
 	 */
 	public CapoSelecterView() {
-		checkbox.addItemListener(new ItemListener() {
-			@Override
-			public void itemStateChanged(ItemEvent e) {
-				valueSelecter.setVisible(checkbox.isSelected());
-			}
-		});
+		checkbox.addItemListener(e->valueSelecter.setVisible(checkbox.isSelected()));
 		setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
 		add(checkbox);
 		add(valueSelecter);

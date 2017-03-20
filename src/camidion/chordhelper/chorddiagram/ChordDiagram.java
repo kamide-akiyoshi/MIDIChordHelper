@@ -2,12 +2,6 @@ package camidion.chordhelper.chorddiagram;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Insets;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.AdjustmentEvent;
-import java.awt.event.AdjustmentListener;
-import java.awt.event.ItemEvent;
-import java.awt.event.ItemListener;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumMap;
@@ -108,8 +102,7 @@ public class ChordDiagram extends JPanel {
 						add(new JPanel() {
 							{
 								setOpaque(false);
-								for(JRadioButton rb : instButtons.values())
-									add(rb);
+								for(JRadioButton rb : instButtons.values()) add(rb);
 								setAlignmentY((float)1.0);
 							}
 						});
@@ -164,12 +157,7 @@ public class ChordDiagram extends JPanel {
 					JRadioButton radioButton = new JRadioButton(label) {
 						{
 							setOpaque(false);
-							addActionListener(new ActionListener() {
-								@Override
-								public void actionPerformed(ActionEvent e) {
-									diagramDisplay.tune(instrument);
-								}
-							});
+							addActionListener(e->diagramDisplay.tune(instrument));
 						}
 					};
 					buttonGroup.add(radioButton);
@@ -182,14 +170,7 @@ public class ChordDiagram extends JPanel {
 	private JScrollBar variationScrollbar = new JScrollBar(JScrollBar.VERTICAL) {
 		{
 			setModel(diagramDisplay.chordVariations.indexModel);
-			addAdjustmentListener(
-				new AdjustmentListener() {
-					@Override
-					public void adjustmentValueChanged(AdjustmentEvent e) {
-						setToolTipText(diagramDisplay.chordVariations.getIndexDescription());
-					}
-				}
-			);
+			addAdjustmentListener(e->setToolTipText(diagramDisplay.chordVariations.getIndexDescription()));
 		}
 	};
 	private JScrollBar fretRangeScrollbar = new JScrollBar(JScrollBar.HORIZONTAL) {
@@ -202,12 +183,7 @@ public class ChordDiagram extends JPanel {
 	 * カポ位置選択コンボボックス
 	 */
 	public CapoSelecterView capoSelecterView = new CapoSelecterView() {
-		{
-			checkbox.addItemListener(new ItemListener() {
-				@Override
-				public void itemStateChanged(ItemEvent e) { clear(); }
-			});
-		}
+		{ checkbox.addItemListener(e->clear()); }
 	};
 	@Override
 	public void setBackground(Color bgColor) {

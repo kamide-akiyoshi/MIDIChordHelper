@@ -1,53 +1,39 @@
 package camidion.chordhelper;
 import java.awt.BorderLayout;
 import java.awt.Color;
-import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.Image;
 import java.awt.Insets;
 import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.InputEvent;
-import java.awt.event.ItemEvent;
-import java.awt.event.ItemListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.IOException;
-import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.security.AccessControlException;
 import java.util.Arrays;
 
 import javax.sound.midi.InvalidMidiDataException;
-import javax.sound.midi.MetaEventListener;
 import javax.sound.midi.MetaMessage;
 import javax.sound.midi.Sequence;
 import javax.sound.midi.Sequencer;
-import javax.swing.AbstractAction;
-import javax.swing.Action;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
 import javax.swing.JApplet;
 import javax.swing.JButton;
 import javax.swing.JComponent;
-import javax.swing.JEditorPane;
 import javax.swing.JLabel;
 import javax.swing.JLayeredPane;
-import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JSlider;
 import javax.swing.JSplitPane;
 import javax.swing.JToggleButton;
 import javax.swing.SwingUtilities;
 import javax.swing.border.Border;
-import javax.swing.event.ChangeEvent;
-import javax.swing.event.ChangeListener;
-import javax.swing.event.HyperlinkEvent;
-import javax.swing.event.HyperlinkListener;
 
 import camidion.chordhelper.anogakki.AnoGakkiPane;
 import camidion.chordhelper.chorddiagram.CapoComboBoxModel;
@@ -94,7 +80,9 @@ public class ChordHelperApplet extends JApplet {
 	 * 未保存の修正済み MIDI ファイルがあるかどうか調べます。
 	 * @return 未保存の修正済み MIDI ファイルがあれば true
 	 */
-	public boolean isModified() { return playlistModel.isModified(); }
+	public boolean isModified() {
+		return playlistModel.getSequenceModelList().stream().anyMatch(m -> m.isModified());
+	}
 	/**
 	 * 指定された小節数の曲を、乱数で自動作曲してプレイリストへ追加します。
 	 * @param measureLength 小節数
@@ -119,10 +107,9 @@ public class ChordHelperApplet extends JApplet {
 		try {
 			return playlistModel.addSequenceFromURL(midiFileUrl);
 		} catch( URISyntaxException|IOException|InvalidMidiDataException e ) {
-			midiEditor.showWarning(e.getMessage());
+			midiEditor.showWarning(e);
 		} catch( AccessControlException e ) {
-			e.printStackTrace();
-			midiEditor.showError(e.getMessage());
+			midiEditor.showError(e);
 		}
 		return -1;
 	}
@@ -149,8 +136,7 @@ public class ChordHelperApplet extends JApplet {
 		try {
 			return playlistModel.addSequence(d.getMIDIData(), filename);
 		} catch (Exception e) {
-			e.printStackTrace();
-			midiEditor.showWarning(e.toString());
+			midiEditor.showWarning(e);
 			return -1;
 		}
 	}
@@ -159,7 +145,9 @@ public class ChordHelperApplet extends JApplet {
 	 * シーケンサへロードして再生します。
 	 * @throws InvalidMidiDataException {@link Sequencer#setSequence(Sequence)} を参照
 	 */
-	public void play() throws InvalidMidiDataException { play(playlistModel.sequenceListSelectionModel.getMinSelectionIndex()); }
+	public void play() throws InvalidMidiDataException {
+		play(playlistModel.sequenceListSelectionModel.getMinSelectionIndex());
+	}
 	/**
 	 * 指定されたインデックス値が示すプレイリスト上のMIDIシーケンスを、
 	 * シーケンサへロードして再生します。
@@ -283,7 +271,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public static class VersionInfo {
 		public static final String NAME = "MIDI Chord Helper";
-		public static final String VERSION = "Ver.20170304.1";
+		public static final String VERSION = "Ver.20170320.1";
 		public static final String COPYRIGHT = "Copyright (C) 2004-2017";
 		public static final String AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";
@@ -296,91 +284,12 @@ public class ChordHelperApplet extends JApplet {
 				+ " " + VersionInfo.AUTHER
 				+ " " + VersionInfo.URL;
 	}
-	private class AboutMessagePane extends JEditorPane {
-		URI uri;
-		public AboutMessagePane() {
-			super("text/html", "");
-			boolean linkEnabled = Desktop.isDesktopSupported();
-			String linkString = VersionInfo.URL;
-			String tooltip = null;
-			if( linkEnabled ) {
-				tooltip = "Click this URL to open with your web browser - URLをクリックしてWebブラウザで開く";
-				linkString = "<a href=\""+linkString+"\" title=\""+tooltip+"\">"+linkString+"</a>";
-			}
-			setText("<html><center><font size=\"+1\">" +
-					VersionInfo.NAME + "</font> " +
-					VersionInfo.VERSION + "<br/><br/>" +
-					VersionInfo.COPYRIGHT + " " +
-					VersionInfo.AUTHER + "<br/>" +
-					linkString + "</center></html>");
-			setToolTipText(tooltip);
-			setOpaque(false);
-			putClientProperty(JEditorPane.HONOR_DISPLAY_PROPERTIES, Boolean.TRUE);
-			setEditable(false);
-			//
-			// メッセージ内の <a href=""> ～ </a> によるリンクを
-			// 実際に機能させる（ブラウザで表示されるようにする）ための設定
-			//
-			if( ! linkEnabled ) return;
-			try {
-				uri = new URI(VersionInfo.URL);
-			}catch( URISyntaxException use ) {
-				use.printStackTrace();
-				return;
-			}
-			addHyperlinkListener(new HyperlinkListener() {
-				public void hyperlinkUpdate(HyperlinkEvent e) {
-					if( e.getEventType() == HyperlinkEvent.EventType.ACTIVATED ) {
-						try{
-							Desktop.getDesktop().browse(uri);
-						}catch(IOException ioe) {
-							ioe.printStackTrace();
-						}
-					}
-				}
-			});
-		}
-		/**
-		 * バージョン情報を開くアクション
-		 */
-		public Action openAction = new AbstractAction() {
-			{
-				putValue(NAME, "Version info");
-				putValue(SHORT_DESCRIPTION, VersionInfo.NAME + " " + VersionInfo.VERSION);
-			}
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				JOptionPane.showMessageDialog(
-					null, AboutMessagePane.this, getValue(NAME).toString(),
-					JOptionPane.INFORMATION_MESSAGE, imageIcon
-				);
-			}
-		};
-	}
-	/**
-	 * アプリケーションのイメージアイコン
-	 */
-	public ImageIcon imageIcon;
-	/**
-	 * アプリケーションのアイコンイメージ
-	 */
-	public Image iconImage;
-	private static final String IMAGE_ICON_PATH = "midichordhelper.png";
-	private void loadIconImage() {
-		URL imageIconUrl = getClass().getResource(IMAGE_ICON_PATH);
-		if( imageIconUrl == null ) {
-			System.out.println("Icon image " + IMAGE_ICON_PATH + " not found");
-		}
-		else {
-			iconImage = (imageIcon = new ImageIcon(imageIconUrl)).getImage();
-		}
-	}
 	/**
 	 * ボタンの余白を詰めたいときに setMargin() の引数に指定するインセット
 	 */
 	public static final Insets ZERO_INSETS = new Insets(0,0,0,0);
-	//
-	//
+
+	// GUIコンポーネント
 	MidiSequenceEditorDialog midiEditor;
 	PlaylistTableModel playlistModel;
 	MidiSequencerModel sequencerModel;
@@ -403,8 +312,19 @@ public class ChordHelperApplet extends JApplet {
 	private JToggleButton anoGakkiToggleButton;
 	private MidiDeviceTreeModel deviceTreeModel;
 
+	// アイコン画像
+	private Image iconImage;
+	public Image getIconImage() { return iconImage; }
+	private ImageIcon imageIcon;
+	public ImageIcon getImageIcon() { return imageIcon; }
+
 	public void init() {
-		loadIconImage();
+		// アイコン画像のロード
+		URL imageIconUrl = getClass().getResource("midichordhelper.png");
+		if( imageIconUrl != null ) {
+			iconImage = (imageIcon = new ImageIcon(imageIconUrl)).getImage();
+		}
+		AboutMessagePane about = new AboutMessagePane(imageIcon);
 		//
 		// 背景色の取得
 		rootPaneDefaultBgcolor = getContentPane().getBackground();
@@ -421,23 +341,20 @@ public class ChordHelperApplet extends JApplet {
 				}
 				public void chordChanged() { chordOn(); }
 			});
-			capoSelecter.checkbox.addItemListener(new ItemListener() {
-				public void itemStateChanged(ItemEvent e) {
-					chordOn();
-					keyboardPanel.keyboardCenterPanel.keyboard.chordDisplay.clear();
-					chordDiagram.clear();
-				}
+			capoSelecter.checkbox.addItemListener(e->{
+				chordOn();
+				keyboardPanel.keyboardCenterPanel.keyboard.chordDisplay.clear();
+				chordDiagram.clear();
 			});
-			capoSelecter.valueSelecter.addActionListener(new ActionListener() {
-				public void actionPerformed(ActionEvent e) {
-					chordOn();
-					keyboardPanel.keyboardCenterPanel.keyboard.chordDisplay.clear();
-					chordDiagram.clear();
-				}
+			capoSelecter.valueSelecter.addActionListener(e->{
+				chordOn();
+				keyboardPanel.keyboardCenterPanel.keyboard.chordDisplay.clear();
+				chordDiagram.clear();
 			});
 		}};
 		keysigLabel = new KeySignatureLabel() {{
 			addMouseListener(new MouseAdapter() {
+				@Override
 				public void mousePressed(MouseEvent e) { chordMatrix.setKeySignature(getKey()); }
 			});
 		}};
@@ -446,12 +363,13 @@ public class ChordHelperApplet extends JApplet {
 				@Override
 				public void pianoKeyPressed(int n, InputEvent e) { chordDiagram.clear(); }
 			});
-			keySelecter.getKeysigCombobox().addActionListener(new ActionListener() {
-				@Override
-				public void actionPerformed(ActionEvent e) {
-					chordMatrix.setKeySignature(keySelecter.getSelectedKey().transposedKey(-chordMatrix.capoSelecter.getCapo()));
-				}
-			});
+			keySelecter.getKeysigCombobox().addActionListener(
+				e -> chordMatrix.setKeySignature(
+					keySelecter.getSelectedKey().transposedKey(
+						-chordMatrix.capoSelecter.getCapo()
+					)
+				)
+			);
 			keyboardCenterPanel.keyboard.setPreferredSize(new Dimension(571, 80));
 		}};
 		VirtualMidiDevice guiMidiDevice = keyboardPanel.keyboardCenterPanel.keyboard.midiDevice;
@@ -476,11 +394,8 @@ public class ChordHelperApplet extends JApplet {
 		keyboardPanel.setEventDialog(midiEditor.eventDialog);
 		//
 		// 歌詞表示
-		(lyricDisplay = new ChordTextField(sequencerModel)).addActionListener(new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent event) {
-				chordMatrix.setSelectedChord(event.getActionCommand().trim().split("[ \t\r\n]")[0]);
-			}
+		(lyricDisplay = new ChordTextField(sequencerModel)).addActionListener((ActionEvent e)->{
+			chordMatrix.setSelectedChord(e.getActionCommand().trim().split("[ \t\r\n]")[0]);
 		});
 		lyricDisplayDefaultBorder = lyricDisplay.getBorder();
 		lyricDisplayDefaultBgcolor = lyricDisplay.getBackground();
@@ -488,91 +403,58 @@ public class ChordHelperApplet extends JApplet {
 		// メタイベント（テンポ・拍子・調号）を受信して表示するリスナーを登録
 		TempoSelecter tempoSelecter = new TempoSelecter() {{ setEditable(false); }};
 		TimeSignatureSelecter timesigSelecter = new TimeSignatureSelecter() {{ setEditable(false); }};
-		sequencerModel.getSequencer().addMetaEventListener(new MetaEventListener() {
-			@Override
-			public void meta(MetaMessage msg) {
-				switch(msg.getType()) {
-				case 0x51: // Tempo (3 bytes) - テンポ
-					byte[] qpm = msg.getData();
-					if( SwingUtilities.isEventDispatchThread() ) {
-						tempoSelecter.setTempo(qpm);
-					} else {
-						// MIDIシーケンサのスレッドから呼ばれた場合、GUI更新は自分で行わず、
-						// AWTイベントディスパッチスレッドに依頼する。
-						SwingUtilities.invokeLater(new Runnable() {
-							@Override
-							public void run() { tempoSelecter.setTempo(qpm);}
-						});
-					}
-					break;
-				case 0x58: // Time signature (4 bytes) - 拍子
-					byte[] timesig = msg.getData();
-					if( SwingUtilities.isEventDispatchThread() ) {
-						timesigSelecter.setValue(timesig);
-					} else {
-						SwingUtilities.invokeLater(new Runnable() {
-							@Override
-							public void run() { timesigSelecter.setValue(timesig);}
-						});
-					}
-					break;
-				case 0x59: // Key signature (2 bytes) : 調号
-					Key key = new Key(msg.getData());
-					if( SwingUtilities.isEventDispatchThread() ) {
-						setKeySignature(key);
-					} else {
-						SwingUtilities.invokeLater(new Runnable() {
-							@Override
-							public void run() { setKeySignature(key); }
-						});
-					}
-					break;
-				}
+		sequencerModel.getSequencer().addMetaEventListener(msg->{
+			switch(msg.getType()) {
+			case 0x51: // Tempo (3 bytes) - テンポ
+				SwingUtilities.invokeLater(()->tempoSelecter.setTempo(msg.getData()));
+				break;
+			case 0x58: // Time signature (4 bytes) - 拍子
+				SwingUtilities.invokeLater(()->timesigSelecter.setValue(msg.getData()));
+				break;
+			case 0x59: // Key signature (2 bytes) : 調号
+				SwingUtilities.invokeLater(()->setKeySignature(new Key(msg.getData())));
+				break;
 			}
-
 		});
 		//シーケンサーの時間スライダーの値が変わったときのリスナーを登録
 		JLabel songTitleLabel = new JLabel();
-		sequencerModel.addChangeListener(new ChangeListener() {
-			@Override
-			public void stateChanged(ChangeEvent e) {
-				SequenceTrackListTableModel sequenceTableModel = sequencerModel.getSequenceTrackListTableModel();
-				int loadedSequenceIndex = playlistModel.indexOfSequenceOnSequencer();
-				songTitleLabel.setText(
-					"<html>"+(
-						loadedSequenceIndex < 0 ? "[No MIDI file loaded]" :
-						"MIDI file " + loadedSequenceIndex + ": " + (
-							sequenceTableModel == null ||
-							sequenceTableModel.toString() == null ||
-							sequenceTableModel.toString().isEmpty() ?
-							"[Untitled]" :
-							"<font color=maroon>"+sequenceTableModel+"</font>"
-						)
-					)+"</html>"
-				);
-				Sequencer sequencer = sequencerModel.getSequencer();
-				chordMatrix.setPlaying(sequencer.isRunning());
-				if( sequenceTableModel != null ) {
-					SequenceTickIndex tickIndex = sequenceTableModel.getSequenceTickIndex();
-					long tickPos = sequencer.getTickPosition();
-					tickIndex.tickToMeasure(tickPos);
-					chordMatrix.setBeat(tickIndex);
-					if( sequencerModel.getValueIsAdjusting() || ! (sequencer.isRunning() || sequencer.isRecording()) ) {
-						MetaMessage msg;
-						msg = tickIndex.lastMetaMessageAt(
-							SequenceTickIndex.MetaMessageType.TIME_SIGNATURE, tickPos
-						);
-						timesigSelecter.setValue(msg==null ? null : msg.getData());
-						msg = tickIndex.lastMetaMessageAt(
-							SequenceTickIndex.MetaMessageType.TEMPO, tickPos
-						);
-						tempoSelecter.setTempo(msg==null ? null : msg.getData());
-						msg = tickIndex.lastMetaMessageAt(
-							SequenceTickIndex.MetaMessageType.KEY_SIGNATURE, tickPos
-						);
-						if(msg == null) keysigLabel.clear();
-						else setKeySignature(new Key(msg.getData()));
-					}
+		sequencerModel.addChangeListener(e->{
+			SequenceTrackListTableModel sequenceTableModel = sequencerModel.getSequenceTrackListTableModel();
+			int loadedSequenceIndex = playlistModel.indexOfSequenceOnSequencer();
+			songTitleLabel.setText(
+				"<html>"+(
+					loadedSequenceIndex < 0 ? "[No MIDI file loaded]" :
+					"MIDI file " + loadedSequenceIndex + ": " + (
+						sequenceTableModel == null ||
+						sequenceTableModel.toString() == null ||
+						sequenceTableModel.toString().isEmpty() ?
+						"[Untitled]" :
+						"<font color=maroon>"+sequenceTableModel+"</font>"
+					)
+				)+"</html>"
+			);
+			Sequencer sequencer = sequencerModel.getSequencer();
+			chordMatrix.setPlaying(sequencer.isRunning());
+			if( sequenceTableModel != null ) {
+				SequenceTickIndex tickIndex = sequenceTableModel.getSequenceTickIndex();
+				long tickPos = sequencer.getTickPosition();
+				tickIndex.tickToMeasure(tickPos);
+				chordMatrix.setBeat(tickIndex);
+				if( sequencerModel.getValueIsAdjusting() || ! (sequencer.isRunning() || sequencer.isRecording()) ) {
+					MetaMessage msg;
+					msg = tickIndex.lastMetaMessageAt(
+						SequenceTickIndex.MetaMessageType.TIME_SIGNATURE, tickPos
+					);
+					timesigSelecter.setValue(msg==null ? null : msg.getData());
+					msg = tickIndex.lastMetaMessageAt(
+						SequenceTickIndex.MetaMessageType.TEMPO, tickPos
+					);
+					tempoSelecter.setTempo(msg==null ? null : msg.getData());
+					msg = tickIndex.lastMetaMessageAt(
+						SequenceTickIndex.MetaMessageType.KEY_SIGNATURE, tickPos
+					);
+					if(msg == null) keysigLabel.clear();
+					else setKeySignature(new Key(msg.getData()));
 				}
 			}
 		});
@@ -600,11 +482,7 @@ public class ChordHelperApplet extends JApplet {
 			add( Box.createHorizontalStrut(5) );
 			add( darkModeToggleButton = new JToggleButton(new ButtonIcon(ButtonIcon.DARK_MODE_ICON)) {{
 				setMargin(ZERO_INSETS);
-				addItemListener(new ItemListener() {
-					public void itemStateChanged(ItemEvent e) {
-						innerSetDarkMode(darkModeToggleButton.isSelected());
-					}
-				});
+				addItemListener(e->innerSetDarkMode(darkModeToggleButton.isSelected()));
 				setToolTipText("Light / Dark - 明かりを点灯／消灯");
 				setBorder(null);
 			}});
@@ -614,12 +492,10 @@ public class ChordHelperApplet extends JApplet {
 				setMargin(ZERO_INSETS);
 				setBorder( null );
 				setToolTipText("あの楽器");
-				addItemListener(new ItemListener() {
-					public void itemStateChanged(ItemEvent e) {
-						keyboardPanel.keyboardCenterPanel.keyboard.anoGakkiPane
-						= anoGakkiToggleButton.isSelected() ? anoGakkiPane : null ;
-					}
-				});
+				addItemListener(
+					e -> keyboardPanel.keyboardCenterPanel.keyboard.anoGakkiPane
+					= anoGakkiToggleButton.isSelected() ? anoGakkiPane : null
+				);
 			}} );
 			add( Box.createHorizontalStrut(5) );
 			add( inversionOmissionButton = new InversionAndOmissionLabel() );
@@ -641,18 +517,18 @@ public class ChordHelperApplet extends JApplet {
 				setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
 				add(new JPanel() {{
 					setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
-					add( Box.createHorizontalStrut(12) );
-					add( keysigLabel );
-					add( Box.createHorizontalStrut(12) );
-					add( timesigSelecter );
-					add( Box.createHorizontalStrut(12) );
-					add( tempoSelecter );
-					add( Box.createHorizontalStrut(12) );
-					add( new SequencerMeasureView(sequencerModel) );
-					add( Box.createHorizontalStrut(12) );
-					add( songTitleLabel );
-					add( Box.createHorizontalStrut(12) );
-					add( new JButton(midiEditor.openAction) {{ setMargin(ZERO_INSETS); }});
+					add(Box.createHorizontalStrut(12));
+					add(keysigLabel);
+					add(Box.createHorizontalStrut(12));
+					add(timesigSelecter);
+					add(Box.createHorizontalStrut(12));
+					add(tempoSelecter);
+					add(Box.createHorizontalStrut(12));
+					add(new SequencerMeasureView(sequencerModel));
+					add(Box.createHorizontalStrut(12));
+					add(songTitleLabel);
+					add(Box.createHorizontalStrut(12));
+					add(new JButton(midiEditor.openAction) {{ setMargin(ZERO_INSETS); }});
 				}});
 				add(new JPanel() {{
 					setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
@@ -660,17 +536,17 @@ public class ChordHelperApplet extends JApplet {
 					add(new JSlider(sequencerModel));
 					add(new SequencerTimeView(sequencerModel));
 					add(Box.createHorizontalStrut(5));
-					add(new JButton(playlistModel.moveToTopAction) {{ setMargin(ZERO_INSETS); }});
-					add(new JButton(sequencerModel.moveBackwardAction) {{ setMargin(ZERO_INSETS); }});
-					add(new JToggleButton(sequencerModel.startStopAction));
-					add(new JButton(sequencerModel.moveForwardAction) {{ setMargin(ZERO_INSETS); }});
-					add(new JButton(playlistModel.moveToBottomAction) {{ setMargin(ZERO_INSETS); }});
-					add(new JToggleButton(playlistModel.toggleRepeatAction) {{ setMargin(ZERO_INSETS); }});
+					add(new JButton(playlistModel.getMoveToTopAction()) {{ setMargin(ZERO_INSETS); }});
+					add(new JButton(sequencerModel.getMoveBackwardAction()) {{ setMargin(ZERO_INSETS); }});
+					add(new JToggleButton(sequencerModel.getStartStopAction()));
+					add(new JButton(sequencerModel.getMoveForwardAction()) {{ setMargin(ZERO_INSETS); }});
+					add(new JButton(playlistModel.getMoveToBottomAction()) {{ setMargin(ZERO_INSETS); }});
+					add(new JToggleButton(playlistModel.getToggleRepeatAction()) {{ setMargin(ZERO_INSETS); }});
 					add( Box.createHorizontalStrut(10) );
 				}});
 				add(new JPanel() {{
 					add(new JButton(midiDeviceDialog.openAction));
-					add(new JButton((new AboutMessagePane()).openAction));
+					add(new JButton(about.getOpenAction()));
 				}});
 			}});
 		}};
@@ -750,7 +626,7 @@ public class ChordHelperApplet extends JApplet {
 	}
 
 	private void setKeySignature(Key key) {
-		keysigLabel.setKeySignature(key);
+		keysigLabel.setKey(key);
 		chordMatrix.setKeySignature(key);
 	}
 
@@ -758,7 +634,7 @@ public class ChordHelperApplet extends JApplet {
 	/**
 	 * 和音を発音します。
 	 * <p>この関数を直接呼ぶとアルペジオが効かないので、
-	 * chord_matrix.setSelectedChord() を使うことを推奨
+	 * chordMatrix.setSelectedChord() を使うことを推奨
 	 * </p>
 	 */
 	public void chordOn() {

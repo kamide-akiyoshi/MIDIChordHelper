@@ -1,7 +1,6 @@
 package camidion.chordhelper.mididevice;
 
 import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 
 import javax.swing.AbstractAction;
 import javax.swing.Action;
@@ -30,9 +29,7 @@ public class MidiDeviceDialog extends JDialog {
 			putValue(LARGE_ICON_KEY, MIDI_CONNECTER_ICON);
 		}
 		@Override
-		public void actionPerformed(ActionEvent event) {
-			setVisible(true);
-		}
+		public void actionPerformed(ActionEvent event) { setVisible(true); }
 	};
 	/**
 	 * MIDIデバイスダイアログを構築します。
@@ -56,22 +53,14 @@ public class MidiDeviceDialog extends JDialog {
 					add(new JPanel() {{
 						add(new JButton("Detect USB MIDI devices", new ButtonIcon(ButtonIcon.REPEAT_ICON)) {{
 							setToolTipText("Update view for USB MIDI device newly plugged or removed");
-							addActionListener(new ActionListener() {
-								@Override
-								public void actionPerformed(ActionEvent e) {
-									deviceTreeModel.updateMidiDeviceList();
-									deviceTreeView.expandAll();
-								}
+							addActionListener(e->{
+								deviceTreeModel.updateMidiDeviceList();
+								deviceTreeView.expandAll();
 							});
 						}});
 						add(new JButton("Reset Tx timestamp", new ButtonIcon(ButtonIcon.TOP_ICON)) {{
 							setToolTipText("Reset timestamp on transmittable MIDI devices");
-							addActionListener(new ActionListener() {
-								@Override
-								public void actionPerformed(ActionEvent e) {
-									deviceTreeModel.resetMicrosecondPosition();
-								}
-							});
+							addActionListener(e->deviceTreeModel.resetMicrosecondPosition());
 						}});
 						setLayout(new BoxLayout(this, BoxLayout.PAGE_AXIS));
 					}});

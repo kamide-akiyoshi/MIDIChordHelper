@@ -464,9 +464,7 @@ public class ChordProgression {
 	 * コード進行をもとに MIDI シーケンスを生成します。
 	 * @return MIDIシーケンス
 	 */
-	public Sequence toMidiSequence() {
-		return toMidiSequence(48);
-	}
+	public Sequence toMidiSequence() { return toMidiSequence(48); }
 	/**
 	 * 指定のタイミング解像度で、
 	 * コード進行をもとに MIDI シーケンスを生成します。
@@ -489,20 +487,16 @@ public class ChordProgression {
 	 */
 	public Sequence toMidiSequence(
 		int ppq, int startMeasure, int endMeasure,
-		FirstTrackSpec firstTrack,
-		Vector<AbstractNoteTrackSpec> trackSpecs
+		FirstTrackSpec firstTrack, Vector<AbstractNoteTrackSpec> trackSpecs
 	) {
 		Sequence seq;
 		try {
 			seq = new Sequence(Sequence.PPQ, ppq);
-		} catch ( InvalidMidiDataException e ) {
-			e.printStackTrace();
-			return null;
+		} catch( InvalidMidiDataException imde ) {
+			throw new IllegalArgumentException("Unexpected error", imde);
 		}
 		// マスタートラックの生成
-		if( firstTrack == null ) {
-			firstTrack = new FirstTrackSpec();
-		}
+		if( firstTrack == null ) firstTrack = new FirstTrackSpec();
 		firstTrack.key = this.key;
 		firstTrack.createTrack( seq, startMeasure, endMeasure );
 		//

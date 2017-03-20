@@ -23,10 +23,7 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.SwingUtilities;
 import javax.swing.WindowConstants;
-import javax.swing.event.ChangeEvent;
-import javax.swing.event.ChangeListener;
 import javax.swing.event.TableModelEvent;
-import javax.swing.event.TableModelListener;
 
 import camidion.chordhelper.midieditor.PlaylistTableModel;
 import camidion.chordhelper.midieditor.SequenceTrackListTableModel;
@@ -42,11 +39,8 @@ public class MidiChordHelper {
 	 * @throws Exception 何らかの異常が発生した場合にスローされる
 	 */
 	public static void main(String[] args) throws Exception {
-		for( String arg : args ) fileList.add(new File(arg));
-		SwingUtilities.invokeLater(new Runnable(){
-			@Override
-			public void run() { new AppletFrame(new ChordHelperApplet(), fileList); }
-		});
+		for(String arg : args) fileList.add(new File(arg));
+		SwingUtilities.invokeLater(()->new AppletFrame(new ChordHelperApplet(), fileList));
 	}
 	private static class AppletFrame extends JFrame implements AppletStub, AppletContext {
 		private JLabel status_ = new JLabel("Welcome to "+ChordHelperApplet.VersionInfo.NAME) {
@@ -64,13 +58,13 @@ public class MidiChordHelper {
 			}
 			setTitle(title);
 		}
-		public AppletFrame(final ChordHelperApplet applet, List<File> fileList) {
+		public AppletFrame(ChordHelperApplet applet, List<File> fileList) {
 			setTitle(ChordHelperApplet.VersionInfo.NAME);
 			add( applet, BorderLayout.CENTER );
 			add( status_, BorderLayout.SOUTH );
 			applet.setStub(this);
 			applet.init();
-			setIconImage(applet.iconImage);
+			setIconImage(applet.getIconImage());
 			setDefaultCloseOperation( WindowConstants.DO_NOTHING_ON_CLOSE );
 			pack();
 			setLocationRelativeTo(null);
@@ -79,34 +73,19 @@ public class MidiChordHelper {
 			addWindowListener(new WindowAdapter() {
 				@Override
 				public void windowClosing(WindowEvent event) {
-					if( ! applet.playlistModel.isModified() || applet.midiEditor.confirm(
+					if( ! applet.isModified() || applet.midiEditor.confirm(
 						"MIDI file not saved, exit anyway ?\n"+
 						"保存されていないMIDIファイルがありますが、終了してよろしいですか？"
-					)) {
-						applet.destroy();
-						System.exit(0);
-					}
+					)) { applet.destroy(); System.exit(0); }
 				}
 			});
-			applet.sequencerModel.addChangeListener(new ChangeListener() {
-				/**
-				 * シーケンサで切り替わった再生対象ファイル名をタイトルバーに反映
-				 */
-				@Override
-				public void stateChanged(ChangeEvent event) {
+			// シーケンサで切り替わった再生対象ファイル名をタイトルバーに反映
+			applet.sequencerModel.addChangeListener(e->setFilenameToTitle(applet.sequencerModel.getSequenceTrackListTableModel()));
+			// プレイリスト上で変更された再生対象ファイル名をタイトルバーに反映
+			applet.playlistModel.addTableModelListener(tme->{
+				int col = tme.getColumn();
+				if( col == PlaylistTableModel.Column.FILENAME.ordinal() || col == TableModelEvent.ALL_COLUMNS ) {
 					setFilenameToTitle(applet.sequencerModel.getSequenceTrackListTableModel());
-				}
-			});
-			applet.playlistModel.addTableModelListener(new TableModelListener() {
-				/**
-				 * プレイリスト上で変更された再生対象ファイル名をタイトルバーに反映
-				 */
-				@Override
-				public void tableChanged(TableModelEvent event) {
-					int col = event.getColumn();
-					if( col == PlaylistTableModel.Column.FILENAME.ordinal() || col == TableModelEvent.ALL_COLUMNS ) {
-						setFilenameToTitle(applet.sequencerModel.getSequenceTrackListTableModel());
-					}
 				}
 			});
 			applet.midiEditor.loadAndPlay(fileList);

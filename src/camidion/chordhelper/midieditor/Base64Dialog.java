@@ -43,14 +43,12 @@ public class Base64Dialog extends JDialog implements DocumentListener {
 			try {
 				midiData = getMIDIData();
 			} catch(Exception e) {
-				e.printStackTrace();
 				error("Base64デコードに失敗しました。\n"+e);
 				return;
 			}
 			try {
 				midiEditor.sequenceListTable.getModel().addSequence(midiData, null);
 			} catch(Exception e) {
-				e.printStackTrace();
 				error("Base64デコードされたデータが正しいMIDI形式になっていません。\n"+e);
 				return;
 			}

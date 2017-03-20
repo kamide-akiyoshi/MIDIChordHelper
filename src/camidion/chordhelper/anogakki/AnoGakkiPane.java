@@ -8,8 +8,6 @@ import java.awt.Graphics2D;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.Stroke;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.geom.AffineTransform;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -206,25 +204,15 @@ public class AnoGakkiPane extends JComponent {
 	 */
 	public AnoGakkiPane() {
 		setOpaque(false);
-		timer = new Timer(
-			INTERVAL_MS,
-			new ActionListener() {
-				@Override
-				public void actionPerformed(ActionEvent event) {
-					synchronized(queue) {
-						Iterator<QueueEntry> i = queue.iterator();
-						while( i.hasNext() )
-							if( i.next().countDown() <= 0 )i.remove();
-					}
-					if(queue.isEmpty()) timer.stop();
-					repaint();
-				}
+		timer = new Timer(INTERVAL_MS, e->{
+			synchronized(queue) {
+				Iterator<QueueEntry> i = queue.iterator();
+				while(i.hasNext()) if(i.next().countDown() <= 0) i.remove();
 			}
-		) {
-			{
-				setCoalesce(true);
-				setRepeats(true);
-			}
+			if(queue.isEmpty()) timer.stop();
+			repaint();
+		}) {
+			{setCoalesce(true);setRepeats(true);}
 		};
 	}
 	private Timer timer;
@@ -236,7 +224,7 @@ public class AnoGakkiPane extends JComponent {
 		g2.setColor(color);
 		synchronized(queue) {
 			Iterator<QueueEntry> i = queue.iterator();
-			while( i.hasNext() ) {
+			while(i.hasNext()) {
 				QueueEntry entry = i.next();
 				entry.shape.draw(g2, entry);
 			}
@@ -265,9 +253,7 @@ public class AnoGakkiPane extends JComponent {
 			return;
 		}
 		point = SwingUtilities.convertPoint(source, point, this);
-		synchronized (queue) {
-			queue.add(new QueueEntry(point));
-		}
+		synchronized (queue) { queue.add(new QueueEntry(point)); }
 		timer.start();
 		prevStartedAt = startedAt;
 	}

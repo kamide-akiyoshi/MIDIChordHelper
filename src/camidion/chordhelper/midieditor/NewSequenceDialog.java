@@ -106,7 +106,8 @@ public class NewSequenceDialog extends JDialog {
 		@Override
 		public void actionPerformed(ActionEvent event) {
 			try {
-				playlist.addSequenceAndPlay(getMidiSequence());
+				int index = playlist.addSequenceAndPlay(getMidiSequence());
+				playlist.getSequenceModelList().get(index).setModified(true);
 			} catch (InvalidMidiDataException ex) {
 				ex.printStackTrace();
 				JOptionPane.showMessageDialog(
@@ -141,14 +142,7 @@ public class NewSequenceDialog extends JDialog {
 				}});
 				add(new JButton("Randomize (Tempo, Time signature, Chord progression)") {{
 					setMargin(ZERO_INSETS);
-					addActionListener(new ActionListener() {
-						@Override
-						public void actionPerformed(ActionEvent e) {
-							setRandomChordProgression(
-								measureSelecter.getMeasureDuration()
-							);
-						}
-					});
+					addActionListener(e->setRandomChordProgression(measureSelecter.getMeasureDuration()));
 				}});
 				add(new JPanel() {{
 					setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
@@ -164,46 +158,34 @@ public class NewSequenceDialog extends JDialog {
 					add(new JLabel("Transpose"));
 					add(new JButton(" + Up ") {{
 						setMargin(ZERO_INSETS);
-						addActionListener(new ActionListener() {
-							@Override
-							public void actionPerformed(ActionEvent e) {
-								ChordProgression cp = createChordProgression();
-								cp.transpose(1);
-								setChordProgression(cp);
-							}
+						addActionListener(e->{
+							ChordProgression cp = createChordProgression();
+							cp.transpose(1);
+							setChordProgression(cp);
 						});
 					}});
 					add(new JButton(" - Down ") {{
 						setMargin(ZERO_INSETS);
-						addActionListener(new ActionListener() {
-							@Override
-							public void actionPerformed(ActionEvent e) {
-								ChordProgression cp = createChordProgression();
-								cp.transpose(-1);
-								setChordProgression(cp);
-							}
+						addActionListener(e->{
+							ChordProgression cp = createChordProgression();
+							cp.transpose(-1);
+							setChordProgression(cp);
 						});
 					}});
 					add(new JButton(" Enharmonic ") {{
 						setMargin(ZERO_INSETS);
-						addActionListener(new ActionListener() {
-							@Override
-							public void actionPerformed(ActionEvent e) {
-								ChordProgression cp = createChordProgression();
-								cp.toggleEnharmonically();
-								setChordProgression(cp);
-							}
+						addActionListener(e->{
+							ChordProgression cp = createChordProgression();
+							cp.toggleEnharmonically();
+							setChordProgression(cp);
 						});
 					}});
 					add(new JButton("Relative key") {{
 						setMargin(ZERO_INSETS);
-						addActionListener(new ActionListener() {
-							@Override
-							public void actionPerformed(ActionEvent e) {
-								ChordProgression cp = createChordProgression();
-								cp.toggleKeyMajorMinor();
-								setChordProgression(cp);
-							}
+						addActionListener(e->{
+							ChordProgression cp = createChordProgression();
+							cp.toggleKeyMajorMinor();
+							setChordProgression(cp);
 						});
 					}});
 				}});
@@ -326,12 +308,7 @@ public class NewSequenceDialog extends JDialog {
 			trackSelecter.addActionListener(this);
 			chSelecter.comboBox.addActionListener(this);
 			keyboardPanel.keyboard.velocityModel.addChangeListener(
-				new ChangeListener() {
-					public void stateChanged(ChangeEvent e) {
-						AbstractNoteTrackSpec ants = getTrackSpec();
-						ants.velocity = keyboardPanel.keyboard.velocityModel.getValue();
-					}
-				}
+				e -> getTrackSpec().velocity = keyboardPanel.keyboard.velocityModel.getValue()
 			);
 			pgSelecter.addActionListener(this);
 		}

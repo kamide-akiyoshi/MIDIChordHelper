@@ -2,8 +2,6 @@ package camidion.chordhelper.midieditor;
 
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 
 import javax.swing.Action;
 import javax.swing.JButton;
@@ -68,11 +66,7 @@ public class MidiEventDialog extends JDialog {
 			add(okButton = new JButton("OK"));
 			add(cancelButton = new JButton("Cancel"));
 		}});
-		cancelButton.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				setVisible(false);
-			}
-		});
+		cancelButton.addActionListener(e->setVisible(false));
 	}
 	public void openForm(
 		String title, Action okAction, int midiChannel,

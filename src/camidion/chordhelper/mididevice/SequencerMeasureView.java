@@ -6,8 +6,6 @@ import javax.sound.midi.Sequencer;
 import javax.swing.BoxLayout;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.event.ChangeEvent;
-import javax.swing.event.ChangeListener;
 
 import camidion.chordhelper.midieditor.SequenceTickIndex;
 import camidion.chordhelper.midieditor.SequenceTrackListTableModel;
@@ -26,37 +24,34 @@ public class SequencerMeasureView extends JPanel {
 		setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
 		add(measurePositionLabel = new MeasurePositionLabel());
 		add(measureLengthLabel = new MeasureLengthLabel());
-		model.addChangeListener(new ChangeListener() {
-			@Override
-			public void stateChanged(ChangeEvent e) {
-				Object source = e.getSource();
-				if( ! (source instanceof MidiSequencerModel) ) return;
-				MidiSequencerModel model = (MidiSequencerModel)source;
-				Sequencer sequencer = model.getSequencer();
-				SequenceTrackListTableModel sequenceTableModel = model.getSequenceTrackListTableModel();
-				SequenceTickIndex tickIndex = (
-					sequenceTableModel == null ? null : sequenceTableModel.getSequenceTickIndex()
-				);
-				if( ! sequencer.isRunning() || sequencer.isRecording() ) {
-					// 停止中または録音中の場合、長さが変わることがあるので表示を更新
-					if( tickIndex == null ) {
-						measureLengthLabel.setMeasure(0);
-					}
-					else {
-						long tickLength = sequencer.getTickLength();
-						int measureLength = tickIndex.tickToMeasure(tickLength);
-						measureLengthLabel.setMeasure(measureLength);
-					}
-				}
-				// 小節位置の表示を更新
+		model.addChangeListener(e -> {
+			Object source = e.getSource();
+			if( ! (source instanceof MidiSequencerModel) ) return;
+			MidiSequencerModel sourceModel = (MidiSequencerModel)source;
+			Sequencer sequencer = sourceModel.getSequencer();
+			SequenceTrackListTableModel sequenceTableModel = sourceModel.getSequenceTrackListTableModel();
+			SequenceTickIndex tickIndex = (
+				sequenceTableModel == null ? null : sequenceTableModel.getSequenceTickIndex()
+			);
+			if( ! sequencer.isRunning() || sequencer.isRecording() ) {
+				// 停止中または録音中の場合、長さが変わることがあるので表示を更新
 				if( tickIndex == null ) {
-					measurePositionLabel.setMeasure(0, 0);
+					measureLengthLabel.setMeasure(0);
 				}
 				else {
-					long tickPosition = sequencer.getTickPosition();
-					int measurePosition = tickIndex.tickToMeasure(tickPosition);
-					measurePositionLabel.setMeasure(measurePosition, tickIndex.lastBeat);
+					long tickLength = sequencer.getTickLength();
+					int measureLength = tickIndex.tickToMeasure(tickLength);
+					measureLengthLabel.setMeasure(measureLength);
 				}
+			}
+			// 小節位置の表示を更新
+			if( tickIndex == null ) {
+				measurePositionLabel.setMeasure(0, 0);
+			}
+			else {
+				long tickPosition = sequencer.getTickPosition();
+				int measurePosition = tickIndex.tickToMeasure(tickPosition);
+				measurePositionLabel.setMeasure(measurePosition, tickIndex.lastBeat);
 			}
 		});
 	}
@@ -77,8 +72,7 @@ public class SequencerMeasureView extends JPanel {
 			setToolTipText("Measure:beat position - 何小節目：何拍目");
 		}
 		public boolean setMeasure(int measure, int beat) {
-			if( ! super.setMeasure(measure) && this.beat == beat )
-				return false;
+			if( ! super.setMeasure(measure) && this.beat == beat ) return false;
 			setText(String.format("%04d:%02d", measure+1, beat+1));
 			return true;
 		}
@@ -89,8 +83,7 @@ public class SequencerMeasureView extends JPanel {
 			setToolTipText("Measure length - 小節の数");
 		}
 		public boolean setMeasure(int measure) {
-			if( ! super.setMeasure(measure) )
-				return false;
+			if( ! super.setMeasure(measure) ) return false;
 			setText(String.format("/%04d", measure));
 			return true;
 		}

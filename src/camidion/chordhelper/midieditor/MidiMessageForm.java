@@ -4,8 +4,6 @@ import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.InputEvent;
-import java.awt.event.ItemEvent;
-import java.awt.event.ItemListener;
 import java.nio.charset.Charset;
 
 import javax.sound.midi.InvalidMidiDataException;
@@ -19,8 +17,6 @@ import javax.swing.ComboBoxModel;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JComboBox;
 import javax.swing.JPanel;
-import javax.swing.event.ChangeEvent;
-import javax.swing.event.ChangeListener;
 
 import camidion.chordhelper.music.Key;
 import camidion.chordhelper.music.MIDISpec;
@@ -152,19 +148,17 @@ public class MidiMessageForm extends JPanel implements ActionListener {
 	private PianoKeyboardPanel keyboardPanel = new PianoKeyboardPanel() {
 		{
 			keyboard.setPreferredSize(new Dimension(300,40));
-			keyboard.addPianoKeyboardListener(
-				new PianoKeyboardAdapter() {
-					public void pianoKeyPressed(int n, InputEvent e) {
-						data1Text.setValue(n);
-						if( midiChannels == null ) return;
-						midiChannels[channelText.getSelectedChannel()].noteOn(n, data2Text.getValue());
-					}
-					public void pianoKeyReleased(int n, InputEvent e) {
-						if( midiChannels == null ) return;
-						midiChannels[channelText.getSelectedChannel()].noteOff(n, data2Text.getValue());
-					}
+			keyboard.addPianoKeyboardListener(new PianoKeyboardAdapter() {
+				public void pianoKeyPressed(int n, InputEvent e) {
+					data1Text.setValue(n);
+					if( midiChannels == null ) return;
+					midiChannels[channelText.getSelectedChannel()].noteOn(n, data2Text.getValue());
 				}
-			);
+				public void pianoKeyReleased(int n, InputEvent e) {
+					if( midiChannels == null ) return;
+					midiChannels[channelText.getSelectedChannel()].noteOff(n, data2Text.getValue());
+				}
+			});
 		}
 	};
 	/**
@@ -175,28 +169,15 @@ public class MidiMessageForm extends JPanel implements ActionListener {
 	 * テンポ選択
 	 */
 	private TempoSelecter tempoSelecter = new TempoSelecter() {
-		{
-			tempoSpinnerModel.addChangeListener(new ChangeListener() {
-				@Override
-				public void stateChanged(ChangeEvent e) {
-					dataText.setValue(getTempoByteArray());
-				}
-			});
-		}
+		{ tempoSpinnerModel.addChangeListener(e->dataText.setValue(getTempoByteArray())); }
 	};
 	/**
 	 * 拍子選択
 	 */
 	private TimeSignatureSelecter timesigSelecter = new TimeSignatureSelecter() {
 		{
-			upperTimesigModel.addChangeListener(new ChangeListener() {
-				@Override
-				public void stateChanged(ChangeEvent e) { update(); }
-			});
-			lowerTimesigView.addActionListener(new ActionListener() {
-				@Override
-				public void actionPerformed(ActionEvent e) { update(); }
-			});
+			upperTimesigModel.addChangeListener(e->update());
+			lowerTimesigView.addActionListener(e->update());
 		}
 		private void update() { dataText.setValue(getByteArray()); }
 	};
@@ -205,14 +186,8 @@ public class MidiMessageForm extends JPanel implements ActionListener {
 	 */
 	private KeySignatureSelecter keysigSelecter = new KeySignatureSelecter(new Key("C")) {
 		{
-			keysigCombobox.addActionListener(new ActionListener() {
-				@Override
-				public void actionPerformed(ActionEvent e) { update(); }
-			});
-			minorCheckbox.addItemListener(new ItemListener() {
-				@Override
-				public void itemStateChanged(ItemEvent e) { update(); }
-			});
+			keysigCombobox.addActionListener(e->update());
+			minorCheckbox.addItemListener(e->update());
 		}
 		private void update() { dataText.setValue(getSelectedKey().getBytes()); }
 	};
