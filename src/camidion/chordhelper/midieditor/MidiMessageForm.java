@@ -359,7 +359,7 @@ public class MidiMessageForm extends JPanel implements ActionListener {
 	/**
 	 * 入力している内容からMIDIメッセージを生成して返します。
 	 * @param charset 文字コード
-	 * @return 入力している内容から生成したMIDIメッセージ
+	 * @return 入力している内容から生成したMIDIメッセージ（生成できなかった場合はnull）
 	 */
 	public MidiMessage getMessage(Charset charset) {
 		int msgStatus = statusText.getValue();

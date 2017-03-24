@@ -106,8 +106,7 @@ public class NewSequenceDialog extends JDialog {
 		@Override
 		public void actionPerformed(ActionEvent event) {
 			try {
-				int index = playlist.addSequenceAndPlay(getMidiSequence());
-				playlist.getSequenceModelList().get(index).setModified(true);
+				playlist.getSequenceModelList().get(playlist.play(getMidiSequence())).setModified(true);
 			} catch (InvalidMidiDataException ex) {
 				ex.printStackTrace();
 				JOptionPane.showMessageDialog(

@@ -1,14 +1,6 @@
 package camidion.chordhelper.midieditor;
 
 import java.awt.event.ActionEvent;
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
 import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.List;
@@ -16,14 +8,12 @@ import java.util.Map;
 import java.util.Vector;
 
 import javax.sound.midi.InvalidMidiDataException;
-import javax.sound.midi.MidiSystem;
 import javax.sound.midi.Sequence;
 import javax.sound.midi.Sequencer;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.DefaultListSelectionModel;
 import javax.swing.Icon;
-import javax.swing.JOptionPane;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
 import javax.swing.event.ChangeEvent;
@@ -33,7 +23,6 @@ import javax.swing.event.ListSelectionListener;
 import javax.swing.table.AbstractTableModel;
 
 import camidion.chordhelper.ButtonIcon;
-import camidion.chordhelper.ChordHelperApplet;
 import camidion.chordhelper.mididevice.MidiSequencerModel;
 import camidion.chordhelper.music.ChordProgression;
 
@@ -89,7 +78,13 @@ public class PlaylistTableModel extends AbstractTableModel {
 		sequencerModel.addChangeListener(mmssPosition);
 		// EOF(0x2F)が来たら曲の終わりなので次の曲へ進める
 		sequencerModel.getSequencer().addMetaEventListener(msg->{
-			if(msg.getType() == 0x2F) SwingUtilities.invokeLater(()->goNext());
+			if(msg.getType() == 0x2F) SwingUtilities.invokeLater(()->{
+				try {
+					goNext();
+				} catch (InvalidMidiDataException e) {
+					throw new RuntimeException("Could not play next sequence after end-of-track",e);
+				}
+			});
 		});
 		emptyTrackListTableModel = new SequenceTrackListTableModel(this, null, null);
 		emptyEventListTableModel = new TrackEventListTableModel(emptyTrackListTableModel, null);
@@ -100,8 +95,9 @@ public class PlaylistTableModel extends AbstractTableModel {
 	 * <p>リピートモードの場合は同じ曲をもう一度再生、そうでない場合は次の曲へ進んで再生します。
 	 * 次の曲がなければ、そこで停止します。いずれの場合も曲の先頭へ戻ります。
 	 * </p>
+	 * @throws InvalidMidiDataException {@link Sequencer#setSequence(Sequence)} を参照
 	 */
-	private void goNext() {
+	private void goNext() throws InvalidMidiDataException {
 		// とりあえず曲の先頭へ戻る
 		sequencerModel.getSequencer().setMicrosecondPosition(0);
 		if( (Boolean)toggleRepeatAction.getValue(Action.SELECTED_KEY) || loadNext(1) ) {
@@ -175,8 +171,15 @@ public class PlaylistTableModel extends AbstractTableModel {
 			);
 			putValue(LARGE_ICON_KEY, new ButtonIcon(ButtonIcon.TOP_ICON));
 		}
+		@Override
 		public void actionPerformed(ActionEvent event) {
-			if( sequencerModel.getSequencer().getTickPosition() <= 40 ) loadNext(-1);
+			if( sequencerModel.getSequencer().getTickPosition() <= 40 ) {
+				try {
+					loadNext(-1);
+				} catch (InvalidMidiDataException e) {
+					throw new RuntimeException("Could not play previous sequence",e);
+				}
+			}
 			sequencerModel.setValue(0);
 		}
 	};
@@ -190,7 +193,11 @@ public class PlaylistTableModel extends AbstractTableModel {
 			putValue(LARGE_ICON_KEY, new ButtonIcon(ButtonIcon.BOTTOM_ICON));
 		}
 		public void actionPerformed(ActionEvent event) {
-			if(loadNext(1)) sequencerModel.setValue(0);
+			try {
+				if(loadNext(1)) sequencerModel.setValue(0);
+			} catch (InvalidMidiDataException e) {
+				throw new RuntimeException("Could not play next sequence",e);
+			}
 		}
 	};
 	/**
@@ -360,13 +367,10 @@ public class PlaylistTableModel extends AbstractTableModel {
 	 * @return 全シーケンスの合計時間長 [秒]
 	 */
 	public int getTotalTimeInSeconds() {
-		int total = 0;
-		long usec;
-		for( SequenceTrackListTableModel m : sequenceModelList ) {
-			usec = m.getSequence().getMicrosecondLength();
-			total += (int)( (usec < 0 ? usec += 0x100000000L : usec)/1000L/1000L );
-		}
-		return total;
+		return sequenceModelList.stream().mapToInt(m->{
+			long usec = m.getSequence().getMicrosecondLength();
+			return (int)( (usec < 0 ? usec += 0x100000000L : usec)/1000L/1000L );
+		}).sum();
 	}
 	/**
 	 * 選択されたMIDIシーケンスのテーブルモデルを返します。
@@ -408,7 +412,7 @@ public class PlaylistTableModel extends AbstractTableModel {
 	 * @param filename ファイル名（nullの場合、ファイル名なし）
 	 * @return 追加されたシーケンスのインデックス（先頭が 0）
 	 */
-	public int addSequence(Sequence sequence, String filename) {
+	public int add(Sequence sequence, String filename) {
 		if( sequence == null ) sequence = (new ChordProgression()).toMidiSequence();
 		sequenceModelList.add(new SequenceTrackListTableModel(this, sequence, filename));
 		//
@@ -419,86 +423,18 @@ public class PlaylistTableModel extends AbstractTableModel {
 		return lastIndex;
 	}
 	/**
-	 * バイト列とファイル名からMIDIシーケンスを追加します。
-	 * @param data バイト列（nullの場合、シーケンスを自動生成して追加）
-	 * @param filename ファイル名
-	 * @return 追加先インデックス（先頭が 0）
-	 * @throws IOException バイト列の読み込みに失敗した場合
-	 * @throws InvalidMidiDataException MIDIデータが正しくない場合
-	 */
-	public int addSequence(byte[] data, String filename) throws IOException, InvalidMidiDataException {
-		Sequence sequence = null;
-		if( data != null ) {
-			try (InputStream in = new ByteArrayInputStream(data)) {
-				sequence = MidiSystem.getSequence(in);
-			} catch( IOException|InvalidMidiDataException e ) {
-				throw e;
-			}
-		}
-		return addSequence(sequence, filename);
-	}
-	/**
-	 * MIDIファイルを追加します。
-	 * @param midiFile MIDIファイル（nullの場合、シーケンスを自動生成して追加）
-	 * @return 追加先インデックス（先頭が 0）
-	 * @throws IOException ファイル入出力に失敗した場合
-	 * @throws InvalidMidiDataException ファイル内のMIDIデータが正しくない場合
-	 */
-	public int addSequence(File midiFile) throws InvalidMidiDataException, IOException {
-		Sequence sequence = null;
-		String filename = null;
-		if( midiFile != null ) {
-			try (FileInputStream in = new FileInputStream(midiFile)) {
-				sequence = MidiSystem.getSequence(in);
-			} catch( IOException|InvalidMidiDataException e ) {
-				throw e;
-			}
-			filename = midiFile.getName();
-		}
-		return addSequence(sequence, filename);
-	}
-	/**
-	 * MIDIシーケンスを追加し、再生されていなかった場合は追加したシーケンスから再生を開始します。
+	 * 指定されたMIDIシーケンスをこのプレイリストに追加して再生します。
 	 * @param sequence MIDIシーケンス
 	 * @return 追加されたシーケンスのインデックス（先頭が 0）
 	 * @throws InvalidMidiDataException {@link Sequencer#setSequence(Sequence)} を参照
 	 */
-	public int addSequenceAndPlay(Sequence sequence) throws InvalidMidiDataException {
-		int lastIndex = addSequence(sequence,"");
+	public int play(Sequence sequence) throws InvalidMidiDataException {
+		int lastIndex = add(sequence,"");
 		if( ! sequencerModel.getSequencer().isRunning() ) {
 			loadToSequencer(lastIndex);
 			sequencerModel.start();
 		}
 		return lastIndex;
-	}
-	/**
-	 * 複数のMIDIファイルを追加します。
-	 * @param fileList 追加するMIDIファイルのリスト
-	 * @return 追加先の最初のインデックス（先頭が 0、追加されなかった場合は -1）
-	 * @throws InvalidMidiDataException ファイル内のMIDIデータが正しくない場合
-	 * @throws IOException ファイル入出力に失敗した場合
-	 */
-	public int addSequences(List<File> fileList) throws InvalidMidiDataException, IOException {
-		int firstIndex = -1;
-		for( File file : fileList ) {
-			int lastIndex = addSequence(file);
-			if( firstIndex == -1 ) firstIndex = lastIndex;
-		}
-		return firstIndex;
-	}
-	/**
-	 * URLから読み込んだMIDIシーケンスを追加します。
-	 * @param midiFileUrl MIDIファイルのURL
-	 * @return 追加先インデックス（先頭が 0、失敗した場合は -1）
-	 * @throws URISyntaxException URLの形式に誤りがある場合
-	 * @throws IOException 入出力に失敗した場合
-	 * @throws InvalidMidiDataException MIDIデータが正しくない場合
-	 */
-	public int addSequenceFromURL(String midiFileUrl)
-		throws URISyntaxException, IOException, InvalidMidiDataException
-	{
-		URL url = (new URI(midiFileUrl)).toURL();
-		return addSequence(MidiSystem.getSequence(url), url.getFile().replaceFirst("^.*/",""));
 	}
 
 	/**
@@ -550,18 +486,18 @@ public class PlaylistTableModel extends AbstractTableModel {
 	/**
 	 * 引数で示された数だけ次へ進めたシーケンスをロードします。
 	 * @param offset 進みたいシーケンス数
-	 * @return true:ロード成功、false:これ以上進めない
+	 * @return 以前と異なるインデックスのシーケンスをロードできた場合true
+	 * @throws InvalidMidiDataException {@link Sequencer#setSequence(Sequence)} を参照
 	 */
-	public boolean loadNext(int offset) {
+	private boolean loadNext(int offset) throws InvalidMidiDataException {
 		int loadedIndex = indexOfSequenceOnSequencer();
-		int index = (loadedIndex < 0 ? 0 : loadedIndex + offset);
-		if( index < 0 || index >= sequenceModelList.size() ) return false;
-		try {
-			loadToSequencer(index);
-		} catch (InvalidMidiDataException ex) {
-			JOptionPane.showMessageDialog(null, ex, ChordHelperApplet.VersionInfo.NAME, JOptionPane.ERROR_MESSAGE);
-			return false;
+		int newIndex = loadedIndex + offset;
+		if( newIndex < 0 ) newIndex = 0; else {
+			int sz = sequenceModelList.size();
+			if( newIndex >= sz ) newIndex = sz - 1;
 		}
+		if( newIndex == loadedIndex ) return false;
+		loadToSequencer(newIndex);
 		return true;
 	}
 }

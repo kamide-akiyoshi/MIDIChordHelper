@@ -222,13 +222,7 @@ public class AnoGakkiPane extends JComponent {
 		Graphics2D g2 = (Graphics2D)g;
 		g2.setStroke(stroke);
 		g2.setColor(color);
-		synchronized(queue) {
-			Iterator<QueueEntry> i = queue.iterator();
-			while(i.hasNext()) {
-				QueueEntry entry = i.next();
-				entry.shape.draw(g2, entry);
-			}
-		}
+		synchronized(queue) { queue.forEach(e -> e.shape.draw(g2, e)); }
 	}
 	/**
 	 * 指定された長方形領域（{@link Rectangle}）の中央から図形の表示を開始します。
@@ -253,7 +247,7 @@ public class AnoGakkiPane extends JComponent {
 			return;
 		}
 		point = SwingUtilities.convertPoint(source, point, this);
-		synchronized (queue) { queue.add(new QueueEntry(point)); }
+		synchronized(queue) { queue.add(new QueueEntry(point)); }
 		timer.start();
 		prevStartedAt = startedAt;
 	}

@@ -29,41 +29,36 @@ public class MidiDeviceDesktopPane extends JDesktopPane implements TreeSelection
 	/**
 	 * MIDIデバイスモデルからフレームを割り出すためのマップ
 	 */
-	private Map<MidiDeviceModel, MidiDeviceFrame> frameMap = new HashMap<>();
+	private Map<MidiDeviceModel, MidiDeviceFrame> frameOfModel = new HashMap<>();
 	/**
-	 * MIDIデバイスモデルに対応するMIDIデバイスフレームを返すマップを返します。
-	 */
-	public Map<MidiDeviceModel, MidiDeviceFrame> getFrameMap() {
-		return frameMap;
-	}
-	/**
-	 * ツリー上で選択状態が変わったとき、このデスクトップ上のフレームの選択状態に反映します。
+	 * MIDIデバイスツリービューで選択状態が変わったとき、
+	 * このデスクトップで表示しているフレームの選択状態に反映します。
 	 */
 	@Override
 	public void valueChanged(TreeSelectionEvent tse) {
-		TreePath treePath = tse.getNewLeadSelectionPath();
-		if( treePath != null ) {
-			Object lastSelected = treePath.getLastPathComponent();
-			if( lastSelected instanceof MidiDeviceModel ) {
-				MidiDeviceModel deviceModel = (MidiDeviceModel)lastSelected;
-				if( deviceModel.getMidiDevice().isOpen() ) {
+		TreePath selectedTreePath = tse.getNewLeadSelectionPath();
+		if( selectedTreePath != null ) {
+			Object selectedLeaf = selectedTreePath.getLastPathComponent();
+			if( selectedLeaf instanceof MidiDeviceModel ) {
+				MidiDeviceModel selectedModel = (MidiDeviceModel)selectedLeaf;
+				if( selectedModel.getMidiDevice().isOpen() ) {
 					// 開いているMIDIデバイスがツリー上で選択されたら、対応するフレームを選択
-					MidiDeviceFrame deviceFrame = frameMap.get(deviceModel);
-					if( deviceFrame == null ) return;
-					deviceFrame.toFront();
-					try {
-						deviceFrame.setSelected(true);
-					} catch( PropertyVetoException ex ) {
-						ex.printStackTrace();
+					MidiDeviceFrame deviceFrame = frameOfModel.get(selectedModel);
+					if( deviceFrame != null ) {
+						deviceFrame.toFront();
+						try {
+							deviceFrame.setSelected(true);
+						} catch( PropertyVetoException ex ) {
+							ex.printStackTrace();
+						}
+						return;
 					}
-					return;
 				}
 			}
 		}
 		// それ以外が選択されたら、現在選択されているフレームを非選択
 		JInternalFrame frame = getSelectedFrame();
-		if( ! (frame instanceof MidiDeviceFrame) ) return;
-		try {
+		if( frame instanceof MidiDeviceFrame ) try {
 			((MidiDeviceFrame)frame).setSelected(false);
 		} catch( PropertyVetoException ex ) {
 			ex.printStackTrace();
@@ -97,39 +92,44 @@ public class MidiDeviceDesktopPane extends JDesktopPane implements TreeSelection
 			public void treeNodesRemoved(TreeModelEvent e) { }
 			@Override
 			public void treeStructureChanged(TreeModelEvent e) {
-				// USBから切断されてツリーから消滅したMIDIデバイスモデルのフレームを削除
-				frameMap.keySet().stream().filter(m-> ! deviceTreeModel.contains(m))
-					.collect(Collectors.toList()).stream().map(m-> frameMap.remove(m))
-					.filter(f-> f != null).forEach(f-> remove(f));
+				// ツリーから削除されたMIDIデバイスモデルのフレームを削除
+				frameOfModel.keySet().stream()
+					.filter(m-> ! deviceTreeModel.contains(m))
+					.collect(Collectors.toSet()).stream()
+					.map(m-> frameOfModel.remove(m))
+					.filter(f-> f != null)
+					.forEach(f-> remove(f));
 				//
 				// ツリーに追加されたMIDIデバイスモデルのフレームを生成
-				deviceTreeModel.stream().filter(dm -> ! frameMap.containsKey(dm)).forEach(dm->{
-					MidiDeviceFrame frame = new MidiDeviceFrame(dm, cablePane);
-					frameMap.put(dm, frame);
-					//
-					// トランスミッタリストモデルが変化したときにMIDIケーブルを再描画
-					TransmitterListModel txListModel = dm.getTransmitterListModel();
-					if( txListModel != null ) txListModel.addListDataListener(cablePane.midiConnecterListDataListener);
-					//
-					// レシーバリストモデルが変化したときにMIDIケーブルを再描画
-					ReceiverListModel rxListModel = dm.getReceiverListModel();
-					if( rxListModel != null ) rxListModel.addListDataListener(cablePane.midiConnecterListDataListener);
-					//
-					// デバイスフレームが開閉したときの動作
-					frame.addInternalFrameListener(cablePane.midiDeviceFrameListener);
-					frame.addInternalFrameListener(deviceTreeView.midiDeviceFrameListener);
-					frame.addInternalFrameListener(deviceInfoPane.midiDeviceFrameListener);
-					//
-					// 移動または変形時の動作
-					frame.addComponentListener(cablePane.midiDeviceFrameComponentListener);
-					//
-					// サイズを設定したフレームをデスクトップに追加
-					frame.setSize(250, dm.getInOutType() == MidiDeviceInOutType.MIDI_IN_OUT ? 90 : 70);
-					add(frame);
-					//
-					// デバイスが開いていたら表示
-					if( dm.getMidiDevice().isOpen() ) frame.setVisible(true);
-				});
+				deviceTreeModel.stream()
+					.filter(dm -> ! frameOfModel.containsKey(dm))
+					.forEach(dm->{
+						MidiDeviceFrame frame = new MidiDeviceFrame(dm, cablePane);
+						frameOfModel.put(dm, frame);
+						//
+						// トランスミッタリストモデルが変化したときにMIDIケーブルを再描画
+						TransmitterListModel txListModel = dm.getTransmitterListModel();
+						if( txListModel != null ) txListModel.addListDataListener(cablePane.midiConnecterListDataListener);
+						//
+						// レシーバリストモデルが変化したときにMIDIケーブルを再描画
+						ReceiverListModel rxListModel = dm.getReceiverListModel();
+						if( rxListModel != null ) rxListModel.addListDataListener(cablePane.midiConnecterListDataListener);
+						//
+						// デバイスフレームが開閉したときの動作
+						frame.addInternalFrameListener(cablePane.midiDeviceFrameListener);
+						frame.addInternalFrameListener(deviceTreeView.midiDeviceFrameListener);
+						frame.addInternalFrameListener(deviceInfoPane.midiDeviceFrameListener);
+						//
+						// 移動または変形時の動作
+						frame.addComponentListener(cablePane.midiDeviceFrameComponentListener);
+						//
+						// サイズを設定したフレームをデスクトップに追加
+						frame.setSize(250, dm.getInOutType() == MidiDeviceInOutType.MIDI_IN_OUT ? 90 : 70);
+						add(frame);
+						//
+						// デバイスが開いていたら表示
+						if( dm.getMidiDevice().isOpen() ) frame.setVisible(true);
+					});
 			}
 		};
 		deviceTreeModel.addTreeModelListener(treeModelListener);
@@ -140,7 +140,7 @@ public class MidiDeviceDesktopPane extends JDesktopPane implements TreeSelection
 		int toY = 10;
 		for( MidiDeviceModel deviceModel : deviceTreeModel ) {
 			if( ! deviceModel.getMidiDevice().isOpen() ) continue;
-			frameMap.get(deviceModel).setLocation(toX, toY);
+			frameOfModel.get(deviceModel).setLocation(toX, toY);
 			toX = (toX == 10 ? 270 : 10);
 			toY += 70;
 		}
@@ -175,7 +175,7 @@ public class MidiDeviceDesktopPane extends JDesktopPane implements TreeSelection
 				MidiDeviceModel deviceModel = null;
 				try {
 					deviceModel = (MidiDeviceModel)support.getTransferable().getTransferData(flavor);
-					MidiDeviceFrame deviceFrame = frameMap.get(deviceModel);
+					MidiDeviceFrame deviceFrame = frameOfModel.get(deviceModel);
 					if( deviceFrame == null ) return false;
 					deviceModel.open();
 					if( ! deviceModel.getMidiDevice().isOpen() ) {

@@ -74,7 +74,7 @@ public class MidiKeyboardPanel extends JPanel {
 							public void actionPerformed(ActionEvent e) {
 								VirtualMidiDevice vmd = keyboardCenterPanel.keyboard.midiDevice;
 								MidiMessage msg = eventDialog.midiMessageForm.getMessage(Charset.defaultCharset());
-								vmd.sendMidiMessage(msg);
+								if( msg != null ) vmd.sendMidiMessage(msg);
 							}
 						},
 						keyboardCenterPanel.keyboard.midiChComboboxModel.getSelectedChannel()

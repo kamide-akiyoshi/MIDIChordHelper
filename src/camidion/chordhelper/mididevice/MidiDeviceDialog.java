@@ -19,10 +19,7 @@ import camidion.chordhelper.ButtonIcon;
  */
 public class MidiDeviceDialog extends JDialog {
 	public static final Icon MIDI_CONNECTER_ICON = new ButtonIcon(ButtonIcon.MIDI_CONNECTOR_ICON);
-	/**
-	 * MIDIデバイスダイアログを開くアクション
-	 */
-	public Action openAction = new AbstractAction() {
+	private Action openAction = new AbstractAction() {
 		{
 			putValue(NAME, "MIDI device connection");
 			putValue(SHORT_DESCRIPTION, "MIDIデバイス間の接続を編集");
@@ -32,6 +29,10 @@ public class MidiDeviceDialog extends JDialog {
 		public void actionPerformed(ActionEvent event) { setVisible(true); }
 	};
 	/**
+	 * MIDIデバイスダイアログを開くアクションを返します。
+	 */
+	public Action getOpenAction() { return openAction; }
+	/**
 	 * MIDIデバイスダイアログを構築します。
 	 * @param deviceTreeModel デバイスツリーモデル
 	 */
@@ -39,7 +40,7 @@ public class MidiDeviceDialog extends JDialog {
 		setTitle(openAction.getValue(Action.NAME).toString());
 		setBounds( 300, 300, 820, 540 );
 		MidiDeviceTreeView deviceTreeView = new MidiDeviceTreeView(deviceTreeModel);
-		final MidiDeviceInfoPane deviceInfoPane = new MidiDeviceInfoPane();
+		MidiDeviceInfoPane deviceInfoPane = new MidiDeviceInfoPane();
 		deviceTreeView.addTreeSelectionListener(deviceInfoPane);
 		MidiDeviceDesktopPane desktopPane = new MidiDeviceDesktopPane(deviceTreeView, deviceInfoPane, this);
 		deviceTreeView.addTreeSelectionListener(desktopPane);

@@ -11,6 +11,7 @@ import java.awt.event.InputEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.IOException;
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.security.AccessControlException;
@@ -18,6 +19,7 @@ import java.util.Arrays;
 
 import javax.sound.midi.InvalidMidiDataException;
 import javax.sound.midi.MetaMessage;
+import javax.sound.midi.MidiSystem;
 import javax.sound.midi.Sequence;
 import javax.sound.midi.Sequencer;
 import javax.swing.Box;
@@ -92,7 +94,7 @@ public class ChordHelperApplet extends JApplet {
 	public int addRandomSongToPlaylist(int measureLength) throws InvalidMidiDataException {
 		NewSequenceDialog d = midiEditor.newSequenceDialog;
 		d.setRandomChordProgression(measureLength);
-		return playlistModel.addSequenceAndPlay(d.getMidiSequence());
+		return playlistModel.play(d.getMidiSequence());
 	}
 	/**
 	 * URLで指定されたMIDIファイルをプレイリストへ追加します。
@@ -105,7 +107,10 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public int addToPlaylist(String midiFileUrl) {
 		try {
-			return playlistModel.addSequenceFromURL(midiFileUrl);
+			URL url = (new URI(midiFileUrl)).toURL();
+			String filename = url.getFile().replaceFirst("^.*/","");
+			Sequence sequence = MidiSystem.getSequence(url);
+			return playlistModel.add(sequence, filename);
 		} catch( URISyntaxException|IOException|InvalidMidiDataException e ) {
 			midiEditor.showWarning(e);
 		} catch( AccessControlException e ) {
@@ -133,12 +138,7 @@ public class ChordHelperApplet extends JApplet {
 	public int addToPlaylistBase64(String base64EncodedText, String filename) {
 		Base64Dialog d = midiEditor.base64Dialog;
 		d.setBase64Data(base64EncodedText);
-		try {
-			return playlistModel.addSequence(d.getMIDIData(), filename);
-		} catch (Exception e) {
-			midiEditor.showWarning(e);
-			return -1;
-		}
+		return d.addToPlaylist();
 	}
 	/**
 	 * プレイリスト上で現在選択されているMIDIシーケンスを、
@@ -173,8 +173,9 @@ public class ChordHelperApplet extends JApplet {
 	 * 現在シーケンサにロードされているMIDIデータを
 	 * Base64テキストに変換した結果を返します。
 	 * @return MIDIデータをBase64テキストに変換した結果
+	 * @throws IOException MIDIデータの読み込みに失敗した場合
 	 */
-	public String getMidiDataBase64() {
+	public String getMidiDataBase64() throws IOException {
 		SequenceTrackListTableModel sequenceModel = sequencerModel.getSequenceTrackListTableModel();
 		midiEditor.base64Dialog.setMIDIData(sequenceModel.getMIDIdata());
 		return midiEditor.base64Dialog.getBase64Data();
@@ -249,8 +250,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public void setChordDiagramVisible(boolean isVisible) {
 		keyboardSplitPane.resetToPreferredSizes();
-		if( ! isVisible )
-			keyboardSplitPane.setDividerLocation((double)1.0);
+		if( ! isVisible ) keyboardSplitPane.setDividerLocation((double)1.0);
 	}
 	/**
 	 * コードダイヤグラムをギターモードに変更します。
@@ -271,7 +271,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public static class VersionInfo {
 		public static final String NAME = "MIDI Chord Helper";
-		public static final String VERSION = "Ver.20170320.1";
+		public static final String VERSION = "Ver.20170324.1";
 		public static final String COPYRIGHT = "Copyright (C) 2004-2017";
 		public static final String AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";
@@ -332,30 +332,31 @@ public class ChordHelperApplet extends JApplet {
 		// コードダイアグラム、コードボタン、ピアノ鍵盤のセットアップ
 		CapoComboBoxModel capoComboBoxModel = new CapoComboBoxModel();
 		chordDiagram = new ChordDiagram(capoComboBoxModel);
-		chordMatrix = new ChordMatrix(capoComboBoxModel) {{
-			addChordMatrixListener(new ChordMatrixListener(){
-				public void keySignatureChanged() {
-					Key capoKey = getKeySignatureCapo();
-					keyboardPanel.keySelecter.setSelectedKey(capoKey);
-					keyboardPanel.keyboardCenterPanel.keyboard.setKeySignature(capoKey);
-				}
-				public void chordChanged() { chordOn(); }
-			});
-			capoSelecter.checkbox.addItemListener(e->{
+		chordMatrix = new ChordMatrix(capoComboBoxModel) {
+			private void clearChord() {
 				chordOn();
 				keyboardPanel.keyboardCenterPanel.keyboard.chordDisplay.clear();
 				chordDiagram.clear();
-			});
-			capoSelecter.valueSelecter.addActionListener(e->{
-				chordOn();
-				keyboardPanel.keyboardCenterPanel.keyboard.chordDisplay.clear();
-				chordDiagram.clear();
-			});
-		}};
+			}
+			{
+				addChordMatrixListener(new ChordMatrixListener(){
+					public void keySignatureChanged() {
+						Key capoKey = getKeySignatureCapo();
+						keyboardPanel.keySelecter.setSelectedKey(capoKey);
+						keyboardPanel.keyboardCenterPanel.keyboard.setKeySignature(capoKey);
+					}
+					public void chordChanged() { chordOn(); }
+				});
+				capoSelecter.checkbox.addItemListener(e->clearChord());
+				capoSelecter.valueSelecter.addActionListener(e->clearChord());
+			}
+		};
 		keysigLabel = new KeySignatureLabel() {{
 			addMouseListener(new MouseAdapter() {
 				@Override
-				public void mousePressed(MouseEvent e) { chordMatrix.setKeySignature(getKey()); }
+				public void mousePressed(MouseEvent e) {
+					chordMatrix.setKeySignature(getKey());
+				}
 			});
 		}};
 		keyboardPanel = new MidiKeyboardPanel(chordMatrix) {{
@@ -363,13 +364,9 @@ public class ChordHelperApplet extends JApplet {
 				@Override
 				public void pianoKeyPressed(int n, InputEvent e) { chordDiagram.clear(); }
 			});
-			keySelecter.getKeysigCombobox().addActionListener(
-				e -> chordMatrix.setKeySignature(
-					keySelecter.getSelectedKey().transposedKey(
-						-chordMatrix.capoSelecter.getCapo()
-					)
-				)
-			);
+			keySelecter.getKeysigCombobox().addActionListener(e->chordMatrix.setKeySignature(
+				keySelecter.getSelectedKey().transposedKey(-chordMatrix.capoSelecter.getCapo())
+			));
 			keyboardCenterPanel.keyboard.setPreferredSize(new Dimension(571, 80));
 		}};
 		VirtualMidiDevice guiMidiDevice = keyboardPanel.keyboardCenterPanel.keyboard.midiDevice;
@@ -421,18 +418,15 @@ public class ChordHelperApplet extends JApplet {
 		sequencerModel.addChangeListener(e->{
 			SequenceTrackListTableModel sequenceTableModel = sequencerModel.getSequenceTrackListTableModel();
 			int loadedSequenceIndex = playlistModel.indexOfSequenceOnSequencer();
-			songTitleLabel.setText(
-				"<html>"+(
-					loadedSequenceIndex < 0 ? "[No MIDI file loaded]" :
-					"MIDI file " + loadedSequenceIndex + ": " + (
-						sequenceTableModel == null ||
-						sequenceTableModel.toString() == null ||
-						sequenceTableModel.toString().isEmpty() ?
-						"[Untitled]" :
-						"<font color=maroon>"+sequenceTableModel+"</font>"
-					)
-				)+"</html>"
-			);
+			songTitleLabel.setText("<html>"+(
+				loadedSequenceIndex < 0 ? "[No MIDI file loaded]" :
+				"MIDI file " + loadedSequenceIndex + ": " + (
+					sequenceTableModel == null ||
+					sequenceTableModel.toString().isEmpty() ?
+					"[Untitled]" :
+					"<font color=maroon>"+sequenceTableModel+"</font>"
+				)
+			)+"</html>");
 			Sequencer sequencer = sequencerModel.getSequencer();
 			chordMatrix.setPlaying(sequencer.isRunning());
 			if( sequenceTableModel != null ) {
@@ -545,7 +539,7 @@ public class ChordHelperApplet extends JApplet {
 					add( Box.createHorizontalStrut(10) );
 				}});
 				add(new JPanel() {{
-					add(new JButton(midiDeviceDialog.openAction));
+					add(new JButton(midiDeviceDialog.getOpenAction()));
 					add(new JButton(about.getOpenAction()));
 				}});
 			}});
@@ -587,10 +581,10 @@ public class ChordHelperApplet extends JApplet {
 		//
 		// アプレットのパラメータにMIDIファイルのURLが指定されていたら
 		// それを再生する
-		String midi_url = getParameter("midi_file");
+		String midiUrl = getParameter("midi_file");
 		System.gc();
-		if( midi_url != null ) {
-			addToPlaylist(midi_url);
+		if( midiUrl != null ) {
+			addToPlaylist(midiUrl);
 			try {
 				play();
 			} catch (InvalidMidiDataException ex) {

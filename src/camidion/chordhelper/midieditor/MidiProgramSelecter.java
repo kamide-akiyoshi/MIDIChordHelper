@@ -9,12 +9,12 @@ import camidion.chordhelper.music.MIDISpec;
  */
 public class MidiProgramSelecter extends JComboBox<String> {
 	private int family;
-	private MidiProgramFamilySelecter family_selecter = null;
+	private MidiProgramFamilySelecter familySelecter = null;
 	public MidiProgramSelecter() {
 		setFamily(-1);
 	}
 	public void setFamilySelecter( MidiProgramFamilySelecter mpfs ) {
-		family_selecter = mpfs;
+		familySelecter = mpfs;
 	}
 	public void setFamily( int family ) {
 		int program_no = getProgram();
@@ -49,7 +49,7 @@ public class MidiProgramSelecter extends JComboBox<String> {
 		}
 		else {
 			if( family >= 0 ) setFamily(-1);
-			if( family_selecter != null ) family_selecter.setSelectedIndex(0);
+			if( familySelecter != null ) familySelecter.setSelectedIndex(0);
 			if( program_no < getItemCount() ) setSelectedIndex(program_no);
 		}
 	}

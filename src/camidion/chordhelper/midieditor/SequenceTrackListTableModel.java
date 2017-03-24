@@ -282,6 +282,9 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 	 * @return ファイル名
 	 */
 	public String getFilename() { return filename; }
+	/**
+	 * このシーケンスを表す文字列としてシーケンス名を返します。シーケンス名がない場合は空文字列を返します。
+	 */
 	@Override
 	public String toString() {
 		byte b[] = MIDISpec.getNameBytesOf(sequence);
@@ -301,9 +304,10 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 	}
 	/**
 	 * このシーケンスのMIDIデータのバイト列を返します。
-	 * @return MIDIデータのバイト列（失敗した場合null）
+	 * @return MIDIデータのバイト列（ない場合はnull）
+	 * @throws IOException バイト列の出力に失敗した場合
 	 */
-	public byte[] getMIDIdata() {
+	public byte[] getMIDIdata() throws IOException {
 		if( sequence == null || sequence.getTracks().length == 0 ) {
 			return null;
 		}
@@ -311,8 +315,7 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 			MidiSystem.write(sequence, 1, out);
 			return out.toByteArray();
 		} catch ( IOException e ) {
-			e.printStackTrace();
-			return null;
+			throw e;
 		}
 	}
 	/**

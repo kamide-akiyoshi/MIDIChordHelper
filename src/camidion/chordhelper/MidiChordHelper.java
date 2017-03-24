@@ -14,10 +14,11 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Vector;
+import java.util.stream.Collectors;
 
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -32,14 +33,13 @@ import camidion.chordhelper.midieditor.SequenceTrackListTableModel;
  * MIDI Chord Helper を Java アプリとして起動します。
  */
 public class MidiChordHelper {
-	private static List<File> fileList = new Vector<File>();
 	/**
 	 * MIDI Chord Helper を Java アプリとして起動します。
 	 * @param args コマンドライン引数
 	 * @throws Exception 何らかの異常が発生した場合にスローされる
 	 */
 	public static void main(String[] args) throws Exception {
-		for(String arg : args) fileList.add(new File(arg));
+		List<File> fileList = Arrays.asList(args).stream().map(arg -> new File(arg)).collect(Collectors.toList());
 		SwingUtilities.invokeLater(()->new AppletFrame(new ChordHelperApplet(), fileList));
 	}
 	private static class AppletFrame extends JFrame implements AppletStub, AppletContext {
@@ -88,7 +88,7 @@ public class MidiChordHelper {
 					setFilenameToTitle(applet.sequencerModel.getSequenceTrackListTableModel());
 				}
 			});
-			applet.midiEditor.loadAndPlay(fileList);
+			applet.midiEditor.play(fileList);
 		}
 		@Override
 		public boolean isActive() { return true; }

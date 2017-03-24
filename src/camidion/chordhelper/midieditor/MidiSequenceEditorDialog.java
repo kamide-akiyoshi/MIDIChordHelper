@@ -12,12 +12,14 @@ import java.awt.event.ComponentEvent;
 import java.awt.event.ComponentListener;
 import java.awt.event.MouseEvent;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.security.AccessControlException;
 import java.util.Arrays;
 import java.util.EventObject;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -26,7 +28,7 @@ import javax.sound.midi.InvalidMidiDataException;
 import javax.sound.midi.MidiChannel;
 import javax.sound.midi.MidiEvent;
 import javax.sound.midi.MidiMessage;
-import javax.sound.midi.Sequence;
+import javax.sound.midi.MidiSystem;
 import javax.sound.midi.Sequencer;
 import javax.sound.midi.ShortMessage;
 import javax.swing.AbstractAction;
@@ -125,29 +127,33 @@ public class MidiSequenceEditorDialog extends JDialog {
 		@Override
 		public boolean importData(TransferSupport support) {
 			try {
-				loadAndPlay((List<File>)support.getTransferable().getTransferData(DataFlavor.javaFileListFlavor));
+				play((List<File>)support.getTransferable().getTransferData(DataFlavor.javaFileListFlavor));
 				return true;
 			} catch (Exception e) { showError(e); return false; }
 		}
 	};
 
 	/**
-	 * 複数のMIDIファイルを読み込み、再生されていなかったら再生します。
+	 * 指定されたリストに格納されたMIDIファイルを読み込んで再生します。
 	 * すでに再生されていた場合、このエディタダイアログを表示します。
-	 *
 	 * @param fileList 読み込むMIDIファイルのリスト
-	 * @throws InvalidMidiDataException {@link Sequencer#setSequence(Sequence)} を参照
-	 * @see #loadAndPlay(File)
 	 */
-	public void loadAndPlay(List<File> fileList) {
-		int indexOfAddedTop = -1;
+	public void play(List<File> fileList) {
 		PlaylistTableModel playlist = sequenceListTable.getModel();
-		try {
-			indexOfAddedTop = playlist.addSequences(fileList);
-		} catch(IOException|InvalidMidiDataException e) {
-			showWarning(e);
-		} catch(AccessControlException e) {
-			showError(e);
+		int firstIndex = -1;
+		Iterator<File> itr = fileList.iterator();
+		while(itr.hasNext()) {
+			File file = itr.next();
+			try (FileInputStream in = new FileInputStream(file)) {
+				int lastIndex = playlist.add(MidiSystem.getSequence(in), file.getName());
+				if( firstIndex < 0 ) firstIndex = lastIndex;
+			} catch(IOException|InvalidMidiDataException e) {
+				String message = "Could not open as MIDI file "+file+"\n"+e;
+				if( ! itr.hasNext() ) { showWarning(message); break; }
+				if( ! confirm(message + "\n\nContinue to open next file ?") ) break;
+			} catch(AccessControlException e) {
+				showError(e); break;
+			}
 		}
 		MidiSequencerModel sequencerModel = playlist.getSequencerModel();
 		if( sequencerModel.getSequencer().isRunning() ) {
@@ -155,23 +161,12 @@ public class MidiSequenceEditorDialog extends JDialog {
 			openAction.actionPerformed(new ActionEvent(this, ActionEvent.ACTION_PERFORMED, command));
 			return;
 		}
-		if( indexOfAddedTop >= 0 ) {
+		if( firstIndex >= 0 ) {
 			try {
-				playlist.loadToSequencer(indexOfAddedTop);
+				playlist.loadToSequencer(firstIndex);
 			} catch (InvalidMidiDataException e) { showError(e); return; }
 			sequencerModel.start();
 		}
-	}
-	/**
-	 * 1件のMIDIファイルを読み込み、再生されていなかったら再生します。
-	 * すでに再生されていた場合、このエディタダイアログを表示します。
-	 *
-	 * @param file 読み込むMIDIファイル
-	 * @throws InvalidMidiDataException {@link Sequencer#setSequence(Sequence)} を参照
-	 * @see #loadAndPlay(List) loadAndPlay(List&lt;File&gt;)
-	 */
-	public void loadAndPlay(File file) throws InvalidMidiDataException {
-		loadAndPlay(Arrays.asList(file));
 	}
 
 	private static final Insets ZERO_INSETS = new Insets(0,0,0,0);
@@ -252,8 +247,14 @@ public class MidiSequenceEditorDialog extends JDialog {
 					byte[] data = null;
 					String filename = null;
 					if( mstm != null ) {
-						data = mstm.getMIDIdata();
 						filename = mstm.getFilename();
+						try {
+							data = mstm.getMIDIdata();
+						} catch (IOException ioe) {
+							base64Dialog.setText("File["+filename+"]:"+ioe.toString());
+							base64Dialog.setVisible(true);
+							return;
+						}
 					}
 					base64Dialog.setMIDIData(data, filename);
 					base64Dialog.setVisible(true);
@@ -479,9 +480,7 @@ public class MidiSequenceEditorDialog extends JDialog {
 				@Override
 				public void actionPerformed(ActionEvent event) {
 					if( showOpenDialog((Component)event.getSource()) != JFileChooser.APPROVE_OPTION ) return;
-					try {
-						loadAndPlay(getSelectedFile());
-					} catch (InvalidMidiDataException ex) { showError(ex); }
+					play(Arrays.asList(getSelectedFile()));
 				}
 			};
 		};
@@ -860,7 +859,11 @@ public class MidiSequenceEditorDialog extends JDialog {
 				long tick = tickPositionModel.getTickPosition();
 				MidiMessageForm form = eventDialog.midiMessageForm;
 				SequenceTrackListTableModel seqModel = trackModel.getParent();
-				MidiEvent newMidiEvent = new MidiEvent(form.getMessage(seqModel.charset), tick);
+				MidiMessage msg = form.getMessage(seqModel.charset);
+				if( msg == null ) {
+					return false;
+				}
+				MidiEvent newMidiEvent = new MidiEvent(msg, tick);
 				if( midiEventsToBeOverwritten != null ) {
 					// 上書き消去するための選択済イベントがあった場合
 					trackModel.removeMidiEvents(midiEventsToBeOverwritten);

@@ -1,9 +1,14 @@
 package camidion.chordhelper.midieditor;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Base64;
 import java.util.regex.Pattern;
 
+import javax.sound.midi.InvalidMidiDataException;
+import javax.sound.midi.MidiSystem;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.Box;
@@ -33,25 +38,32 @@ public class Base64Dialog extends JDialog implements DocumentListener {
 		base64TextArea.requestFocusInWindow();
 	}
 	/**
+	 * 入力されたBase64テキストをデコードし、MIDIシーケンスとしてプレイリストに追加します。
+	 * @return プレイリストに追加されたMIDIシーケンスのインデックス（先頭が0）、追加に失敗した場合は -1
+	 */
+	public int addToPlaylist() {
+		byte[] midiData = null;
+		try {
+			midiData = getMIDIData();
+		} catch(Exception e) {
+			error("Base64デコードに失敗しました。\n"+e);
+			return -1;
+		}
+		try (InputStream in = new ByteArrayInputStream(midiData)) {
+			return midiEditor.sequenceListTable.getModel().add(MidiSystem.getSequence(in), null);
+		} catch( IOException|InvalidMidiDataException e ) {
+			error("Base64デコードされたデータが正しいMIDI形式になっていません。\n"+e);
+			return -1;
+		}
+	}
+	/**
 	 * Base64デコードアクション
 	 */
 	public Action addBase64Action = new AbstractAction("Add to PlayList", new ButtonIcon(ButtonIcon.EJECT_ICON)) {
 		{ putValue(Action.SHORT_DESCRIPTION, "Base64デコードして、プレイリストへ追加"); }
 		@Override
 		public void actionPerformed(ActionEvent event) {
-			byte[] midiData = null;
-			try {
-				midiData = getMIDIData();
-			} catch(Exception e) {
-				error("Base64デコードに失敗しました。\n"+e);
-				return;
-			}
-			try {
-				midiEditor.sequenceListTable.getModel().addSequence(midiData, null);
-			} catch(Exception e) {
-				error("Base64デコードされたデータが正しいMIDI形式になっていません。\n"+e);
-				return;
-			}
+			addToPlaylist();
 			setVisible(false);
 		}
 	};
@@ -139,5 +151,12 @@ public class Base64Dialog extends JDialog implements DocumentListener {
 	public void setBase64Data( String base64Data ) {
 		base64TextArea.setText(null);
 		base64TextArea.append(base64Data);
+	}
+	/**
+	 * テキスト文字列を設定します（例外が発生したときのメッセージ出力用）。
+	 * @param text テキスト文字列
+	 */
+	public void setText(String text) {
+		base64TextArea.setText(text);
 	}
 }

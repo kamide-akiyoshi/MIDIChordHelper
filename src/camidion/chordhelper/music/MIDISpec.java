@@ -130,7 +130,7 @@ public class MIDISpec {
 	/**
 	 * トラック名のバイト列を返します。
 	 * @param track MIDIトラック
-	 * @return トラック名のバイト列
+	 * @return トラック名のバイト列（トラック名が見つからない場合はnull）
 	 */
 	public static byte[] getNameBytesOf(Track track) {
 		MidiEvent midiEvent;
@@ -192,11 +192,9 @@ public class MIDISpec {
 	}
 	/**
 	 * シーケンス名のバイト列を返します。
-	 * <p>トラック名の入った最初のトラックにあるトラック名を
-	 * シーケンス名として返します。
-	 * </p>
+	 * <p>トラック名の入った最初のトラックにあるトラック名をシーケンス名として返します。</p>
 	 * @param seq MIDIシーケンス
-	 * @return シーケンス名のバイト列
+	 * @return シーケンス名のバイト列（見つからない場合はnull）
 	 */
 	public static byte[] getNameBytesOf(Sequence seq) {
 		// Returns name of the MIDI sequence.
