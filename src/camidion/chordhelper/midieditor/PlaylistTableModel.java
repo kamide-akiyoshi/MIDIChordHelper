@@ -38,11 +38,11 @@ public class PlaylistTableModel extends AbstractTableModel {
 	/**
 	 * 空のトラックリストモデル
 	 */
-	SequenceTrackListTableModel emptyTrackListTableModel;
+	SequenceTrackListTableModel emptyTrackListTableModel = new SequenceTrackListTableModel(this, null, null);
 	/**
 	 * 空のイベントリストモデル
 	 */
-	TrackEventListTableModel emptyEventListTableModel;
+	TrackEventListTableModel emptyEventListTableModel = new TrackEventListTableModel(emptyTrackListTableModel, null);
 	/**
 	 * 選択されているシーケンスのインデックス
 	 */
@@ -59,9 +59,10 @@ public class PlaylistTableModel extends AbstractTableModel {
 			Object src = event.getSource();
 			if( src instanceof MidiSequencerModel ) {
 				int newValue = ((MidiSequencerModel)src).getValue() / 1000;
-				if(value == newValue) return;
-				value = newValue;
-				fireTableCellUpdated(indexOfSequenceOnSequencer(), Column.POSITION.ordinal());
+				if(value != newValue) {
+					value = newValue;
+					fireTableCellUpdated(indexOfSequenceOnSequencer(), Column.POSITION.ordinal());
+				}
 			}
 		}
 		@Override
@@ -76,8 +77,8 @@ public class PlaylistTableModel extends AbstractTableModel {
 	public PlaylistTableModel(MidiSequencerModel sequencerModel) {
 		this.sequencerModel = sequencerModel;
 		sequencerModel.addChangeListener(mmssPosition);
-		// EOF(0x2F)が来たら曲の終わりなので次の曲へ進める
 		sequencerModel.getSequencer().addMetaEventListener(msg->{
+			// EOF(0x2F)が来て曲が終わったら次の曲へ進める
 			if(msg.getType() == 0x2F) SwingUtilities.invokeLater(()->{
 				try {
 					goNext();
@@ -86,8 +87,6 @@ public class PlaylistTableModel extends AbstractTableModel {
 				}
 			});
 		});
-		emptyTrackListTableModel = new SequenceTrackListTableModel(this, null, null);
-		emptyEventListTableModel = new TrackEventListTableModel(emptyTrackListTableModel, null);
 	}
 	/**
 	 * 次の曲へ進みます。
@@ -96,6 +95,7 @@ public class PlaylistTableModel extends AbstractTableModel {
 	 * 次の曲がなければ、そこで停止します。いずれの場合も曲の先頭へ戻ります。
 	 * </p>
 	 * @throws InvalidMidiDataException {@link Sequencer#setSequence(Sequence)} を参照
+	 * @throws IllegalStateException MIDIシーケンサデバイスが閉じている場合
 	 */
 	private void goNext() throws InvalidMidiDataException {
 		// とりあえず曲の先頭へ戻る
@@ -217,15 +217,15 @@ public class PlaylistTableModel extends AbstractTableModel {
 			public boolean isCellEditable() { return true; } // ダブルクリックだけ有効
 			@Override
 			public Object getValueOf(SequenceTrackListTableModel sequenceModel) {
-				return sequenceModel.isOnSequencer() ? sequenceModel.getParent().mmssPosition : "";
+				if( ! sequenceModel.isOnSequencer() ) return "";
+				return sequenceModel.getParent().mmssPosition;
 			}
 		},
 		/** シーケンスの時間長（分：秒） */
 		LENGTH("Length", String.class, 80) {
 			@Override
 			public Object getValueOf(SequenceTrackListTableModel sequenceModel) {
-				long usec = sequenceModel.getSequence().getMicrosecondLength();
-				int sec = (int)( (usec < 0 ? usec += 0x100000000L : usec) / 1000L / 1000L );
+				int sec = (int)( sequenceModel.getMicrosecondLength() / 1000L / 1000L );
 				return String.format( "%02d:%02d", sec/60, sec%60 );
 			}
 		},
@@ -288,9 +288,7 @@ public class PlaylistTableModel extends AbstractTableModel {
 				return dtLabel == null ? "[Unknown]" : dtLabel;
 			}
 		};
-		/**
-		 * タイミング分割形式に対応するラベル文字列
-		 */
+		/** タイミング分割形式に対応するラベル文字列 */
 		private static final Map<Float,String> divisionTypeLabels = new HashMap<Float,String>() {
 			{
 				put(Sequence.PPQ, "PPQ");
@@ -366,11 +364,9 @@ public class PlaylistTableModel extends AbstractTableModel {
 	 * このプレイリストに読み込まれた全シーケンスの合計時間長を返します。
 	 * @return 全シーケンスの合計時間長 [秒]
 	 */
-	public int getTotalTimeInSeconds() {
-		return sequenceModelList.stream().mapToInt(m->{
-			long usec = m.getSequence().getMicrosecondLength();
-			return (int)( (usec < 0 ? usec += 0x100000000L : usec)/1000L/1000L );
-		}).sum();
+	public int getSecondLength() {
+		// マイクロ秒単位での桁あふれを回避しつつ、丸め誤差を最小限にするため、ミリ秒単位で合計を算出する。
+		return (int)(sequenceModelList.stream().mapToLong(m -> m.getMicrosecondLength() / 1000L).sum() / 1000L);
 	}
 	/**
 	 * 選択されたMIDIシーケンスのテーブルモデルを返します。
@@ -416,10 +412,10 @@ public class PlaylistTableModel extends AbstractTableModel {
 		if( sequence == null ) sequence = (new ChordProgression()).toMidiSequence();
 		sequenceModelList.add(new SequenceTrackListTableModel(this, sequence, filename));
 		//
-		// 末尾に行が追加されたので、再描画してもらう
+		// 末尾に追加された行を選択し、再描画
 		int lastIndex = sequenceModelList.size() - 1;
-		fireTableRowsInserted(lastIndex, lastIndex);
 		sequenceListSelectionModel.setSelectionInterval(lastIndex, lastIndex);
+		fireTableRowsInserted(lastIndex, lastIndex);
 		return lastIndex;
 	}
 	/**
@@ -427,6 +423,7 @@ public class PlaylistTableModel extends AbstractTableModel {
 	 * @param sequence MIDIシーケンス
 	 * @return 追加されたシーケンスのインデックス（先頭が 0）
 	 * @throws InvalidMidiDataException {@link Sequencer#setSequence(Sequence)} を参照
+	 * @throws IllegalStateException MIDIシーケンサデバイスが閉じている場合
 	 */
 	public int play(Sequence sequence) throws InvalidMidiDataException {
 		int lastIndex = add(sequence,"");
@@ -442,13 +439,16 @@ public class PlaylistTableModel extends AbstractTableModel {
 	 * 除去されたシーケンスがシーケンサーにロード済みの場合、アンロードします。
 	 *
 	 * @throws InvalidMidiDataException {@link Sequencer#setSequence(Sequence)} を参照
+	 * @throws IllegalStateException MIDIシーケンサデバイスが閉じている場合
 	 */
 	public void removeSelectedSequence() throws InvalidMidiDataException {
 		if( sequenceListSelectionModel.isSelectionEmpty() ) return;
 		int selectedIndex = sequenceListSelectionModel.getMinSelectionIndex();
 		SequenceTrackListTableModel removedSequence = sequenceModelList.remove(selectedIndex);
-		if( removedSequence.isOnSequencer() ) sequencerModel.setSequenceTrackListTableModel(null);
 		fireTableRowsDeleted(selectedIndex, selectedIndex);
+		if( removedSequence.isOnSequencer() ) {
+			sequencerModel.setSequenceTrackListTableModel(null);
+		}
 	}
 	/**
 	 * テーブル内の指定したインデックス位置にあるシーケンスをシーケンサーにロードします。
@@ -457,10 +457,11 @@ public class PlaylistTableModel extends AbstractTableModel {
 	 *
 	 * @param newRowIndex ロードするシーケンスのインデックス位置、アンロードするときは -1
 	 * @throws InvalidMidiDataException {@link Sequencer#setSequence(Sequence)} を参照
+	 * @throws IllegalStateException MIDIシーケンサデバイスが閉じているときにアンロードしようとした場合
 	 */
 	public void loadToSequencer(int newRowIndex) throws InvalidMidiDataException {
 		SequenceTrackListTableModel oldSeq = sequencerModel.getSequenceTrackListTableModel();
-		SequenceTrackListTableModel newSeq = (newRowIndex < 0 ? null : sequenceModelList.get(newRowIndex));
+		SequenceTrackListTableModel newSeq = (newRowIndex < 0 || sequenceModelList.isEmpty() ? null : sequenceModelList.get(newRowIndex));
 		if( oldSeq == newSeq ) return;
 		sequencerModel.setSequenceTrackListTableModel(newSeq);
 		int columnIndices[] = {

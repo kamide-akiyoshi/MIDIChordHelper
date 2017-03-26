@@ -260,8 +260,9 @@ public class MidiDeviceTreeModel extends AbstractList<MidiDeviceModel> implement
 		deviceModelList.stream().forEach(m -> {
 			ReceiverListModel rxListModel = m.getReceiverListModel();
 			if( rxListModel == null ) return;
-			Collection<MidiDeviceModel> txDeviceModels = rxListModel.closeTransmitters();
-			if( ! txDeviceModels.isEmpty() ) rxToTxConnections.put(m, txDeviceModels);
+			Collection<MidiDeviceModel> txDeviceModels = rxListModel.closeAllConnectedTransmitters();
+			if( txDeviceModels.isEmpty() ) return;
+			rxToTxConnections.put(m, txDeviceModels);
 		});
 		return rxToTxConnections;
 	}

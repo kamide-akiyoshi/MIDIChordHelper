@@ -13,6 +13,7 @@ import javax.swing.DefaultListSelectionModel;
 import javax.swing.ListSelectionModel;
 import javax.swing.table.AbstractTableModel;
 
+import camidion.chordhelper.mididevice.MidiSequencerModel;
 import camidion.chordhelper.music.MIDISpec;
 
 /**
@@ -215,6 +216,15 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 	 */
 	public Sequence getSequence() { return sequence; }
 	/**
+	 * MIDIシーケンスのマイクロ秒単位の長さを返します。
+	 * 曲が長すぎて {@link Sequence#getMicrosecondLength()} が負数を返してしまった場合の補正も行います。
+	 * @return MIDIシーケンスの長さ[マイクロ秒]
+	 */
+	public long getMicrosecondLength() {
+		long usec = sequence.getMicrosecondLength();
+		return usec < 0 ? usec += 0x100000000L : usec;
+	}
+	/**
 	 * シーケンスtickインデックスを返します。
 	 * @return シーケンスtickインデックス
 	 */
@@ -226,7 +236,8 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 	private void setSequence(Sequence sequence) {
 		//
 		// 旧シーケンスの録音モードを解除
-		sequenceListTableModel.getSequencerModel().getSequencer().recordDisable(null); // The "null" means all tracks
+		MidiSequencerModel sequencerModel = sequenceListTableModel.getSequencerModel();
+		if( sequencerModel != null ) sequencerModel.getSequencer().recordDisable(null);
 		//
 		// トラックリストをクリア
 		int oldSize = trackModelList.size();

@@ -17,7 +17,6 @@ import java.awt.event.MouseListener;
 import java.util.ArrayList;
 import java.util.Vector;
 
-import javax.sound.midi.InvalidMidiDataException;
 import javax.sound.midi.MidiChannel;
 import javax.sound.midi.Sequence;
 import javax.swing.AbstractAction;
@@ -107,10 +106,9 @@ public class NewSequenceDialog extends JDialog {
 		public void actionPerformed(ActionEvent event) {
 			try {
 				playlist.getSequenceModelList().get(playlist.play(getMidiSequence())).setModified(true);
-			} catch (InvalidMidiDataException ex) {
-				ex.printStackTrace();
+			} catch (Exception ex) {
 				JOptionPane.showMessageDialog(
-					NewSequenceDialog.this, ex.getMessage(),
+					NewSequenceDialog.this, ex,
 					ChordHelperApplet.VersionInfo.NAME, JOptionPane.ERROR_MESSAGE);
 			}
 			setVisible(false);

@@ -86,10 +86,11 @@ public class ChordHelperApplet extends JApplet {
 		return playlistModel.getSequenceModelList().stream().anyMatch(m -> m.isModified());
 	}
 	/**
-	 * 指定された小節数の曲を、乱数で自動作曲してプレイリストへ追加します。
+	 * 指定された小節数の曲を、乱数で自動作曲してプレイリストへ追加し、再生します。
 	 * @param measureLength 小節数
 	 * @return 追加先のインデックス値（０から始まる）。追加できなかったときは -1
 	 * @throws InvalidMidiDataException {@link Sequencer#setSequence(Sequence)} を参照
+	 * @throws IllegalStateException MIDIシーケンサデバイスが閉じている場合
 	 */
 	public int addRandomSongToPlaylist(int measureLength) throws InvalidMidiDataException {
 		NewSequenceDialog d = midiEditor.newSequenceDialog;
@@ -144,6 +145,7 @@ public class ChordHelperApplet extends JApplet {
 	 * プレイリスト上で現在選択されているMIDIシーケンスを、
 	 * シーケンサへロードして再生します。
 	 * @throws InvalidMidiDataException {@link Sequencer#setSequence(Sequence)} を参照
+	 * @throws IllegalStateException MIDIシーケンサデバイスが閉じている場合
 	 */
 	public void play() throws InvalidMidiDataException {
 		play(playlistModel.sequenceListSelectionModel.getMinSelectionIndex());
@@ -153,6 +155,7 @@ public class ChordHelperApplet extends JApplet {
 	 * シーケンサへロードして再生します。
 	 * @param index インデックス値（０から始まる）
 	 * @throws InvalidMidiDataException {@link Sequencer#setSequence(Sequence)} を参照
+	 * @throws IllegalStateException MIDIシーケンサデバイスが閉じている場合
 	 */
 	public void play(int index) throws InvalidMidiDataException {
 		playlistModel.loadToSequencer(index); sequencerModel.start();
@@ -271,7 +274,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public static class VersionInfo {
 		public static final String NAME = "MIDI Chord Helper";
-		public static final String VERSION = "Ver.20170324.1";
+		public static final String VERSION = "Ver.20170326.1";
 		public static final String COPYRIGHT = "Copyright (C) 2004-2017";
 		public static final String AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";
@@ -382,7 +385,8 @@ public class ChordHelperApplet extends JApplet {
 		midiDeviceDialog.setIconImage(iconImage);
 		//
 		// MIDIエディタダイアログの構築
-		(midiEditor = new MidiSequenceEditorDialog(playlistModel, guiMidiDevice)).setIconImage(iconImage);
+		midiEditor = new MidiSequenceEditorDialog(playlistModel, guiMidiDevice, midiDeviceDialog.getOpenAction());
+		midiEditor.setIconImage(iconImage);
 		//
 		// メイン画面へのMIDIファイルのドラッグ＆ドロップ受付開始
 		setTransferHandler(midiEditor.transferHandler);
@@ -416,21 +420,21 @@ public class ChordHelperApplet extends JApplet {
 		//シーケンサーの時間スライダーの値が変わったときのリスナーを登録
 		JLabel songTitleLabel = new JLabel();
 		sequencerModel.addChangeListener(e->{
-			SequenceTrackListTableModel sequenceTableModel = sequencerModel.getSequenceTrackListTableModel();
+			SequenceTrackListTableModel sequenceTrackListTableModel = sequencerModel.getSequenceTrackListTableModel();
 			int loadedSequenceIndex = playlistModel.indexOfSequenceOnSequencer();
 			songTitleLabel.setText("<html>"+(
 				loadedSequenceIndex < 0 ? "[No MIDI file loaded]" :
 				"MIDI file " + loadedSequenceIndex + ": " + (
-					sequenceTableModel == null ||
-					sequenceTableModel.toString().isEmpty() ?
+					sequenceTrackListTableModel == null ||
+					sequenceTrackListTableModel.toString().isEmpty() ?
 					"[Untitled]" :
-					"<font color=maroon>"+sequenceTableModel+"</font>"
+					"<font color=maroon>"+sequenceTrackListTableModel+"</font>"
 				)
 			)+"</html>");
 			Sequencer sequencer = sequencerModel.getSequencer();
 			chordMatrix.setPlaying(sequencer.isRunning());
-			if( sequenceTableModel != null ) {
-				SequenceTickIndex tickIndex = sequenceTableModel.getSequenceTickIndex();
+			if( sequenceTrackListTableModel != null ) {
+				SequenceTickIndex tickIndex = sequenceTrackListTableModel.getSequenceTickIndex();
 				long tickPos = sequencer.getTickPosition();
 				tickIndex.tickToMeasure(tickPos);
 				chordMatrix.setBeat(tickIndex);
@@ -587,7 +591,7 @@ public class ChordHelperApplet extends JApplet {
 			addToPlaylist(midiUrl);
 			try {
 				play();
-			} catch (InvalidMidiDataException ex) {
+			} catch (Exception ex) {
 				ex.printStackTrace();
 			}
 		}

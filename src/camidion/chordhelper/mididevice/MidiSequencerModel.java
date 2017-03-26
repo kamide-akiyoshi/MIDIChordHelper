@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import javax.sound.midi.InvalidMidiDataException;
+import javax.sound.midi.MidiUnavailableException;
 import javax.sound.midi.Sequence;
 import javax.sound.midi.Sequencer;
 import javax.swing.AbstractAction;
@@ -48,8 +49,8 @@ public class MidiSequencerModel extends MidiDeviceModel implements BoundedRangeM
 		addChangeListener(e->getSequencer().setTempoFactor(SequencerSpeedSlider.tempoFactorOf(getValue())));
 	}};
 	/**
-	 * MIDIシーケンサを返します。
-	 * @return MIDIシーケンサ
+	 * 対象MIDIシーケンサデバイス（{@link #getMidiDevice()}をキャストした結果）を返します。
+	 * @return 対象MIDIシーケンサデバイス
 	 */
 	public Sequencer getSequencer() { return (Sequencer)device; }
 	/**
@@ -67,57 +68,100 @@ public class MidiSequencerModel extends MidiDeviceModel implements BoundedRangeM
 		{
 			putValue(SHORT_DESCRIPTION, "Start/Stop recording or playing - 録音または再生の開始／停止");
 			setRunning(false);
+			updateEnableStatus();
 		}
 		@Override
 		public void actionPerformed(ActionEvent event) {
-			if(timeRangeUpdater.isRunning()) stop(); else start();
+			if( timeRangeUpdater.isRunning() ) stop(); else start();
+			updateEnableStatus();
 		}
 		private void setRunning(boolean isRunning) {
 			putValue(LARGE_ICON_KEY, iconMap.get(isRunning));
 			putValue(SELECTED_KEY, isRunning);
 		}
+		/**
+		 * 再生または録音が可能かチェックし、操作可能状態を更新します。
+		 */
+		public void updateEnableStatus() { setEnabled(isStartable()); }
 	}
 	/**
-	 * このモデルのMIDIシーケンサを開始します。
+	 * 再生または録音が可能か調べます。
+	 * <p>以下の条件が揃ったときに再生または録音が可能と判定されます。</p>
+	 * <ul>
+	 * <li>MIDIシーケンサデバイスが開いている</li>
+	 * <li>MIDIシーケンサに操作対象のMIDIシーケンスが設定されている</li>
+	 * </ul>
+	 * @return 再生または録音が可能な場合true
+	 */
+	public boolean isStartable() {
+		return device.isOpen() && getSequencer().getSequence() != null;
+	}
+	/**
+	 * {@inheritDoc}
+	 * <p>シーケンサモデルの場合、録音再生可能状態が変わるので、開始終了アクションにも通知します。</p>
+	 */
+	@Override
+	public void open() throws MidiUnavailableException {
+		super.open();
+		startStopAction.updateEnableStatus();
+		fireStateChanged();
+		if( sequenceTrackListTableModel != null ) {
+			sequenceTrackListTableModel.getParent().fireTableDataChanged();
+		}
+	}
+	/**
+	 * {@inheritDoc}
+	 * <p>シーケンサモデルの場合、再生または録音が不可能になるので、開始終了アクションにも通知します。</p>
+	 */
+	@Override
+	public void close() {
+		stop();
+		try {
+			setSequenceTrackListTableModel(null);
+		} catch (InvalidMidiDataException|IllegalStateException e) {
+			e.printStackTrace();
+		}
+		super.close();
+		startStopAction.updateEnableStatus();
+		fireStateChanged();
+		if( sequenceTrackListTableModel != null ) {
+			sequenceTrackListTableModel.getParent().fireTableDataChanged();
+		}
+	}
+	/**
+	 * 再生または録音を開始します。
 	 *
 	 * <p>録音するMIDIチャンネルがMIDIエディタで指定されている場合、
-	 * 録音スタート時のタイムスタンプが正しく０になるよう、
-	 * 各MIDIデバイスのタイムスタンプをすべてリセットします。
+	 * 録音スタート時のタイムスタンプが正しく０になるよう、各MIDIデバイスのタイムスタンプをすべてリセットします。
 	 * </p>
+	 * <p>このシーケンサのMIDIデバイスが閉じている場合、再生や録音は開始されません。</p>
 	 */
 	public void start() {
+		if( ! device.isOpen() ) return;
 		Sequencer sequencer = getSequencer();
-		if( ! sequencer.isOpen() || sequencer.getSequence() == null ) {
-			timeRangeUpdater.stop();
-			startStopAction.setRunning(false);
-			return;
-		}
-		startStopAction.setRunning(true);
-		timeRangeUpdater.start();
-		SequenceTrackListTableModel sequenceTableModel = getSequenceTrackListTableModel();
-		if( sequenceTableModel != null && sequenceTableModel.hasRecordChannel() ) {
+		SequenceTrackListTableModel sequenceTrackListTableModel = getSequenceTrackListTableModel();
+		if( sequenceTrackListTableModel != null && sequenceTrackListTableModel.hasRecordChannel() ) {
 			deviceTreeModel.resetMicrosecondPosition();
-			System.gc();
 			sequencer.startRecording();
-		}
-		else {
-			System.gc();
-			sequencer.start();
-		}
+		} else sequencer.start();
+		timeRangeUpdater.start();
+		startStopAction.setRunning(true);
 		fireStateChanged();
 	}
 	/**
-	 * このモデルのMIDIシーケンサを停止します。
+	 * 再生または録音を停止します。
 	 */
 	public void stop() {
 		Sequencer sequencer = getSequencer();
-		if(sequencer.isOpen()) sequencer.stop();
+		if( sequencer.isOpen() ) sequencer.stop();
 		timeRangeUpdater.stop();
 		startStopAction.setRunning(false);
 		fireStateChanged();
 	}
 	/**
-	 * {@link Sequencer#getMicrosecondLength()} と同じです。
+	 * このシーケンサーにロードされているシーケンスの長さをマイクロ秒単位で返します。
+	 * シーケンスが設定されていない場合は0を返します。
+	 * 曲が長すぎて {@link Sequencer#getMicrosecondLength()} が負数を返してしまった場合の補正も行います。
 	 * @return マイクロ秒単位でのシーケンスの長さ
 	 */
 	public long getMicrosecondLength() {
@@ -128,6 +172,15 @@ public class MidiSequencerModel extends MidiDeviceModel implements BoundedRangeM
 		//
 		long usLength = getSequencer().getMicrosecondLength();
 		return usLength < 0 ? 0x100000000L + usLength : usLength ;
+	}
+	/**
+	 * シーケンス上の現在位置をマイクロ秒単位で返します。
+	 * 曲が長すぎて {@link Sequencer#getMicrosecondPosition()} が負数を返してしまった場合の補正も行います。
+	 * @return マイクロ秒単位での現在の位置
+	 */
+	public long getMicrosecondPosition() {
+		long usPosition = getSequencer().getMicrosecondPosition();
+		return usPosition < 0 ? 0x100000000L + usPosition : usPosition ;
 	}
 	@Override
 	public int getMaximum() { return (int)(getMicrosecondLength()/RESOLUTION_MICROSECOND); }
@@ -141,14 +194,6 @@ public class MidiSequencerModel extends MidiDeviceModel implements BoundedRangeM
 	public int getExtent() { return 0; }
 	@Override
 	public void setExtent(int newExtent) {}
-	/**
-	 * {@link Sequencer#getMicrosecondPosition()} と同じです。
-	 * @return マイクロ秒単位での現在の位置
-	 */
-	public long getMicrosecondPosition() {
-		long usPosition = getSequencer().getMicrosecondPosition();
-		return usPosition < 0 ? 0x100000000L + usPosition : usPosition ;
-	}
 	@Override
 	public int getValue() { return (int)(getMicrosecondPosition()/RESOLUTION_MICROSECOND); }
 	@Override
@@ -171,8 +216,7 @@ public class MidiSequencerModel extends MidiDeviceModel implements BoundedRangeM
 	 */
 	private javax.swing.Timer timeRangeUpdater = new javax.swing.Timer(20, e->{
 		if( valueIsAdjusting || ! getSequencer().isRunning() ) {
-			// 手動で移動中の場合や、シーケンサが止まっている場合は、
-			// タイマーによる更新は不要
+			// 手動で移動中の場合や、シーケンサが止まっている場合は、タイマーによる更新は不要
 			return;
 		}
 		// リスナーに読み込みを促す
@@ -223,35 +267,31 @@ public class MidiSequencerModel extends MidiDeviceModel implements BoundedRangeM
 	/**
 	 * MIDIトラックリストテーブルモデル
 	 */
-	private SequenceTrackListTableModel sequenceTableModel = null;
+	private SequenceTrackListTableModel sequenceTrackListTableModel = null;
 	/**
 	 * このシーケンサーに現在ロードされているシーケンスのMIDIトラックリストテーブルモデルを返します。
 	 * @return MIDIトラックリストテーブルモデル（何もロードされていなければnull）
 	 */
 	public SequenceTrackListTableModel getSequenceTrackListTableModel() {
-		return sequenceTableModel;
+		return sequenceTrackListTableModel;
 	}
 	/**
 	 * MIDIトラックリストテーブルモデルをこのシーケンサーモデルにセットします。
 	 * nullを指定してアンセットすることもできます。
 	 * @param sequenceTableModel MIDIトラックリストテーブルモデル
 	 * @throws InvalidMidiDataException {@link Sequencer#setSequence(Sequence)} を参照
+	 * @throws IllegalStateException MIDIシーケンサデバイスが閉じている状態で引数にnullを指定した場合
 	 */
 	public void setSequenceTrackListTableModel(SequenceTrackListTableModel sequenceTableModel)
 		throws InvalidMidiDataException
 	{
-		// javax.sound.midi:Sequencer.setSequence() のドキュメントにある
-		// 「このメソッドは、Sequencer が閉じている場合でも呼び出すことができます。 」
-		// という記述は、null をセットする場合には当てはまらない。
-		// 連鎖的に stop() が呼ばれるために IllegalStateException sequencer not open が出る。
-		// この現象を回避するため、あらかじめチェックしてから setSequence() を呼び出している。
-		//
-		if( sequenceTableModel != null || getSequencer().isOpen() ) {
-			getSequencer().setSequence(sequenceTableModel == null ? null : sequenceTableModel.getSequence());
-		}
-		if( this.sequenceTableModel != null ) this.sequenceTableModel.fireTableDataChanged();
+		Sequencer sequencer = getSequencer();
+		Sequence sequence = sequenceTableModel == null ? null : sequenceTableModel.getSequence();
+		sequencer.setSequence(sequence);
+		startStopAction.updateEnableStatus();
+		if( this.sequenceTrackListTableModel != null ) this.sequenceTrackListTableModel.fireTableDataChanged();
 		if( sequenceTableModel != null ) sequenceTableModel.fireTableDataChanged();
-		this.sequenceTableModel = sequenceTableModel;
+		this.sequenceTrackListTableModel = sequenceTableModel;
 		fireStateChanged();
 	}
 	/**
@@ -259,8 +299,8 @@ public class MidiSequencerModel extends MidiDeviceModel implements BoundedRangeM
 	 * @param measureOffset 何小節進めるか（戻したいときは負数を指定）
 	 */
 	private void moveMeasure(int measureOffset) {
-		if( measureOffset == 0 || sequenceTableModel == null ) return;
-		SequenceTickIndex seqIndex = sequenceTableModel.getSequenceTickIndex();
+		if( measureOffset == 0 || sequenceTrackListTableModel == null ) return;
+		SequenceTickIndex seqIndex = sequenceTrackListTableModel.getSequenceTickIndex();
 		Sequencer sequencer = getSequencer();
 		int measurePosition = seqIndex.tickToMeasure(sequencer.getTickPosition());
 		long newTickPosition = seqIndex.measureToTick(measurePosition + measureOffset);

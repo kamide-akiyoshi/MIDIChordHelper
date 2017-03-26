@@ -1,8 +1,8 @@
 package camidion.chordhelper.mididevice;
 
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import javax.sound.midi.MidiDevice;
 import javax.sound.midi.MidiUnavailableException;
@@ -29,21 +29,18 @@ public class ReceiverListModel extends AbstractTransceiverListModel<Receiver> {
 	 * このリストモデルの{@link Receiver}に接続された{@link Transmitter}を全て閉じ、
 	 * 接続相手だったMIDIデバイスモデルのユニークな集合を返します。
 	 *
-	 * @return 閉じた{@link Transmitter}の{@link MidiDeviceModel}の集合
+	 * @return 閉じた{@link Transmitter}を持っていた{@link MidiDeviceModel}の集合
 	 */
-	public Set<MidiDeviceModel> closeTransmitters() {
-		Set<MidiDeviceModel> peerDeviceModelSet = new LinkedHashSet<>();
-		List<Receiver> rxList = getTransceivers();
-		if( ! rxList.isEmpty() ) {
-			for( MidiDeviceModel peerDeviceModel : deviceModel.getDeviceTreeModel() ) {
-				if( peerDeviceModel == deviceModel ) continue;
-				TransmitterListModel txListModel = peerDeviceModel.getTransmitterListModel();
-				if( txListModel == null ) continue;
-				for( Receiver rx : rxList )
-					if( ! txListModel.closeTransmittersFor(rx).isEmpty() )
-						peerDeviceModelSet.add(peerDeviceModel);
-			}
-		}
-		return peerDeviceModelSet;
+	public Set<MidiDeviceModel> closeAllConnectedTransmitters() {
+		List<MidiDeviceModel> allDeviceModels = deviceModel.getDeviceTreeModel();
+		return allDeviceModels.stream().filter(
+			peer -> peer != deviceModel
+			&& peer.getTransmitterListModel() != null
+			&& ! getTransceivers().stream()
+				.map(rx -> peer.getTransmitterListModel().closeTransmittersFor(rx))
+				.flatMap(closedTxList -> closedTxList.stream())
+				.collect(Collectors.toSet())
+				.isEmpty()
+		).collect(Collectors.toSet());
 	}
 }

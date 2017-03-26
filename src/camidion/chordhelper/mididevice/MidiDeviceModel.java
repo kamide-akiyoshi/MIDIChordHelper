@@ -93,7 +93,7 @@ public class MidiDeviceModel {
 	 * それらも全て閉じます。
 	 */
 	public void close() {
-		if( rxListModel != null ) rxListModel.closeTransmitters();
+		if( rxListModel != null ) rxListModel.closeAllConnectedTransmitters();
 		device.close();
 	}
 }
