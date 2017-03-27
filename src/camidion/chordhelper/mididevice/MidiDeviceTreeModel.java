@@ -9,8 +9,10 @@ import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.Vector;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import javax.sound.midi.MidiDevice;
@@ -37,7 +39,9 @@ import camidion.chordhelper.ChordHelperApplet;
 public class MidiDeviceTreeModel extends AbstractList<MidiDeviceModel> implements TreeModel {
 	@Override
 	public String toString() { return "MIDI devices"; }
-
+	/**
+	 * リスト本体
+	 */
 	protected List<MidiDeviceModel> deviceModelList = new Vector<>();
 	@Override
 	public int size() { return deviceModelList.size(); }
@@ -55,7 +59,6 @@ public class MidiDeviceTreeModel extends AbstractList<MidiDeviceModel> implement
 	/**
 	 * {@link AbstractList#add(E)}の操作を内部的に行います。
 	 * 指定された要素をこのリストの最後に追加し、ツリー構造にも反映します。
-	 *
 	 * @param dm 追加するMIDIデバイスモデル
 	 * @return true（{@link AbstractList#add(E)} と同様）
 	 */
@@ -73,8 +76,9 @@ public class MidiDeviceTreeModel extends AbstractList<MidiDeviceModel> implement
 	 */
 	protected boolean removeAllInternally(Collection<?> c) {
 		if( ! deviceModelList.removeAll(c) ) return false;
-		c.stream().filter(o -> o instanceof MidiDeviceModel).map(o -> (MidiDeviceModel)o)
-			.forEach(mdm -> deviceModelTree.get(mdm.getInOutType()).remove(mdm));
+		c.stream().filter(o -> o instanceof MidiDeviceModel).forEach(
+			o -> deviceModelTree.get(((MidiDeviceModel)o).getInOutType()).remove(o)
+		);
 		return true;
 	}
 	@Override
@@ -159,16 +163,19 @@ public class MidiDeviceTreeModel extends AbstractList<MidiDeviceModel> implement
 		// シーケンサー
 		try {
 			addInternally(sequencerModel = new MidiSequencerModel(MidiSystem.getSequencer(false), this));
-		} catch( MidiUnavailableException e ) {
-			System.out.println(ChordHelperApplet.VersionInfo.NAME +" : MIDI sequencer unavailable");
-			e.printStackTrace();
+		} catch( MidiUnavailableException ex ) {
+			String title = ChordHelperApplet.VersionInfo.NAME;
+			String message = "MIDI sequencer unavailable\n" + ex;
+			JOptionPane.showMessageDialog(null, message, title, JOptionPane.ERROR_MESSAGE);
 		}
 		// システムで使用可能な全MIDIデバイス（シーケンサーはすでに取得済みなので除外）
 		for( MidiDevice device : getMidiDeviceInfo().stream().map(info -> {
 			try {
 				return MidiSystem.getMidiDevice(info);
-			} catch( MidiUnavailableException e ) {
-				e.printStackTrace();
+			} catch( MidiUnavailableException ex ) {
+				String title = ChordHelperApplet.VersionInfo.NAME;
+				String message = "MIDI device '" + info + "' unavailable\n" + ex;
+				JOptionPane.showMessageDialog(null, message, title, JOptionPane.ERROR_MESSAGE);
 				return null;
 			}
 		}).filter(
@@ -177,10 +184,10 @@ public class MidiDeviceTreeModel extends AbstractList<MidiDeviceModel> implement
 			if( device instanceof Synthesizer ) { // Java内蔵シンセサイザの場合
 				try {
 					addInternally(synthModel = new MidiDeviceModel(MidiSystem.getSynthesizer(), this));
-				} catch( MidiUnavailableException e ) {
-					System.out.println(ChordHelperApplet.VersionInfo.NAME +
-							" : Java internal MIDI synthesizer unavailable");
-					e.printStackTrace();
+				} catch( MidiUnavailableException ex ) {
+					String title = ChordHelperApplet.VersionInfo.NAME;
+					String message = "Java internal MIDI synthesizer unavailable\n" + ex;
+					JOptionPane.showMessageDialog(null, message, title, JOptionPane.ERROR_MESSAGE);
 				}
 				continue;
 			}
@@ -194,7 +201,7 @@ public class MidiDeviceTreeModel extends AbstractList<MidiDeviceModel> implement
 			//
 			addInternally(m);
 		}
-		// MIDIデバイスモデルを開く
+		// MIDIデバイスモデルを開く。
 		//
 		//   NOTE: 必ず MIDI OUT Rx デバイスを先に開くこと。
 		//
@@ -204,45 +211,37 @@ public class MidiDeviceTreeModel extends AbstractList<MidiDeviceModel> implement
 		//
 		//   開く順序が逆になると「進みすぎるから遅らせよう」として無用なレイテンシーが発生する原因になる。
 		//
-		List<MidiDeviceModel> openedMidiDeviceModelList = new ArrayList<>();
-		Arrays.asList(
+		List<MidiDeviceModel> openedDeviceModels = Arrays.asList(
 			synthModel,
 			firstMidiOutModel,
 			sequencerModel,
 			guiModel,
 			firstMidiInModel
-		).stream().filter(mdm -> mdm != null).forEach(mdm->{
+		).stream().filter(Objects::nonNull).filter(dm->{
 			try {
-				mdm.open();
-				openedMidiDeviceModelList.add(mdm);
+				dm.open();
+				return true;
 			} catch( MidiUnavailableException ex ) {
 				String title = ChordHelperApplet.VersionInfo.NAME;
-				String message = "Cannot open MIDI device '"+mdm+"'\n"
-						+ "MIDIデバイス "+mdm+" を開くことができません。\n\n" + ex;
+				String message = "Cannot open MIDI device '"+dm+"'\n"
+					+ "MIDIデバイス "+dm+" を開くことができません。\n\n" + ex;
 				JOptionPane.showMessageDialog(null, message, title, JOptionPane.ERROR_MESSAGE);
+				return false;
 			}
-		});
-		// 初期接続マップを作成（開いたデバイスを相互に接続する）
+		}).collect(Collectors.toList());
+		//
+		// 開いたデバイスを相互に接続する。
 		// 自身のTx/Rx同士の接続は、シーケンサーモデルはなし、それ以外（GUIデバイスモデル）はあり。
-		Map<MidiDeviceModel, Collection<MidiDeviceModel>> initialConnection = new LinkedHashMap<>();
-		openedMidiDeviceModelList.stream().filter(rxm ->
-			rxm.getReceiverListModel() != null
-		).forEach(rxm -> {
-			List<MidiDeviceModel> txmList;
-			initialConnection.put(rxm, txmList = new ArrayList<>());
-			openedMidiDeviceModelList.stream().filter(txm ->
-				txm.getTransmitterListModel() != null
-				&& !(txm == sequencerModel && txm == rxm)
-			).forEach(txm -> txmList.add(txm));
-		});
-		// 初期接続を実行
-		connectDevices(initialConnection);
-	}
-	/**
-	 * すべてのMIDIデバイスを閉じます。
-	 */
-	public void closeAllDevices() {
-		deviceModelList.forEach(m -> m.getMidiDevice().close());
+		connectDevices(
+			openedDeviceModels.stream().filter(rxm->
+				Objects.nonNull(rxm.getReceiverListModel())
+			).collect(Collectors.toMap(Function.identity(), rxm->
+				openedDeviceModels.stream().filter(txm->
+					Objects.nonNull(txm.getTransmitterListModel())
+					&& !(txm == sequencerModel && txm == rxm)
+				).collect(Collectors.toList())
+			))
+		);
 	}
 	/**
 	 * デバイス間の接続をすべて切断します。
@@ -276,9 +275,9 @@ public class MidiDeviceTreeModel extends AbstractList<MidiDeviceModel> implement
 	 * </ul>
 	 */
 	public void connectDevices(Map<MidiDeviceModel, Collection<MidiDeviceModel>> rxToTxConnections) {
-		rxToTxConnections.keySet().stream().filter(rxm -> rxm != null).forEach(rxm -> {
+		rxToTxConnections.keySet().stream().forEach(rxm -> {
 			Receiver rx = rxm.getReceiverListModel().getTransceivers().get(0);
-			rxToTxConnections.get(rxm).stream().filter(txm -> txm != null).forEach(txm -> {
+			rxToTxConnections.get(rxm).stream().filter(Objects::nonNull).forEach(txm -> {
 				try {
 					txm.getTransmitterListModel().openTransmitter().setReceiver(rx);
 				} catch( MidiUnavailableException e ) {
@@ -332,7 +331,7 @@ public class MidiDeviceTreeModel extends AbstractList<MidiDeviceModel> implement
 	 */
 	public void resetMicrosecondPosition() {
 		deviceModelList.stream().map(dm -> dm.getTransmitterListModel())
-			.filter(tlm -> tlm != null)
+			.filter(Objects::nonNull)
 			.forEach(tlm -> tlm.resetMicrosecondPosition());
 	}
 

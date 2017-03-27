@@ -2,6 +2,7 @@ package camidion.chordhelper.midieditor;
 
 import java.awt.event.ActionEvent;
 import java.nio.charset.Charset;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -204,8 +205,7 @@ public class PlaylistTableModel extends AbstractTableModel {
 	 * 列の列挙型
 	 */
 	public enum Column {
-		/** MIDIシーケンスの番号 */
-		NUMBER("No.", Integer.class, 20),
+		NUMBER("#", Integer.class, 20),
 		/** 再生ボタン */
 		PLAY("Play/Stop", String.class, 60) {
 			@Override
@@ -252,8 +252,7 @@ public class PlaylistTableModel extends AbstractTableModel {
 			public boolean isCellEditable() { return true; }
 			@Override
 			public Object getValueOf(SequenceTrackListTableModel sequenceModel) {
-				String name = sequenceModel.toString();
-				return name == null ? "" : name;
+				return sequenceModel.toString();
 			}
 		},
 		/** 文字コード */
@@ -281,21 +280,20 @@ public class PlaylistTableModel extends AbstractTableModel {
 		},
 		/** タイミング分割形式 */
 		DIVISION_TYPE("DivType", String.class, 50) {
+			private Map<Float,String> labels;
+			{
+				Map<Float,String> m = new HashMap<Float,String>();
+				m.put(Sequence.PPQ, "PPQ");
+				m.put(Sequence.SMPTE_24, "SMPTE_24");
+				m.put(Sequence.SMPTE_25, "SMPTE_25");
+				m.put(Sequence.SMPTE_30, "SMPTE_30");
+				m.put(Sequence.SMPTE_30DROP, "SMPTE_30DROP");
+				labels = Collections.unmodifiableMap(m);
+			}
 			@Override
 			public Object getValueOf(SequenceTrackListTableModel sequenceModel) {
-				float dt = sequenceModel.getSequence().getDivisionType();
-				String dtLabel = divisionTypeLabels.get(dt);
-				return dtLabel == null ? "[Unknown]" : dtLabel;
-			}
-		};
-		/** タイミング分割形式に対応するラベル文字列 */
-		private static final Map<Float,String> divisionTypeLabels = new HashMap<Float,String>() {
-			{
-				put(Sequence.PPQ, "PPQ");
-				put(Sequence.SMPTE_24, "SMPTE_24");
-				put(Sequence.SMPTE_25, "SMPTE_25");
-				put(Sequence.SMPTE_30, "SMPTE_30");
-				put(Sequence.SMPTE_30DROP, "SMPTE_30DROP");
+				String label = labels.get(sequenceModel.getSequence().getDivisionType());
+				return label == null ? "[Unknown]" : label;
 			}
 		};
 		String title;
@@ -338,12 +336,12 @@ public class PlaylistTableModel extends AbstractTableModel {
 		switch(Column.values()[column]) {
 		case FILENAME:
 			// ファイル名の変更
-			sequenceModelList.get(row).setFilename((String)val);
+			sequenceModelList.get(row).setFilename(val.toString());
 			fireTableCellUpdated(row, column);
 			break;
 		case NAME:
 			// シーケンス名の設定または変更
-			if( sequenceModelList.get(row).setName((String)val) )
+			if( sequenceModelList.get(row).setName(val.toString()) )
 				fireTableCellUpdated(row, Column.MODIFIED.ordinal());
 			fireTableCellUpdated(row, column);
 			break;

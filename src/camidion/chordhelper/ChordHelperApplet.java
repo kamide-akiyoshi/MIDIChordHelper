@@ -4,7 +4,6 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Image;
 import java.awt.Insets;
-import java.awt.event.ActionEvent;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.InputEvent;
@@ -129,8 +128,7 @@ public class ChordHelperApplet extends JApplet {
 		return addToPlaylistBase64(base64EncodedText, null);
 	}
 	/**
-	 * ファイル名を指定して、
-	 * Base64エンコードされたMIDIファイルをプレイリストへ追加します。
+	 * ファイル名を指定して、Base64エンコードされたMIDIファイルをプレイリストへ追加します。
 	 *
 	 * @param base64EncodedText Base64エンコードされたMIDIファイル
 	 * @param filename ディレクトリ名を除いたファイル名
@@ -188,10 +186,11 @@ public class ChordHelperApplet extends JApplet {
 	 * @return MIDIファイル名（設定されていないときは空文字列）
 	 */
 	public String getMidiFilename() {
-		SequenceTrackListTableModel seq_model = sequencerModel.getSequenceTrackListTableModel();
-		if( seq_model == null ) return null;
-		String fn = seq_model.getFilename();
-		return fn == null ? "" : fn ;
+		SequenceTrackListTableModel s = sequencerModel.getSequenceTrackListTableModel();
+		if( s == null ) return null;
+		String fn = s.getFilename();
+		if( fn == null ) return null;
+		return fn;
 	}
 	/**
 	 * オクターブ位置を設定します。
@@ -274,7 +273,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public static class VersionInfo {
 		public static final String NAME = "MIDI Chord Helper";
-		public static final String VERSION = "Ver.20170326.1";
+		public static final String VERSION = "Ver.20170327.1";
 		public static final String COPYRIGHT = "Copyright (C) 2004-2017";
 		public static final String AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";
@@ -394,10 +393,12 @@ public class ChordHelperApplet extends JApplet {
 		// MIDIエディタのイベントダイアログを、ピアノ鍵盤のイベント送出ダイアログと共用
 		keyboardPanel.setEventDialog(midiEditor.eventDialog);
 		//
-		// 歌詞表示
-		(lyricDisplay = new ChordTextField(sequencerModel)).addActionListener((ActionEvent e)->{
-			chordMatrix.setSelectedChord(e.getActionCommand().trim().split("[ \t\r\n]")[0]);
-		});
+		// 歌詞表示／コード入力フィールド
+		(lyricDisplay = new ChordTextField(sequencerModel)).addActionListener(
+			e->chordMatrix.setSelectedChord(
+				e.getActionCommand().trim().split("[ \t\r\n]")[0]
+			)
+		);
 		lyricDisplayDefaultBorder = lyricDisplay.getBorder();
 		lyricDisplayDefaultBgcolor = lyricDisplay.getBackground();
 		//
@@ -467,11 +468,11 @@ public class ChordHelperApplet extends JApplet {
 			add( enterButtonLabel = new ChordButtonLabel("Enter",chordMatrix) {{
 				addMouseListener(new MouseAdapter() {
 					public void mousePressed(MouseEvent event) {
-						if( (event.getModifiersEx() & InputEvent.BUTTON3_DOWN_MASK) != 0 ) // RightClicked
+						boolean rightClicked = (event.getModifiersEx() & InputEvent.BUTTON3_DOWN_MASK) != 0;
+						if( rightClicked )
 							chordMatrix.setSelectedChord((Chord)null);
-						else {
+						else
 							chordMatrix.setSelectedChord(lyricDisplay.getText());
-						}
 					}
 				});
 			}});
@@ -488,7 +489,7 @@ public class ChordHelperApplet extends JApplet {
 			add( anoGakkiToggleButton = new JToggleButton(new ButtonIcon(ButtonIcon.ANO_GAKKI_ICON)) {{
 				setOpaque(false);
 				setMargin(ZERO_INSETS);
-				setBorder( null );
+				setBorder(null);
 				setToolTipText("あの楽器");
 				addItemListener(
 					e -> keyboardPanel.keyboardCenterPanel.keyboard.anoGakkiPane
@@ -573,7 +574,7 @@ public class ChordHelperApplet extends JApplet {
 	}
 	@Override
 	public void destroy() {
-		deviceTreeModel.closeAllDevices();
+		deviceTreeModel.forEach(m -> m.close());
 		super.destroy();
 	}
 	@Override

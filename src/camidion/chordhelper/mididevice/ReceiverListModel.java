@@ -1,6 +1,7 @@
 package camidion.chordhelper.mididevice;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -35,7 +36,7 @@ public class ReceiverListModel extends AbstractTransceiverListModel<Receiver> {
 		List<MidiDeviceModel> allDeviceModels = deviceModel.getDeviceTreeModel();
 		return allDeviceModels.stream().filter(
 			peer -> peer != deviceModel
-			&& peer.getTransmitterListModel() != null
+			&& Objects.nonNull(peer.getTransmitterListModel())
 			&& ! getTransceivers().stream()
 				.map(rx -> peer.getTransmitterListModel().closeTransmittersFor(rx))
 				.flatMap(closedTxList -> closedTxList.stream())

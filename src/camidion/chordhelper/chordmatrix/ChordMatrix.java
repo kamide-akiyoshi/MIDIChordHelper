@@ -977,7 +977,7 @@ public class ChordMatrix extends JPanel
 	 * コードを文字列で設定します。
 	 * @param chordSymbol コード名
 	 */
-	public void setSelectedChord(String chordSymbol) throws IllegalArgumentException {
+	public void setSelectedChord(String chordSymbol) {
 		Chord chord = null;
 		if( chordSymbol != null && ! chordSymbol.isEmpty() ) {
 			try {

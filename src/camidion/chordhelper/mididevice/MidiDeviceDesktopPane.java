@@ -6,6 +6,7 @@ import java.awt.event.ComponentEvent;
 import java.beans.PropertyVetoException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import javax.sound.midi.MidiUnavailableException;
@@ -96,8 +97,7 @@ public class MidiDeviceDesktopPane extends JDesktopPane implements TreeSelection
 				frameOfModel.keySet().stream()
 					.filter(m-> ! deviceTreeModel.contains(m))
 					.collect(Collectors.toSet()).stream()
-					.map(m-> frameOfModel.remove(m))
-					.filter(f-> f != null)
+					.map(m-> frameOfModel.remove(m)).filter(Objects::nonNull)
 					.forEach(f-> remove(f));
 				//
 				// ツリーに追加されたMIDIデバイスモデルのフレームを生成

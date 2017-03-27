@@ -24,19 +24,12 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 	 * 列の列挙型
 	 */
 	public enum Column {
-		/** トラック番号 */
-		TRACK_NUMBER("No.", Integer.class, 20),
-		/** イベント数 */
+		TRACK_NUMBER("#", Integer.class, 20),
 		EVENTS("Events", Integer.class, 40),
-		/** Mute */
 		MUTE("Mute", Boolean.class, 30),
-		/** Solo */
 		SOLO("Solo", Boolean.class, 30),
-		/** 録音するMIDIチャンネル */
 		RECORD_CHANNEL("RecCh", String.class, 40),
-		/** MIDIチャンネル */
 		CHANNEL("Ch", String.class, 30),
-		/** トラック名 */
 		TRACK_NAME("Track name", String.class, 100);
 		String title;
 		Class<?> columnClass;
@@ -70,7 +63,7 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 	/**
 	 * MIDIファイル名
 	 */
-	private String filename = "";
+	private String filename;
 	/**
 	 * テキスト部分の文字コード（タイトル、歌詞など）
 	 */
