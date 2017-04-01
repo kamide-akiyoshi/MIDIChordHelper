@@ -5,7 +5,6 @@ import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -14,6 +13,7 @@ import java.util.Set;
 import java.util.Vector;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import javax.sound.midi.MidiDevice;
 import javax.sound.midi.MidiSystem;
@@ -42,7 +42,7 @@ public class MidiDeviceTreeModel extends AbstractList<MidiDeviceModel> implement
 	/**
 	 * リスト本体
 	 */
-	protected List<MidiDeviceModel> deviceModelList = new Vector<>();
+	protected List<MidiDeviceModel> deviceModelList = new ArrayList<>();
 	@Override
 	public int size() { return deviceModelList.size(); }
 	@Override
@@ -50,12 +50,9 @@ public class MidiDeviceTreeModel extends AbstractList<MidiDeviceModel> implement
 	/**
 	 * このリストの内容を反映したツリー構造のマップ
 	 */
-	protected Map<MidiDeviceInOutType, List<MidiDeviceModel>> deviceModelTree; {
-		deviceModelTree = new EnumMap<>(MidiDeviceInOutType.class);
-		deviceModelTree.put(MidiDeviceInOutType.MIDI_OUT, new ArrayList<>());
-		deviceModelTree.put(MidiDeviceInOutType.MIDI_IN, new ArrayList<>());
-		deviceModelTree.put(MidiDeviceInOutType.MIDI_IN_OUT, new ArrayList<>());
-	};
+	protected Map<MidiDeviceInOutType, List<MidiDeviceModel>> deviceModelTree
+		= Arrays.stream(MidiDeviceInOutType.values())
+		.collect(Collectors.toMap(Function.identity(), t -> new ArrayList<>()));
 	/**
 	 * {@link AbstractList#add(E)}の操作を内部的に行います。
 	 * 指定された要素をこのリストの最後に追加し、ツリー構造にも反映します。
@@ -179,7 +176,7 @@ public class MidiDeviceTreeModel extends AbstractList<MidiDeviceModel> implement
 				return null;
 			}
 		}).filter(
-			device -> device != null && ! (device instanceof Sequencer)
+			device -> Objects.nonNull(device) && ! (device instanceof Sequencer)
 		).collect(Collectors.toList()) ) {
 			if( device instanceof Synthesizer ) { // Java内蔵シンセサイザの場合
 				try {
@@ -211,13 +208,13 @@ public class MidiDeviceTreeModel extends AbstractList<MidiDeviceModel> implement
 		//
 		//   開く順序が逆になると「進みすぎるから遅らせよう」として無用なレイテンシーが発生する原因になる。
 		//
-		List<MidiDeviceModel> openedDeviceModels = Arrays.asList(
+		List<MidiDeviceModel> openedDeviceModels = Stream.of(
 			synthModel,
 			firstMidiOutModel,
 			sequencerModel,
 			guiModel,
 			firstMidiInModel
-		).stream().filter(Objects::nonNull).filter(dm->{
+		).filter(Objects::nonNull).filter(dm->{
 			try {
 				dm.open();
 				return true;

@@ -1,13 +1,13 @@
 package camidion.chordhelper.chorddiagram;
 import java.awt.Color;
-import java.awt.Dimension;
 import java.awt.Insets;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -40,10 +40,11 @@ public class ChordDiagram extends JPanel {
 		 * @param defaultOpenNotes 解放弦の音名（カンマ区切り）
 		 */
 		private Instrument(String defaultOpenNotes) {
-			List<Integer> notes = new ArrayList<>();
-			for( String note : defaultOpenNotes.split(",") )
-				notes.add(Note.mod12(Note.toggleCo5(Note.co5Of(note))));
-			this.defaultOpenNotes = Collections.unmodifiableList(notes);
+			this.defaultOpenNotes = Collections.unmodifiableList(
+				Arrays.stream(defaultOpenNotes.split(","))
+					.map(openNote->Note.mod12(Note.toggleCo5(Note.co5Of(openNote))))
+					.collect(Collectors.toList())
+			);
 		}
 		/**
 		 * デフォルトの開放弦の音階を表す、変更不可能なノート番号リストを返します。
@@ -58,8 +59,7 @@ public class ChordDiagram extends JPanel {
 		 */
 		public int[] createTunableOpenNotes() {
 			int[] r = new int[defaultOpenNotes.size()];
-			int i=0;
-			for(int note : defaultOpenNotes) r[i++] = note;
+			int i=0; for(int note : defaultOpenNotes) r[i++] = note;
 			return r;
 		}
 	}
@@ -85,29 +85,23 @@ public class ChordDiagram extends JPanel {
 			{
 				setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
 				setOpaque(false);
-				add(new JPanel() {
-					{
-						setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
+				add(new JPanel() {{
+					setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
+					setOpaque(false);
+					add(new JPanel() {{
+						add(titleLabel);
 						setOpaque(false);
-						add(new JPanel() {
-							{
-								add(titleLabel);
-								setOpaque(false);
-								setAlignmentY((float)0);
-							}
-						});
-						add(diagramDisplay);
-						fretRangeScrollbar.setAlignmentY((float)1.0);
-						add(fretRangeScrollbar);
-						add(new JPanel() {
-							{
-								setOpaque(false);
-								for(JRadioButton rb : instButtons.values()) add(rb);
-								setAlignmentY((float)1.0);
-							}
-						});
-					}
-				});
+						setAlignmentY((float)0);
+					}});
+					add(screen);
+					fretRangeScrollbar.setAlignmentY((float)1.0);
+					add(fretRangeScrollbar);
+					add(new JPanel() {{
+						setOpaque(false);
+						instButtons.values().stream().forEach(rb->add(rb));
+						setAlignmentY((float)1.0);
+					}});
+				}});
 				add(variationScrollbar);
 			}
 		});
@@ -125,58 +119,47 @@ public class ChordDiagram extends JPanel {
 	/**
 	 * コードダイアグラムのタイトルラベル
 	 */
-	public ChordDisplayLabel titleLabel =
-		new ChordDisplayLabel(
-			"<html><span style=\"font-size: 170%\">N.C.</span></html>",
-			"Non Chord",null,null
-		) {
-			{
-				setHorizontalAlignment(SwingConstants.CENTER);
-				setVerticalAlignment(SwingConstants.BOTTOM);
-			}
-		};
+	public ChordDisplayLabel titleLabel = new ChordDisplayLabel(
+		"<html><span style=\"font-size: 170%\">N.C.</span></html>",
+		"Non Chord",null,null
+	) {
+		{
+			setHorizontalAlignment(SwingConstants.CENTER);
+			setVerticalAlignment(SwingConstants.BOTTOM);
+		}
+	};
 	/**
 	 * コードダイアグラム表示部
 	 */
-	private ChordDiagramDisplay diagramDisplay =
-		new ChordDiagramDisplay(Instrument.Ukulele) {
-			{
-				setOpaque(false);
-				setPreferredSize(new Dimension(120,120));
-			}
-		};
+	private ChordDiagramScreen screen = new ChordDiagramScreen(Instrument.Ukulele);
 	/**
 	 * 対象楽器選択ボタンのマップ
 	 */
 	private Map<Instrument,JRadioButton> instButtons =
 		new EnumMap<Instrument,JRadioButton>(Instrument.class) {
 			{
-				ButtonGroup buttonGroup = new ButtonGroup();
-				for( final Instrument instrument : Instrument.values() ) {
-					String label = instrument.toString();
-					JRadioButton radioButton = new JRadioButton(label) {
-						{
-							setOpaque(false);
-							addActionListener(e->diagramDisplay.tune(instrument));
-						}
-					};
-					buttonGroup.add(radioButton);
-					put(instrument, radioButton);
-				}
+				ButtonGroup g = new ButtonGroup();
+				Arrays.stream(Instrument.values()).forEach(inst->{
+					JRadioButton rb = new JRadioButton(inst.toString()) {{
+						setOpaque(false);
+						addActionListener(e->screen.tune(inst));
+					}};
+					g.add(rb); put(inst, rb);
+				});
 				get(Instrument.Ukulele).setSelected(true);
 			}
 		};
 
 	private JScrollBar variationScrollbar = new JScrollBar(JScrollBar.VERTICAL) {
 		{
-			setModel(diagramDisplay.chordVariations.indexModel);
-			addAdjustmentListener(e->setToolTipText(diagramDisplay.chordVariations.getIndexDescription()));
+			setModel(screen.chordVariations.indexModel);
+			addAdjustmentListener(e->setToolTipText(screen.chordVariations.getIndexDescription()));
 		}
 	};
 	private JScrollBar fretRangeScrollbar = new JScrollBar(JScrollBar.HORIZONTAL) {
 		{
-			setModel(diagramDisplay.fretViewIndexModel);
-			setBlockIncrement(diagramDisplay.fretViewIndexModel.getExtent());
+			setModel(screen.fretViewIndexModel);
+			setBlockIncrement(screen.fretViewIndexModel.getExtent());
 		}
 	};
 	/**
@@ -188,8 +171,8 @@ public class ChordDiagram extends JPanel {
 	@Override
 	public void setBackground(Color bgColor) {
 		super.setBackground(bgColor);
-		if( diagramDisplay == null ) return;
-		diagramDisplay.setBackground(bgColor);
+		if( screen == null ) return;
+		screen.setBackground(bgColor);
 		capoSelecterView.setBackground(bgColor);
 		capoSelecterView.valueSelecter.setBackground(bgColor);
 		variationScrollbar.setBackground(bgColor);
@@ -211,7 +194,7 @@ public class ChordDiagram extends JPanel {
 	public void setChord(Chord chord) {
 		if( ! isVisible() ) chord = null;
 		titleLabel.setChord(chord);
-		diagramDisplay.setChord(chord);
+		screen.setChord(chord);
 	}
 	/**
 	 * 対象楽器を切り替えます。

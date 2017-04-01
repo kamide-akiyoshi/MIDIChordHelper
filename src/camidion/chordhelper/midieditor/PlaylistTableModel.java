@@ -39,11 +39,11 @@ public class PlaylistTableModel extends AbstractTableModel {
 	/**
 	 * 空のトラックリストモデル
 	 */
-	SequenceTrackListTableModel emptyTrackListTableModel = new SequenceTrackListTableModel(this, null, null);
+	public final SequenceTrackListTableModel emptyTrackListTableModel = new SequenceTrackListTableModel(this, null, null);
 	/**
 	 * 空のイベントリストモデル
 	 */
-	TrackEventListTableModel emptyEventListTableModel = new TrackEventListTableModel(emptyTrackListTableModel, null);
+	public final TrackEventListTableModel emptyEventListTableModel = new TrackEventListTableModel(emptyTrackListTableModel, null);
 	/**
 	 * 選択されているシーケンスのインデックス
 	 */
@@ -377,30 +377,6 @@ public class PlaylistTableModel extends AbstractTableModel {
 		return sequenceModelList.get(selectedIndex);
 	}
 	/**
-	 * 指定されたシーケンスの更新済みフラグを変更して全ての列を再表示します。
-	 * @param sequenceTableModel MIDIシーケンスモデル
-	 * @param isModified 更新済みフラグ
-	 */
-	public void fireSequenceModified(SequenceTrackListTableModel sequenceTableModel, boolean isModified) {
-		int index = sequenceModelList.indexOf(sequenceTableModel);
-		if( index < 0 ) return;
-		sequenceTableModel.setModified(isModified);
-		fireTableRowsUpdated(index, index);
-	}
-	/**
-	 * 指定されている選択範囲のシーケンスについて、更新済みフラグを変更して全ての列を再表示します。
-	 * @param isModified 更新済みフラグ
-	 */
-	public void fireSelectedSequenceModified(boolean isModified) {
-		if( sequenceListSelectionModel.isSelectionEmpty() ) return;
-		int minIndex = sequenceListSelectionModel.getMinSelectionIndex();
-		int maxIndex = sequenceListSelectionModel.getMaxSelectionIndex();
-		for( int index = minIndex; index <= maxIndex; index++ ) {
-			sequenceModelList.get(index).setModified(isModified);
-		}
-		fireTableRowsUpdated(minIndex, maxIndex);
-	}
-	/**
 	 * MIDIシーケンスを追加します。
 	 * @param sequence MIDIシーケンス（nullの場合、シーケンスを自動生成して追加）
 	 * @param filename ファイル名（nullの場合、ファイル名なし）
@@ -409,26 +385,9 @@ public class PlaylistTableModel extends AbstractTableModel {
 	public int add(Sequence sequence, String filename) {
 		if( sequence == null ) sequence = (new ChordProgression()).toMidiSequence();
 		sequenceModelList.add(new SequenceTrackListTableModel(this, sequence, filename));
-		//
-		// 末尾に追加された行を選択し、再描画
 		int lastIndex = sequenceModelList.size() - 1;
-		sequenceListSelectionModel.setSelectionInterval(lastIndex, lastIndex);
 		fireTableRowsInserted(lastIndex, lastIndex);
-		return lastIndex;
-	}
-	/**
-	 * 指定されたMIDIシーケンスをこのプレイリストに追加して再生します。
-	 * @param sequence MIDIシーケンス
-	 * @return 追加されたシーケンスのインデックス（先頭が 0）
-	 * @throws InvalidMidiDataException {@link Sequencer#setSequence(Sequence)} を参照
-	 * @throws IllegalStateException MIDIシーケンサデバイスが閉じている場合
-	 */
-	public int play(Sequence sequence) throws InvalidMidiDataException {
-		int lastIndex = add(sequence,"");
-		if( ! sequencerModel.getSequencer().isRunning() ) {
-			loadToSequencer(lastIndex);
-			sequencerModel.start();
-		}
+		sequenceListSelectionModel.setSelectionInterval(lastIndex, lastIndex);
 		return lastIndex;
 	}
 
@@ -473,6 +432,28 @@ public class PlaylistTableModel extends AbstractTableModel {
 		if( newSeq != null ) {
 			for( int columnIndex : columnIndices ) fireTableCellUpdated(newRowIndex, columnIndex);
 		}
+	}
+	/**
+	 * 指定されたインデックスのMIDIシーケンスを再生します。
+	 * @param index MIDIシーケンスのインデックス（先頭が 0）
+	 * @throws InvalidMidiDataException {@link Sequencer#setSequence(Sequence)} を参照
+	 * @throws IllegalStateException MIDIシーケンサデバイスが閉じている場合
+	 */
+	public void play(int index) throws InvalidMidiDataException {
+		loadToSequencer(index);
+		sequencerModel.start();
+	}
+	/**
+	 * 指定されたMIDIシーケンスをこのプレイリストに追加し、再生されていなければ追加した曲から再生します。
+	 * @param sequence MIDIシーケンス
+	 * @return 追加されたシーケンスのインデックス（先頭が 0）
+	 * @throws InvalidMidiDataException {@link Sequencer#setSequence(Sequence)} を参照
+	 * @throws IllegalStateException MIDIシーケンサデバイスが閉じている場合
+	 */
+	public int play(Sequence sequence) throws InvalidMidiDataException {
+		int lastIndex = add(sequence,"");
+		if( ! sequencerModel.getSequencer().isRunning() ) play(lastIndex);
+		return lastIndex;
 	}
 	/**
 	 * 現在シーケンサにロードされているシーケンスのインデックスを返します。

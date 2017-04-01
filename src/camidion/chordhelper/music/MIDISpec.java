@@ -1,9 +1,10 @@
 package camidion.chordhelper.music;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
+import java.util.Objects;
 
 import javax.sound.midi.InvalidMidiDataException;
 import javax.sound.midi.MetaMessage;
@@ -83,8 +84,7 @@ public class MIDISpec {
 	 * @return 拍子記号ならtrue
 	 */
 	public static boolean isTimeSignature(MidiMessage midiMessage) {
-		if ( !(midiMessage instanceof MetaMessage) ) return false;
-		return isTimeSignature( ((MetaMessage)midiMessage).getType() );
+		return (midiMessage instanceof MetaMessage) && isTimeSignature(((MetaMessage)midiMessage).getType());
 	}
 	/**
 	 * メタメッセージタイプが EOT (End Of Track) か調べます。
@@ -98,8 +98,7 @@ public class MIDISpec {
 	 * @return EOTならtrue
 	 */
 	public static boolean isEOT(MidiMessage midiMessage) {
-		if ( !(midiMessage instanceof MetaMessage) ) return false;
-		return isEOT( ((MetaMessage)midiMessage).getType() );
+		return (midiMessage instanceof MetaMessage) && isEOT(((MetaMessage)midiMessage).getType());
 	}
 	/**
 	 * １分のマイクロ秒数
@@ -128,30 +127,32 @@ public class MIDISpec {
 		return b;
 	}
 	/**
-	 * トラック名のバイト列を返します。
-	 * @param track MIDIトラック
-	 * @return トラック名のバイト列（トラック名が見つからない場合はnull）
+	 * トラック名のメタメッセージを返します。
+	 * @param track 対象MIDIトラック
+	 * @return トラック名のメタメッセージ（見つからない場合はnull）
 	 */
-	public static byte[] getNameBytesOf(Track track) {
+	public static MetaMessage getNameMessageOf(Track track) {
 		MidiEvent midiEvent;
-		MidiMessage message;
-		MetaMessage metaMessage;
 		for( int i=0; i<track.size(); i++ ) {
 			midiEvent = track.get(i);
 			if( midiEvent.getTick() > 0 ) { // No more event at top, try next track
 				break;
 			}
-			message = midiEvent.getMessage();
-			if( ! (message instanceof MetaMessage) ) { // Not meta message
-				continue;
-			}
-			metaMessage = (MetaMessage)message;
-			if( metaMessage.getType() != 0x03 ) { // Not sequence name
-				continue;
-			}
-			return metaMessage.getData();
+			MidiMessage message = midiEvent.getMessage();
+			if( ! (message instanceof MetaMessage) ) continue;
+			MetaMessage metaMessage = (MetaMessage)message;
+			if( metaMessage.getType() == 0x03 ) return metaMessage;
 		}
 		return null;
+	}
+	/**
+	 * トラック名のバイト列を返します。
+	 * @param track MIDIトラック
+	 * @return トラック名のバイト列（トラック名が見つからない場合はnull）
+	 */
+	public static byte[] getNameBytesOf(Track track) {
+		MetaMessage metaMessage = getNameMessageOf(track);
+		return metaMessage != null ? metaMessage.getData() : null;
 	}
 	/**
 	 * トラック名のバイト列を設定します。
@@ -160,26 +161,9 @@ public class MIDISpec {
 	 * @return 成功：true、失敗：false
 	 */
 	public static boolean setNameBytesOf(Track track, byte[] name) {
-		MidiEvent midiEvent = null;
-		MidiMessage msg = null;
-		MetaMessage metaMsg = null;
-		for( int i=0; i<track.size(); i++ ) {
-			if(
-				(midiEvent = track.get(i)).getTick() > 0
-				||
-				(msg = midiEvent.getMessage()) instanceof MetaMessage
-				&&
-				(metaMsg = (MetaMessage)msg).getType() == 0x03
-			) {
-				break;
-			}
-			metaMsg = null;
-		}
+		MetaMessage metaMsg = getNameMessageOf(track);
 		if( metaMsg == null ) {
-			if( name.length == 0 ) return false;
-			track.add(new MidiEvent(
-				(MidiMessage)(metaMsg = new MetaMessage()), 0
-			));
+			track.add(new MidiEvent((MidiMessage)(metaMsg = new MetaMessage()), 0));
 		}
 		try {
 			metaMsg.setMessage(0x03, name, name.length);
@@ -193,43 +177,34 @@ public class MIDISpec {
 	/**
 	 * シーケンス名のバイト列を返します。
 	 * <p>トラック名の入った最初のトラックにあるトラック名をシーケンス名として返します。</p>
-	 * @param seq MIDIシーケンス
+	 * @param sequence MIDIシーケンス
 	 * @return シーケンス名のバイト列（見つからない場合はnull）
 	 */
-	public static byte[] getNameBytesOf(Sequence seq) {
-		// Returns name of the MIDI sequence.
-		// A sequence name is placed at top of first track of the sequence.
-		//
-		Track tracks[] = seq.getTracks();
-		byte b[];
-		for( Track track : tracks ) if( (b = getNameBytesOf(track)) != null ) return b;
-		return null;
+	public static byte[] getNameBytesOf(Sequence sequence) {
+		return Arrays.stream(sequence.getTracks()).map(t->getNameBytesOf(t))
+			.filter(Objects::nonNull).findFirst().orElse(null);
 	}
 	/**
 	 * シーケンス名のバイト列を設定します。
-	 * <p>先頭のトラックに設定されます。
-	 * 設定に失敗した場合、順に次のトラックへの設定を試みます。
+	 * <p>先頭のトラックに設定されます。設定に失敗した場合、順に次のトラックへの設定を試みます。
 	 * </p>
 	 *
-	 * @param seq MIDIシーケンス
+	 * @param sequence MIDIシーケンス
 	 * @param name シーケンス名のバイト列
 	 * @return 成功：true、失敗：false
 	 */
-	public static boolean setNameBytesOf(Sequence seq, byte[] name) {
-		Track tracks[] = seq.getTracks();
-		for( Track track : tracks ) if( setNameBytesOf(track,name) ) return true;
-		return false;
+	public static boolean setNameBytesOf(Sequence sequence, byte[] name) {
+		return Arrays.stream(sequence.getTracks()).anyMatch(t->setNameBytesOf(t,name));
 	}
 	/**
 	 * シーケンスの名前や歌詞など、メタイベントのテキストをもとに文字コードを判定します。
 	 * 判定できなかった場合はnullを返します。
-	 * @param seq MIDIシーケンス
+	 * @param sequence MIDIシーケンス
 	 * @return 文字コード判定結果（またはnull）
 	 */
-	public static Charset getCharsetOf(Sequence seq) {
-		Track tracks[] = seq.getTracks();
+	public static Charset getCharsetOf(Sequence sequence) {
 		byte[] b = new byte[0];
-		for( Track track : tracks ) {
+		for( Track track : sequence.getTracks() ) {
 			MidiMessage message;
 			MetaMessage metaMessage;
 			for( int i=0; i<track.size(); i++ ) {
@@ -244,20 +219,17 @@ public class MIDISpec {
 				b = concated;
 			}
 		}
-		if( b.length > 0 ) {
-			try {
-				String autoDetectedName = new String(b, "JISAutoDetect");
-				Set<Map.Entry<String,Charset>> entrySet;
-				entrySet = Charset.availableCharsets().entrySet();
-				for( Map.Entry<String,Charset> entry : entrySet ) {
-					Charset cs = entry.getValue();
-					if( autoDetectedName.equals(new String(b, cs)) ) return cs;
-				}
-			} catch (UnsupportedEncodingException e) {
-				e.printStackTrace();
-			}
+		if( b.length <= 0 ) return null;
+		final byte[] fixedBytes = b;
+		try {
+			String autoDetectedName = new String(fixedBytes, "JISAutoDetect");
+			return Charset.availableCharsets().values().stream()
+				.filter(charset -> autoDetectedName.equals(new String(fixedBytes, charset)))
+				.findFirst().orElse(null);
+		} catch (UnsupportedEncodingException e) {
+			e.printStackTrace();
+			return null;
 		}
-		return null;
 	}
 	///////////////////////////////////////////////////////////////////
 	//
@@ -1143,11 +1115,8 @@ public class MIDISpec {
 			str += " )";
 			return str;
 		}
-		byte[] msg_data = msg.getMessage();
 		str += "(";
-		for( byte b : msg_data ) {
-			str += String.format( " %02X", b );
-		}
+		for( byte b : msg.getMessage() ) str += String.format( " %02X", b );
 		str += " )";
 		return str;
 	}

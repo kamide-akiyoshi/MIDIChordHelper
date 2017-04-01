@@ -158,6 +158,12 @@ public class MidiSequencerModel extends MidiDeviceModel implements BoundedRangeM
 		startStopAction.setRunning(false);
 		fireStateChanged();
 	}
+	private long correctMicrosecond(long us) {
+		// Sequencer.getMicrosecondLength() returns NEGATIVE value
+		//  when over 0x7FFFFFFF microseconds (== 35.7913941166666... minutes),
+		//  should be corrected when negative
+		return us < 0 ? 0x100000000L + us : us ;
+	}
 	/**
 	 * このシーケンサーにロードされているシーケンスの長さをマイクロ秒単位で返します。
 	 * シーケンスが設定されていない場合は0を返します。
@@ -165,13 +171,7 @@ public class MidiSequencerModel extends MidiDeviceModel implements BoundedRangeM
 	 * @return マイクロ秒単位でのシーケンスの長さ
 	 */
 	public long getMicrosecondLength() {
-		//
-		// Sequencer.getMicrosecondLength() returns NEGATIVE value
-		//  when over 0x7FFFFFFF microseconds (== 35.7913941166666... minutes),
-		//  should be corrected when negative
-		//
-		long usLength = getSequencer().getMicrosecondLength();
-		return usLength < 0 ? 0x100000000L + usLength : usLength ;
+		return correctMicrosecond(getSequencer().getMicrosecondLength());
 	}
 	/**
 	 * シーケンス上の現在位置をマイクロ秒単位で返します。
@@ -179,8 +179,7 @@ public class MidiSequencerModel extends MidiDeviceModel implements BoundedRangeM
 	 * @return マイクロ秒単位での現在の位置
 	 */
 	public long getMicrosecondPosition() {
-		long usPosition = getSequencer().getMicrosecondPosition();
-		return usPosition < 0 ? 0x100000000L + usPosition : usPosition ;
+		return correctMicrosecond(getSequencer().getMicrosecondPosition());
 	}
 	@Override
 	public int getMaximum() { return (int)(getMicrosecondLength()/RESOLUTION_MICROSECOND); }

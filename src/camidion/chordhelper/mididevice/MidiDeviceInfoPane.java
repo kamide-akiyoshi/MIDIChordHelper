@@ -16,7 +16,7 @@ import javax.swing.tree.TreePath;
  * MIDIデバイス情報表示エリア
  */
 public class MidiDeviceInfoPane extends JEditorPane implements TreeSelectionListener {
-	private void setTreeNodeText(Object node) {
+	private String treeNodeTextOf(Object node) {
 		String html = "<html><head></head><body>";
 		if( node instanceof MidiDeviceModel ) {
 			MidiDeviceModel deviceModel = (MidiDeviceModel)node;
@@ -32,17 +32,16 @@ public class MidiDeviceInfoPane extends JEditorPane implements TreeSelectionList
 		}
 		else if( node instanceof MidiDeviceInOutType ) {
 			MidiDeviceInOutType ioType = (MidiDeviceInOutType)node;
-			html += "<b>"+ioType+"</b><br/>";
-			html += ioType.getDescription()+"<br/>";
+			html += "<b>"+ioType+"</b><br/>"+ioType.getDescription()+"<br/>";
 		}
 		else if( node != null ) {
-			html += node.toString();
+			html += node;
 		}
 		html += "</body></html>";
-		setText(html);
+		return html;
 	}
 	/**
-	 *	{@link MidiDeviceFrame} の開閉によってデバイス情報を再描画するリスナー
+	 *	{@link MidiDeviceFrame} の開閉や選択を監視するリスナー
 	 */
 	public InternalFrameListener midiDeviceFrameListener = new InternalFrameAdapter() {
 		@Override
@@ -53,25 +52,26 @@ public class MidiDeviceInfoPane extends JEditorPane implements TreeSelectionList
 		public void internalFrameActivated(InternalFrameEvent e) {
 			JInternalFrame frame = e.getInternalFrame();
 			if( ! (frame instanceof MidiDeviceFrame ) ) return;
-			setTreeNodeText(((MidiDeviceFrame)frame).getMidiDeviceModel());
+			setText(treeNodeTextOf(((MidiDeviceFrame)frame).getMidiDeviceModel()));
 		}
 		@Override
 		public void internalFrameClosing(InternalFrameEvent e) {
-			JInternalFrame frame = e.getInternalFrame();
-			if( ! (frame instanceof MidiDeviceFrame ) ) return;
-			MidiDeviceModel m = ((MidiDeviceFrame)frame).getMidiDeviceModel();
+			JInternalFrame ｆ = e.getInternalFrame();
+			if( ! (ｆ instanceof MidiDeviceFrame ) ) return;
+			MidiDeviceModel m = ((MidiDeviceFrame)ｆ).getMidiDeviceModel();
 			m.close();
+			// デバイスが閉じたことを確認してから画面を閉じる
 			if( ! m.getMidiDevice().isOpen() ) {
 				try {
 					// 選択されたまま閉じると、次に開いたときにinternalFrameActivatedが
 					// 呼ばれなくなってしまうので、選択を解除する。
-					frame.setSelected(false);
+					ｆ.setSelected(false);
 				} catch (PropertyVetoException pve) {
 					pve.printStackTrace();
 				}
-				frame.setVisible(false);
+				ｆ.setVisible(false);
 			}
-			setTreeNodeText(m);
+			setText(treeNodeTextOf(m));
 		}
 	};
 	/**
@@ -80,10 +80,14 @@ public class MidiDeviceInfoPane extends JEditorPane implements TreeSelectionList
 	@Override
 	public void valueChanged(TreeSelectionEvent e) {
 		TreePath treePath = e.getNewLeadSelectionPath();
-		setTreeNodeText(treePath == null ? null : treePath.getLastPathComponent());
+		setText(treeNodeTextOf(treePath == null ? null : treePath.getLastPathComponent()));
 	}
+	/**
+	 * MIDIデバイス情報表示エリアを構築します。
+	 */
 	public MidiDeviceInfoPane() {
-		super("text/html","<html></html>");
+        setContentType("text/html");
+		setText(treeNodeTextOf(null));
 		setEditable(false);
 	}
 }

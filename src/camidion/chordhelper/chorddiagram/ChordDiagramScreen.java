@@ -12,6 +12,7 @@ import java.awt.event.ComponentEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
+import java.util.Arrays;
 import java.util.LinkedList;
 
 import javax.swing.DefaultBoundedRangeModel;
@@ -24,7 +25,7 @@ import camidion.chordhelper.music.Note;
 /**
  * コードダイアグラム表示部
  */
-class ChordDiagramDisplay extends JComponent implements MouseListener, MouseMotionListener {
+public class ChordDiagramScreen extends JComponent implements MouseListener, MouseMotionListener {
 	/**
 	 * 可視フレット数
 	 */
@@ -231,10 +232,8 @@ class ChordDiagramDisplay extends JComponent implements MouseListener, MouseMoti
 		/**
 		 * 引数で指定された弦のフレットをスキャンします。
 		 *
-		 * <p>指定された弦について、
-		 * コード構成音のどれか一つを鳴らすことのできる
-		 * フレット位置を順にスキャンし、
-		 * 新しい押さえ方にフレット位置を記録したうえで、
+		 * <p>指定された弦について、コード構成音のどれか一つを鳴らすことのできる
+		 * フレット位置を順にスキャンし、新しい押さえ方にフレット位置を記録したうえで、
 		 * 次の弦について再帰呼び出しを行います。
 		 * </p>
 		 * <p>最後の弦まで達すると（再起呼び出しツリーの葉）、
@@ -246,21 +245,15 @@ class ChordDiagramDisplay extends JComponent implements MouseListener, MouseMoti
 		 */
 		private void scanFret(int stringIndex) {
 			int endOfStringIndex = validatingPoints.length - 1;
-			for( PressingPoint pp : possiblePressingPoints[stringIndex] ) {
+			possiblePressingPoints[stringIndex].stream().forEach(pp->{
 				validatingPoints[stringIndex] = pp;
-				if( stringIndex < endOfStringIndex ) {
-					scanFret( stringIndex + 1 );
-					continue;
-				}
-				if( hasValidNewVariation() ) add(validatingPoints.clone());
-			}
+				if( stringIndex < endOfStringIndex ) scanFret( stringIndex + 1 );
+				else if( hasValidNewVariation() ) add(validatingPoints.clone());
+			});
 		}
 		/**
-		 * 新しい押さえ方のバリエーションが、
-		 * そのコードを鳴らすのに十分であるか検証します。
-		 *
-		 * @return 省略しないコード構成音が全部揃っていたらtrue、
-		 * 一つでも欠けていたらfalse
+		 * 新しい押さえ方のバリエーションが、そのコードを鳴らすのに十分であるか検証します。
+		 * @return 省略しないコード構成音が全部揃っていたらtrue、一つでも欠けていたらfalse
 		 */
 		private boolean hasValidNewVariation() {
 			int checkBits = 0;
@@ -277,14 +270,12 @@ class ChordDiagramDisplay extends JComponent implements MouseListener, MouseMoti
 		 * バリエーションインデックスの説明を返します。
 		 *
 		 * <p>(インデックス値 / バリエーションの個数) のような説明です。
-		 * インデックス値が未選択（-1）の場合、
-		 * バリエーションの個数のみの説明を返します。
+		 * インデックス値が未選択（-1）の場合、バリエーションの個数のみの説明を返します。
 		 * </p>
 		 * @return バリエーションインデックスの説明
 		 */
 		public String getIndexDescription() {
-			if( chord == null )
-				return null;
+			if( chord == null ) return null;
 			int val = indexModel.getValue();
 			int max = indexModel.getMaximum();
 			if( val < 0 ) { // 未選択時
@@ -298,7 +289,7 @@ class ChordDiagramDisplay extends JComponent implements MouseListener, MouseMoti
 		}
 	}
 
-	public ChordDiagramDisplay(ChordDiagram.Instrument inst) {
+	public ChordDiagramScreen(ChordDiagram.Instrument defaultInstrument) {
 		addMouseListener(this);
 		addMouseMotionListener(this);
 		addComponentListener(new ComponentAdapter() {
@@ -306,10 +297,11 @@ class ChordDiagramDisplay extends JComponent implements MouseListener, MouseMoti
 			public void componentResized(ComponentEvent e) { tune(); }
 		});
 		chordVariations.indexModel.addChangeListener(e->repaint());
-		// To reconstruct chord variations
 		fretViewIndexModel.addChangeListener(e->setChord());
 		setMinimumSize(new Dimension(100,70));
-		tune(inst);
+		tune(defaultInstrument);
+		setOpaque(false);
+		setPreferredSize(new Dimension(120,120));
 	}
 	@Override
 	public void paint(Graphics g) {
@@ -323,7 +315,6 @@ class ChordDiagramDisplay extends JComponent implements MouseListener, MouseMoti
 		g2.clearRect(0, 0, d.width, d.height);
 		//
 		// Draw frets and its numbers
-		//
 		for( int i=1; i<=VISIBLE_FRETS; i++ ) {
 			g2.setColor(fret_color);
 			int fret_x = gridRect.x + (gridRect.width - 2) * i / VISIBLE_FRETS;
@@ -365,9 +356,7 @@ class ChordDiagramDisplay extends JComponent implements MouseListener, MouseMoti
 				string_y + (fm.getHeight() - fm.getDescent())/2
 			);
 			g2.setColor(fret_color);
-			if( tuningButtons[i].isMouseEntered ) {
-				g2.draw(tuningButtons[i]);
-			}
+			if( tuningButtons[i].isMouseEntered ) g2.draw(tuningButtons[i]);
 		}
 		//
 		// Draw left-end of frets
@@ -391,45 +380,31 @@ class ChordDiagramDisplay extends JComponent implements MouseListener, MouseMoti
 		}
 		//
 		// Draw indicators
-		if( chordVariations.chord == null ) {
-			return;
-		}
+		if( chordVariations.chord == null ) return;
 		PressingPoint variation[] = null;
-		int ppIndex = chordVariations.indexModel.getValue();
-		if( ppIndex >= 0 ) {
-			variation = chordVariations.get(ppIndex);
-			for( PressingPoint pp : variation ) drawIndicator(g2, pp, false);
+		int variationIndex = chordVariations.indexModel.getValue();
+		if( variationIndex >= 0 ) {
+			Arrays.stream(variation = chordVariations.get(variationIndex)).forEach(pp->drawIndicator(g2,pp,false));
 		}
-		PressingPointList possiblePressingPoints[] = chordVariations.getPossiblePressingPoints();
-		if( possiblePressingPoints != null ) {
-			for( PressingPointList pps : possiblePressingPoints ) {
-				for( PressingPoint pp : pps ) {
-					if( pp.isMouseEntered ) {
-						drawIndicator( g2, pp, false );
-						if( variation != null ) {
-							return;
-						}
-					}
-					else if( variation == null ) {
-						drawIndicator( g2, pp, true );
-					}
+		PressingPointList ppp[] = chordVariations.getPossiblePressingPoints();
+		if( ppp != null ) for( PressingPointList pps : ppp ) {
+			for( PressingPoint pp : pps ) {
+				if( pp.isMouseEntered ) {
+					drawIndicator( g2, pp, false ); if( variation != null ) return;
+				} else if( variation == null ) {
+					drawIndicator( g2, pp, true );
 				}
 			}
 		}
 	}
 	private void drawIndicator(Graphics2D g2, PressingPoint pp, boolean drawAllPoints) {
 		Rectangle r;
-		int i_chord = pp.chordNoteIndex;
-		g2.setColor(
-			i_chord < 0 ? getForeground() : Chord.NOTE_INDEX_COLORS[i_chord]
-		);
-		if( (r = pp.rect) == null ) {
-			return;
-		}
+		int iChord = pp.chordNoteIndex;
+		g2.setColor(iChord < 0 ? getForeground() : Chord.NOTE_INDEX_COLORS[iChord]);
+		if( (r = pp.rect) == null ) return;
 		int fretPoint = pp.fretIndex;
 		if( fretPoint < 0 ) {
-			if( ! drawAllPoints ) {
-				// Put 'x' mark
+			if( ! drawAllPoints ) { // x
 				g2.drawLine(
 					r.x + 1,
 					r.y + 1,
@@ -445,17 +420,11 @@ class ChordDiagramDisplay extends JComponent implements MouseListener, MouseMoti
 			}
 		}
 		else if( fretPoint == 0 ) {
-			// Put 'o' mark
-			g2.drawOval( r.x, r.y, r.width, r.height );
-		}
-		else { // Fret-pressing
+			g2.drawOval( r.x, r.y, r.width, r.height ); // o
+		} else { // Fret-pressing
 			int x = r.x - fretViewIndexModel.getValue() * fretDistance ;
-			if( drawAllPoints ) {
-				g2.drawOval( x, r.y, r.width, r.height );
-			}
-			else {
-				g2.fillOval( x, r.y, r.width, r.height );
-			}
+			if( drawAllPoints ) g2.drawOval( x, r.y, r.width, r.height ); // o
+			else g2.fillOval( x, r.y, r.width, r.height ); // @
 		}
 	}
 	@Override
@@ -474,13 +443,11 @@ class ChordDiagramDisplay extends JComponent implements MouseListener, MouseMoti
 						rect.translate( -xOffset, 0 );
 					}
 					else hit = rect.contains(point);
-					if( ! hit )
-						continue;
+					if( ! hit ) continue;
 					int variationIndex = 0;
 					for( PressingPoint[] variation : chordVariations ) {
 						if( variation[pp.stringIndex].fretIndex != pp.fretIndex ) {
-							variationIndex++;
-							continue;
+							variationIndex++; continue;
 						}
 						chordVariations.indexModel.setValue(variationIndex);
 						return;
@@ -488,15 +455,12 @@ class ChordDiagramDisplay extends JComponent implements MouseListener, MouseMoti
 				}
 			}
 		}
-		for( TuningButton button : tuningButtons ) {
-			if( ! button.contains(point) )
-				continue;
-			int note = notesWhenOpen[button.stringIndex];
-			note += (e.getButton()==MouseEvent.BUTTON3 ? 11 : 1);
-			notesWhenOpen[button.stringIndex] = Note.mod12(note);
-			setChord();
-			return;
-		}
+		TuningButton tb = Arrays.stream(tuningButtons).filter(b->b.contains(point)).findFirst().orElse(null);
+		if( tb == null ) return;
+		notesWhenOpen[tb.stringIndex] = Note.mod12(
+			notesWhenOpen[tb.stringIndex]+(e.getButton()==MouseEvent.BUTTON3 ? 11 : 1)
+		);
+		setChord();
 	}
 	@Override
 	public void mouseReleased(MouseEvent e) { }
@@ -518,9 +482,9 @@ class ChordDiagramDisplay extends JComponent implements MouseListener, MouseMoti
 			if ( button.isMouseEntered != hit ) changed = true;
 			button.isMouseEntered = hit;
 		}
-		PressingPointList possible_points[] = chordVariations.getPossiblePressingPoints();
-		if( possible_points != null ) {
-			for( PressingPointList pps : possible_points ) {
+		PressingPointList possiblePoints[] = chordVariations.getPossiblePressingPoints();
+		if( possiblePoints != null ) {
+			for( PressingPointList pps : possiblePoints ) {
 				for( PressingPoint pp : pps ) {
 					if( pp.fretIndex > 0 ) {
 						int xOffset = -fretViewIndexModel.getValue()*fretDistance;
@@ -556,10 +520,10 @@ class ChordDiagramDisplay extends JComponent implements MouseListener, MouseMoti
 	private Rectangle gridRect;
 	/**
 	 * 指定された楽器用にチューニングをリセットします。
-	 * @param inst 対象楽器
+	 * @param instrument 対象楽器
 	 */
-	public void tune(ChordDiagram.Instrument inst) {
-		notesWhenOpen = (targetInstrument = inst).createTunableOpenNotes();
+	public void tune(ChordDiagram.Instrument instrument) {
+		notesWhenOpen = (targetInstrument = instrument).createTunableOpenNotes();
 		tune();
 	}
 	/**

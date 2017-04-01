@@ -102,7 +102,7 @@ public class AnoGakkiPane extends JComponent {
 		/** 時間軸 */
 		private int countdown = INITIAL_COUNT;
 		/** スタートからの経過時間（ミリ秒） */
-		private int tms = 0;
+		private int timeMs = 0;
 		//
 		/** 図形の種類 */
 		AnoGakkiPane.Shape shape = Shape.randomShape();
@@ -141,16 +141,16 @@ public class AnoGakkiPane extends JComponent {
 			if( countdown > 0 ) {
 				// 時間 t を進める
 				countdown--;
-				tms += INTERVAL_MS;
+				timeMs += INTERVAL_MS;
 				// 半径 r = vt
-				r = tms / 2;
+				r = timeMs / 2;
 				// 回転
 				if( shape == Shape.SQUARE || shape == Shape.TRIANGLE ) {
 					// 角度を θ=ωt で求めると、移動距離 l=rθ が
 					// t の２乗のオーダーで伸びるため、加速しているように見えてしまう。
 					// 一定の速度に見せるために t を平方根にして角度を計算する。
 					affineTransform.rotate(
-						omega * Math.sqrt((double)tms),
+						omega * Math.sqrt((double)timeMs),
 						clickedPoint.x,
 						clickedPoint.y
 					);
@@ -211,9 +211,7 @@ public class AnoGakkiPane extends JComponent {
 			}
 			if(queue.isEmpty()) timer.stop();
 			repaint();
-		}) {
-			{setCoalesce(true);setRepeats(true);}
-		};
+		}) { { setCoalesce(true);setRepeats(true); } };
 	}
 	private Timer timer;
 	@Override

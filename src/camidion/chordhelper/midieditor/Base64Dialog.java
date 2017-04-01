@@ -31,12 +31,16 @@ import camidion.chordhelper.ChordHelperApplet;
 public class Base64Dialog extends JDialog implements DocumentListener {
 	public static final Pattern HEADER_PATTERN = Pattern.compile("^.*:.*$", Pattern.MULTILINE);
 	private JTextArea base64TextArea = new JTextArea(8,56);
-	private MidiSequenceEditorDialog midiEditor;
 	private void error(String message) {
 		JOptionPane.showMessageDialog(base64TextArea, (Object)message,
 				ChordHelperApplet.VersionInfo.NAME, JOptionPane.WARNING_MESSAGE);
 		base64TextArea.requestFocusInWindow();
 	}
+	private String createHeader(String filename) {
+		return "Content-Type: audio/midi; name=\"" + filename + "\"\n"
+				+ "Content-Transfer-Encoding: base64\n\n";
+	}
+	public PlaylistTableModel playlistModel;
 	/**
 	 * 入力されたBase64テキストをデコードし、MIDIシーケンスとしてプレイリストに追加します。
 	 * @return プレイリストに追加されたMIDIシーケンスのインデックス（先頭が0）、追加に失敗した場合は -1
@@ -50,9 +54,9 @@ public class Base64Dialog extends JDialog implements DocumentListener {
 			return -1;
 		}
 		try (InputStream in = new ByteArrayInputStream(midiData)) {
-			return midiEditor.sequenceListTable.getModel().add(MidiSystem.getSequence(in), null);
+			return playlistModel.add(MidiSystem.getSequence(in), null);
 		} catch( IOException|InvalidMidiDataException e ) {
-			error("Base64デコードされたデータが正しいMIDI形式になっていません。\n"+e);
+			error("Base64デコードした結果をMIDIシーケンスとして読み込めませんでした。\n"+e);
 			return -1;
 		}
 	}
@@ -62,24 +66,24 @@ public class Base64Dialog extends JDialog implements DocumentListener {
 	public Action addBase64Action = new AbstractAction("Add to PlayList", new ButtonIcon(ButtonIcon.EJECT_ICON)) {
 		{ putValue(Action.SHORT_DESCRIPTION, "Base64デコードして、プレイリストへ追加"); }
 		@Override
-		public void actionPerformed(ActionEvent event) {
-			addToPlaylist();
-			setVisible(false);
+		public void actionPerformed(ActionEvent e) {
+			if( addToPlaylist() >= 0 ) setVisible(false);
 		}
 	};
 	/**
 	 * Base64テキストクリアアクション
 	 */
 	public Action clearAction = new AbstractAction("Clear", new ButtonIcon(ButtonIcon.X_ICON)) {
+		{ putValue(Action.SHORT_DESCRIPTION, "Base64テキスト欄を消去"); }
 		@Override
-		public void actionPerformed(ActionEvent e) { base64TextArea.setText(null); }
+		public void actionPerformed(ActionEvent e) { setText(null); }
 	};
 	/**
 	 * Base64テキスト入力ダイアログを構築します。
-	 * @param midiEditor 親画面となるMIDIエディタ
+	 * @param playlistModel Base64デコードされたMIDIシーケンスの追加先プレイリスト
 	 */
-	public Base64Dialog(MidiSequenceEditorDialog midiEditor) {
-		this.midiEditor = midiEditor;
+	public Base64Dialog(PlaylistTableModel playlistModel) {
+		this.playlistModel = playlistModel;
 		setTitle("Base64-encoded MIDI sequence - " + ChordHelperApplet.VersionInfo.NAME);
 		add(new JPanel() {{
 			setLayout(new BoxLayout(this, BoxLayout.PAGE_AXIS));
@@ -132,11 +136,7 @@ public class Base64Dialog extends JDialog implements DocumentListener {
 	public void setMIDIData(byte[] midiData, String filename) {
 		if( midiData == null || midiData.length == 0 ) return;
 		if( filename == null ) filename = "";
-		String text =
-				"Content-Type: audio/midi; name=\"" + filename + "\"\n"
-						+ "Content-Transfer-Encoding: base64\n\n" +
-						Base64.getMimeEncoder().encodeToString(midiData) + "\n";
-		base64TextArea.setText(text);
+		setText(createHeader(filename) + Base64.getMimeEncoder().encodeToString(midiData) + "\n");
 		base64TextArea.selectAll();
 	}
 	/**
@@ -148,15 +148,22 @@ public class Base64Dialog extends JDialog implements DocumentListener {
 	 * Base64形式のMIDIデータを設定します。
 	 * @param base64Data Base64形式のMIDIデータ
 	 */
-	public void setBase64Data( String base64Data ) {
-		base64TextArea.setText(null);
+	public void setBase64Data(String base64Data) {
+		setText(null);
 		base64TextArea.append(base64Data);
 	}
 	/**
-	 * テキスト文字列を設定します（例外が発生したときのメッセージ出力用）。
+	 * Base64形式のMIDIデータを、ファイル名をつけて設定します。
+	 * @param base64Data Base64形式のMIDIデータ
+	 * @param filename ファイル名
+	 */
+	public void setBase64Data(String base64Data, String filename) {
+		setText(createHeader(filename));
+		base64TextArea.append(base64Data);
+	}
+	/**
+	 * テキスト文字列を設定します。
 	 * @param text テキスト文字列
 	 */
-	public void setText(String text) {
-		base64TextArea.setText(text);
-	}
+	public void setText(String text) { base64TextArea.setText(text); }
 }

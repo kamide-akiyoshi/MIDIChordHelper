@@ -123,8 +123,7 @@ public class MidiDeviceDesktopPane extends JDesktopPane implements TreeSelection
 						// 移動または変形時の動作
 						frame.addComponentListener(cablePane.midiDeviceFrameComponentListener);
 						//
-						// サイズを設定したフレームをデスクトップに追加
-						frame.setSize(250, dm.getInOutType() == MidiDeviceInOutType.MIDI_IN_OUT ? 90 : 70);
+						//フレームをデスクトップに追加
 						add(frame);
 						//
 						// デバイスが開いていたら表示

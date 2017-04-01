@@ -1,6 +1,7 @@
 package camidion.chordhelper.mididevice;
 
 import java.awt.BorderLayout;
+import java.awt.Dimension;
 import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -11,7 +12,11 @@ import javax.swing.JInternalFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JSlider;
+import javax.swing.JToggleButton;
 import javax.swing.Timer;
+
+import camidion.chordhelper.ChordHelperApplet;
 
 /**
  * MIDIデバイスフレームビュー
@@ -37,7 +42,7 @@ public class MidiDeviceFrame extends JInternalFrame {
 		setTitle("[" + deviceModel.getInOutType().getShortName() + "] " + deviceModel);
 		setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
 		setLayout(new BorderLayout());
-		add(new JLabel(LABEL_NO_VALUE) {
+		JLabel timeLabel = new JLabel(LABEL_NO_VALUE) {
 			Timer timer = new Timer(50, new ActionListener() {
 				private long sec = -2;
 				@Override
@@ -52,7 +57,21 @@ public class MidiDeviceFrame extends JInternalFrame {
 				}
 			});
 			{ timer.start(); }
-		}, BorderLayout.SOUTH);
+		};
+		if( deviceModel instanceof MidiSequencerModel ) {
+			MidiSequencerModel sequencerModel = (MidiSequencerModel)deviceModel;
+			add(new JPanel() {{
+				add(new JSlider(sequencerModel) {{
+					setPreferredSize(new Dimension(80, 16));
+				}});
+				add(new JToggleButton(sequencerModel.getStartStopAction()) {{
+					setMargin(ChordHelperApplet.ZERO_INSETS);
+				}});
+				add(timeLabel);
+			}}, BorderLayout.SOUTH);
+		} else {
+			add(timeLabel, BorderLayout.SOUTH);
+		}
 		add(scrollPane = new JScrollPane(trxPanel = new JPanel() {{
 			setLayout(new BorderLayout());
 			ReceiverListModel rxListModel = getMidiDeviceModel().getReceiverListModel();
@@ -72,6 +91,9 @@ public class MidiDeviceFrame extends JInternalFrame {
 				}}, rxListModel == null ? BorderLayout.NORTH : BorderLayout.SOUTH);
 			}
 		}}));
+		int height = deviceModel instanceof MidiSequencerModel ? 106 :
+			deviceModel.getInOutType() == MidiDeviceInOutType.MIDI_IN_OUT ? 90 : 70;
+		setSize(250, height);
 	}
 	/**
 	 * 引数で指定された{@link Transmitter}のセル範囲を示す、

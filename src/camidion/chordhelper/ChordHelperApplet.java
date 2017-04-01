@@ -136,7 +136,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public int addToPlaylistBase64(String base64EncodedText, String filename) {
 		Base64Dialog d = midiEditor.base64Dialog;
-		d.setBase64Data(base64EncodedText);
+		d.setBase64Data(base64EncodedText, filename);
 		return d.addToPlaylist();
 	}
 	/**
@@ -149,14 +149,13 @@ public class ChordHelperApplet extends JApplet {
 		play(playlistModel.sequenceListSelectionModel.getMinSelectionIndex());
 	}
 	/**
-	 * 指定されたインデックス値が示すプレイリスト上のMIDIシーケンスを、
-	 * シーケンサへロードして再生します。
+	 * 指定されたインデックス値が示すプレイリスト上のMIDIシーケンスをシーケンサへロードして再生します。
 	 * @param index インデックス値（０から始まる）
 	 * @throws InvalidMidiDataException {@link Sequencer#setSequence(Sequence)} を参照
 	 * @throws IllegalStateException MIDIシーケンサデバイスが閉じている場合
 	 */
 	public void play(int index) throws InvalidMidiDataException {
-		playlistModel.loadToSequencer(index); sequencerModel.start();
+		playlistModel.play(index);
 	}
 	/**
 	 * シーケンサが実行中かどうかを返します。
@@ -178,8 +177,9 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public String getMidiDataBase64() throws IOException {
 		SequenceTrackListTableModel sequenceModel = sequencerModel.getSequenceTrackListTableModel();
-		midiEditor.base64Dialog.setMIDIData(sequenceModel.getMIDIdata());
-		return midiEditor.base64Dialog.getBase64Data();
+		Base64Dialog d = midiEditor.base64Dialog;
+		d.setMIDIData(sequenceModel.getMIDIdata());
+		return d.getBase64Data();
 	}
 	/**
 	 * 現在シーケンサにロードされているMIDIファイルのファイル名を返します。
@@ -189,8 +189,7 @@ public class ChordHelperApplet extends JApplet {
 		SequenceTrackListTableModel s = sequencerModel.getSequenceTrackListTableModel();
 		if( s == null ) return null;
 		String fn = s.getFilename();
-		if( fn == null ) return null;
-		return fn;
+		return fn == null ? "" : fn;
 	}
 	/**
 	 * オクターブ位置を設定します。
@@ -273,18 +272,16 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public static class VersionInfo {
 		public static final String NAME = "MIDI Chord Helper";
-		public static final String VERSION = "Ver.20170327.1";
+		public static final String VERSION = "Ver.20170401.1";
 		public static final String COPYRIGHT = "Copyright (C) 2004-2017";
 		public static final String AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";
 	}
 	@Override
 	public String getAppletInfo() {
-		return VersionInfo.NAME
-				+ " " + VersionInfo.VERSION
-				+ " " + VersionInfo.COPYRIGHT
-				+ " " + VersionInfo.AUTHER
-				+ " " + VersionInfo.URL;
+		return String.join(" ",
+				VersionInfo.NAME, VersionInfo.VERSION,
+				VersionInfo.COPYRIGHT ,VersionInfo.AUTHER, VersionInfo.URL);
 	}
 	/**
 	 * ボタンの余白を詰めたいときに setMargin() の引数に指定するインセット
@@ -331,7 +328,7 @@ public class ChordHelperApplet extends JApplet {
 		// 背景色の取得
 		rootPaneDefaultBgcolor = getContentPane().getBackground();
 		//
-		// コードダイアグラム、コードボタン、ピアノ鍵盤のセットアップ
+		// コードダイアグラム、コードボタン、ピアノ鍵盤、およびそれらの仮想MIDIデバイスを生成
 		CapoComboBoxModel capoComboBoxModel = new CapoComboBoxModel();
 		chordDiagram = new ChordDiagram(capoComboBoxModel);
 		chordMatrix = new ChordMatrix(capoComboBoxModel) {
@@ -343,9 +340,7 @@ public class ChordHelperApplet extends JApplet {
 			{
 				addChordMatrixListener(new ChordMatrixListener(){
 					public void keySignatureChanged() {
-						Key capoKey = getKeySignatureCapo();
-						keyboardPanel.keySelecter.setSelectedKey(capoKey);
-						keyboardPanel.keyboardCenterPanel.keyboard.setKeySignature(capoKey);
+						keyboardPanel.setCapoKey(getKeySignatureCapo());
 					}
 					public void chordChanged() { chordOn(); }
 				});
@@ -395,9 +390,7 @@ public class ChordHelperApplet extends JApplet {
 		//
 		// 歌詞表示／コード入力フィールド
 		(lyricDisplay = new ChordTextField(sequencerModel)).addActionListener(
-			e->chordMatrix.setSelectedChord(
-				e.getActionCommand().trim().split("[ \t\r\n]")[0]
-			)
+			e->chordMatrix.setSelectedChord(e.getActionCommand().trim().split("[ \t\r\n]")[0])
 		);
 		lyricDisplayDefaultBorder = lyricDisplay.getBorder();
 		lyricDisplayDefaultBgcolor = lyricDisplay.getBackground();
@@ -452,8 +445,7 @@ public class ChordHelperApplet extends JApplet {
 					msg = tickIndex.lastMetaMessageAt(
 						SequenceTickIndex.MetaMessageType.KEY_SIGNATURE, tickPos
 					);
-					if(msg == null) keysigLabel.clear();
-					else setKeySignature(new Key(msg.getData()));
+					if(msg == null) keysigLabel.clear(); else setKeySignature(new Key(msg.getData()));
 				}
 			}
 		});
@@ -491,8 +483,8 @@ public class ChordHelperApplet extends JApplet {
 				setMargin(ZERO_INSETS);
 				setBorder(null);
 				setToolTipText("あの楽器");
-				addItemListener(
-					e -> keyboardPanel.keyboardCenterPanel.keyboard.anoGakkiPane
+				addItemListener(e->
+					keyboardPanel.keyboardCenterPanel.keyboard.anoGakkiPane
 					= anoGakkiToggleButton.isSelected() ? anoGakkiPane : null
 				);
 			}} );
@@ -573,35 +565,24 @@ public class ChordHelperApplet extends JApplet {
 		setPreferredSize(new Dimension(750,470));
 	}
 	@Override
-	public void destroy() {
-		deviceTreeModel.forEach(m -> m.close());
-		super.destroy();
-	}
+	public void destroy() { deviceTreeModel.forEach(m -> m.close()); }
 	@Override
 	public void start() {
 		//
-		// コードボタンで設定されている現在の調を
-		// ピアノキーボードに伝える
+		// コードボタンで設定されている現在の調をピアノキーボードに伝える
 		chordMatrix.fireKeySignatureChanged();
 		//
-		// アプレットのパラメータにMIDIファイルのURLが指定されていたら
-		// それを再生する
+		// アプレットのパラメータにMIDIファイルのURLが指定されていたらそれを再生する
 		String midiUrl = getParameter("midi_file");
-		System.gc();
-		if( midiUrl != null ) {
-			addToPlaylist(midiUrl);
-			try {
-				play();
-			} catch (Exception ex) {
-				ex.printStackTrace();
-			}
+		if( midiUrl != null ) try {
+			play(addToPlaylist(midiUrl));
+		} catch (Exception ex) {
+			midiEditor.showWarning(ex);
 		}
 	}
 	@Override
-	public void stop() {
-		sequencerModel.stop(); // MIDI再生を強制終了
-		System.gc();
-	}
+	public void stop() { sequencerModel.stop(); }
+
 	private void innerSetDarkMode(boolean isDark) {
 		Color col = isDark ? Color.black : null;
 		getContentPane().setBackground(isDark ? Color.black : rootPaneDefaultBgcolor);
@@ -633,7 +614,7 @@ public class ChordHelperApplet extends JApplet {
 	/**
 	 * 和音を発音します。
 	 * <p>この関数を直接呼ぶとアルペジオが効かないので、
-	 * chordMatrix.setSelectedChord() を使うことを推奨
+	 * chordMatrix.setSelectedChord() を使うことを推奨。
 	 * </p>
 	 */
 	public void chordOn() {
@@ -645,9 +626,7 @@ public class ChordHelperApplet extends JApplet {
 		) {
 			// コードが鳴っている状態で、新たなコードを鳴らそうとしたり、
 			// もう鳴らさないという信号が来た場合は、今鳴っている音を止める。
-			//
-			for( int n : chordOnNotes )
-				keyboardPanel.keyboardCenterPanel.keyboard.noteOff(n);
+			Arrays.stream(chordOnNotes).forEach(n->keyboardPanel.keyboardCenterPanel.keyboard.noteOff(n));
 			chordOnNotes = null;
 		}
 		if( playChord == null ) {
@@ -696,15 +675,7 @@ public class ChordHelperApplet extends JApplet {
 			chordOnNotes[i++] = n;
 			//
 			// その音が今鳴っているか調べる
-			boolean isNoteOn = false;
-			if( prevChordOnNotes != null ) {
-				for( int prevN : prevChordOnNotes ) {
-					if( n == prevN ) {
-						isNoteOn = true;
-						break;
-					}
-				}
-			}
+			boolean isNoteOn = prevChordOnNotes != null && Arrays.stream(prevChordOnNotes).anyMatch(prevN -> prevN == n);
 			// すでに鳴っているのに単音を鳴らそうとする場合、
 			// 鳴らそうとしている音を一旦止める。
 			if( isNoteOn && chordMatrix.getNoteIndex() >= 0 &&
@@ -714,8 +685,7 @@ public class ChordHelperApplet extends JApplet {
 				isNoteOn = false;
 			}
 			// その音が鳴っていなかったら鳴らす。
-			if( ! isNoteOn )
-				keyboardPanel.keyboardCenterPanel.keyboard.noteOn(n);
+			if( ! isNoteOn ) keyboardPanel.keyboardCenterPanel.keyboard.noteOn(n);
 		}
 		//
 		// コードを表示

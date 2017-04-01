@@ -101,9 +101,7 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 		return sequence == null ? 0 : sequence.getTracks().length;
 	}
 	@Override
-	public int getColumnCount() {
-		return Column.values().length;
-	}
+	public int getColumnCount() { return Column.values().length; }
 	/**
 	 * 列名を返します。
 	 * @return 列名
@@ -195,11 +193,8 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 			fireTableCellUpdated(row, Column.EVENTS.ordinal());
 			break;
 		}
-		case TRACK_NAME:
-			trackModelList.get(row).setString((String)val);
-			break;
-		default:
-			break;
+		case TRACK_NAME: trackModelList.get(row).setString((String)val); break;
+		default: break;
 		}
 		fireTableCellUpdated(row,column);
 	}
@@ -227,7 +222,6 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 	 * @param sequence MIDIシーケンス（nullを指定するとトラックリストが空になる）
 	 */
 	private void setSequence(Sequence sequence) {
-		//
 		// 旧シーケンスの録音モードを解除
 		MidiSequencerModel sequencerModel = sequenceListTableModel.getSequencerModel();
 		if( sequencerModel != null ) sequencerModel.getSequencer().recordDisable(null);
@@ -275,7 +269,11 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 	 * 変更されたかどうかを設定します。
 	 * @param isModified 変更されたときtrue
 	 */
-	public void setModified(boolean isModified) { this.isModified = isModified; }
+	public void setModified(boolean isModified) {
+		this.isModified = isModified;
+		int index = sequenceListTableModel.getSequenceModelList().indexOf(this);
+		if( index >= 0 ) sequenceListTableModel.fireTableRowsUpdated(index, index);
+	}
 	/**
 	 * ファイル名を設定します。
 	 * @param filename ファイル名
@@ -330,7 +328,7 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 		int row = indexOf(track);
 		if( row < 0 ) return;
 		fireTableRowsUpdated(row, row);
-		sequenceListTableModel.fireSequenceModified(this, true);
+		setModified(true);
 	}
 	/**
 	 * 選択されているトラックモデルを返します。
@@ -338,17 +336,11 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 	 * @return トラックモデル（見つからない場合null）
 	 */
 	public TrackEventListTableModel getSelectedTrackModel() {
-		if( trackListSelectionModel.isSelectionEmpty() )
-			return null;
-		int index = trackListSelectionModel.getMinSelectionIndex();
+		if( trackListSelectionModel.isSelectionEmpty() ) return null;
 		Track tracks[] = sequence.getTracks();
-		if( tracks.length != 0 ) {
-			Track track = tracks[index];
-			for( TrackEventListTableModel model : trackModelList )
-				if( model.getTrack() == track )
-					return model;
-		}
-		return null;
+		if( tracks.length == 0 ) return null;
+		Track t = tracks[trackListSelectionModel.getMinSelectionIndex()];
+		return trackModelList.stream().filter(tm -> tm.getTrack() == t).findFirst().orElse(null);
 	}
 	/**
 	 * 指定のトラックがある位置のインデックスを返します。
@@ -357,9 +349,7 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 	 */
 	public int indexOf(Track track) {
 		Track tracks[] = sequence.getTracks();
-		for( int i=0; i<tracks.length; i++ )
-			if( tracks[i] == track )
-				return i;
+		for( int i=0; i<tracks.length; i++ ) if( tracks[i] == track ) return i;
 		return -1;
 	}
 	/**
@@ -367,11 +357,10 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 	 * @return 追加したトラックのインデックス（先頭 0）
 	 */
 	public int createTrack() {
-		Track newTrack = sequence.createTrack();
-		trackModelList.add(new TrackEventListTableModel(this, newTrack));
+		trackModelList.add(new TrackEventListTableModel(this, sequence.createTrack()));
+		setModified(true);
 		int lastRow = getRowCount() - 1;
 		fireTableRowsInserted(lastRow, lastRow);
-		sequenceListTableModel.fireSelectedSequenceModified(true);
 		trackListSelectionModel.setSelectionInterval(lastRow, lastRow);
 		return lastRow;
 	}
@@ -391,7 +380,7 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 			trackModelList.remove(i);
 		}
 		fireTableRowsDeleted(minIndex, maxIndex);
-		sequenceListTableModel.fireSelectedSequenceModified(true);
+		setModified(true);
 	}
 	/**
 	 * このシーケンスモデルのシーケンスをシーケンサーが操作しているか調べます。

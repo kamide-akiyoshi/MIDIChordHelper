@@ -28,10 +28,14 @@ public class MidiDeviceTreeView extends JTree {
 		public void internalFrameActivated(InternalFrameEvent e) {
 			JInternalFrame frame = e.getInternalFrame();
 			if( ! (frame instanceof MidiDeviceFrame ) ) return;
+			// 選択されたフレームのツリーノードを選択
 			setSelectionPath(((MidiDeviceFrame)frame).getMidiDeviceModel().getTreePath());
 		}
 		@Override
-		public void internalFrameClosing(InternalFrameEvent e) { repaint(); }
+		public void internalFrameClosing(InternalFrameEvent e) {
+			// フレームが閉じようとするとき、閉じた後の再描画を予約
+			repaint();
+		}
 	};
 	@Override
 	public MidiDeviceTreeModel getModel() { return (MidiDeviceTreeModel) super.getModel(); }

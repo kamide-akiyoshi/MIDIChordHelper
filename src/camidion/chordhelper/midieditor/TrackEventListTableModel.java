@@ -135,13 +135,9 @@ public class TrackEventListTableModel extends AbstractTableModel {
 		this.sequenceTrackListTableModel = sequenceTrackListTableModel;
 	}
 	@Override
-	public int getRowCount() {
-		return track == null ? 0 : track.size();
-	}
+	public int getRowCount() { return track == null ? 0 : track.size(); }
 	@Override
-	public int getColumnCount() {
-		return Column.values().length;
-	}
+	public int getColumnCount() { return Column.values().length; }
 	/**
 	 * 列名を返します。
 	 */
@@ -165,10 +161,8 @@ public class TrackEventListTableModel extends AbstractTableModel {
 		case MEASURE_POSITION:
 		case BEAT_POSITION:
 		case EXTRA_TICK_POSITION:
-		case MESSAGE:
-			return c.getValue(sequenceTrackListTableModel, event);
-		default:
-			return c.getValue(event);
+		case MESSAGE: return c.getValue(sequenceTrackListTableModel, event);
+		default: return c.getValue(event);
 		}
 	}
 	/**
@@ -210,18 +204,12 @@ public class TrackEventListTableModel extends AbstractTableModel {
 		default: return;
 		}
 		MidiEvent oldMidiEvent = track.get(row);
-		if( oldMidiEvent.getTick() == newTick ) {
-			return;
-		}
-		MidiMessage msg = oldMidiEvent.getMessage();
-		MidiEvent newMidiEvent = new MidiEvent(msg,newTick);
+		if( oldMidiEvent.getTick() == newTick ) return;
+		MidiEvent newMidiEvent = new MidiEvent(oldMidiEvent.getMessage(), newTick);
 		track.remove(oldMidiEvent);
 		track.add(newMidiEvent);
 		fireTableDataChanged();
-		if( MIDISpec.isEOT(msg) ) {
-			// EOTの場所が変わると曲の長さが変わるので、親モデルへ通知する。
-			sequenceTrackListTableModel.getParent().fireSequenceModified(sequenceTrackListTableModel, true);
-		}
+		sequenceTrackListTableModel.setModified(true);
 	}
 	/**
 	 * MIDIトラックを返します。
@@ -236,8 +224,7 @@ public class TrackEventListTableModel extends AbstractTableModel {
 		byte b[] = MIDISpec.getNameBytesOf(track);
 		if( b == null ) return "";
 		Charset cs = Charset.defaultCharset();
-		if( sequenceTrackListTableModel != null )
-			cs = sequenceTrackListTableModel.charset;
+		if( sequenceTrackListTableModel != null ) cs = sequenceTrackListTableModel.charset;
 		return new String(b, cs);
 	}
 	/**
@@ -246,13 +233,10 @@ public class TrackEventListTableModel extends AbstractTableModel {
 	 * @return 設定が行われたらtrue
 	 */
 	public boolean setString(String name) {
-		if(name.equals(toString()))
-			return false;
-		byte b[] = name.getBytes(sequenceTrackListTableModel.charset);
-		if( ! MIDISpec.setNameBytesOf(track, b) )
-			return false;
+		if( name.equals(toString()) || ! MIDISpec.setNameBytesOf(
+			track, name.getBytes(sequenceTrackListTableModel.charset))
+		) return false;
 		sequenceTrackListTableModel.setModified(true);
-		sequenceTrackListTableModel.getParent().fireSequenceModified(sequenceTrackListTableModel, true);
 		fireTableDataChanged();
 		return true;
 	}
@@ -268,21 +252,14 @@ public class TrackEventListTableModel extends AbstractTableModel {
 	 */
 	public void setRecordingChannel(String recordingChannel) {
 		Sequencer sequencer = sequenceTrackListTableModel.getParent().getSequencerModel().getSequencer();
-		if( recordingChannel.equals("OFF") ) {
-			sequencer.recordDisable( track );
-		}
-		else if( recordingChannel.equals("ALL") ) {
-			sequencer.recordEnable( track, -1 );
-		}
-		else {
-			try {
-				int ch = Integer.decode(recordingChannel).intValue() - 1;
-				sequencer.recordEnable( track, ch );
-			} catch( NumberFormatException nfe ) {
-				sequencer.recordDisable( track );
-				this.recordingChannel = "OFF";
-				return;
-			}
+		if( recordingChannel.equals("OFF") ) sequencer.recordDisable(track);
+		else if( recordingChannel.equals("ALL") ) sequencer.recordEnable(track,-1);
+		else try {
+			sequencer.recordEnable(track, Integer.decode(recordingChannel).intValue()-1);
+		} catch( NumberFormatException nfe ) {
+			sequencer.recordDisable(track);
+			this.recordingChannel = "OFF";
+			return;
 		}
 		this.recordingChannel = recordingChannel;
 	}
@@ -300,15 +277,11 @@ public class TrackEventListTableModel extends AbstractTableModel {
 		int trackSize = track.size();
 		for( int index=0; index < trackSize; index++ ) {
 			MidiMessage msg = track.get(index).getMessage();
-			if( ! (msg instanceof ShortMessage) )
-				continue;
+			if( ! (msg instanceof ShortMessage) ) continue;
 			ShortMessage smsg = (ShortMessage)msg;
-			if( ! MIDISpec.isChannelMessage(smsg) )
-				continue;
+			if( ! MIDISpec.isChannelMessage(smsg) ) continue;
 			int ch = smsg.getChannel();
-			if( prevCh >= 0 && prevCh != ch ) {
-				return -1;
-			}
+			if( prevCh >= 0 && prevCh != ch ) return -1;
 			prevCh = ch;
 		}
 		return prevCh;
@@ -318,29 +291,25 @@ public class TrackEventListTableModel extends AbstractTableModel {
 	 * @param channel MIDIチャンネル
 	 */
 	public void setChannel(int channel) {
-		int track_size = track.size();
-		for( int index=0; index < track_size; index++ ) {
-			MidiMessage msg = track.get(index).getMessage();
-			if( ! (msg instanceof ShortMessage) )
-				continue;
-			ShortMessage smsg = (ShortMessage)msg;
-			if( ! MIDISpec.isChannelMessage(smsg) )
-				continue;
-			if( smsg.getChannel() == channel )
-				continue;
+		boolean isModified = false;
+		int trackSize = track.size();
+		for( int index=0; index < trackSize; index++ ) {
+			MidiMessage m = track.get(index).getMessage();
+			if( ! (m instanceof ShortMessage) ) continue;
+			ShortMessage sm = (ShortMessage)m;
+			if( ! MIDISpec.isChannelMessage(sm) || sm.getChannel() == channel ) continue;
 			try {
-				smsg.setMessage(
-					smsg.getCommand(), channel,
-					smsg.getData1(), smsg.getData2()
-				);
+				sm.setMessage(sm.getCommand(), channel, sm.getData1(), sm.getData2());
+				isModified = true;
 			}
 			catch( InvalidMidiDataException e ) {
 				e.printStackTrace();
 			}
-			sequenceTrackListTableModel.setModified(true);
 		}
-		sequenceTrackListTableModel.fireTrackChanged(track);
-		fireTableDataChanged();
+		if( isModified ) {
+			sequenceTrackListTableModel.fireTrackChanged(track);
+			fireTableDataChanged();
+		}
 	}
 	/**
 	 * 指定の MIDI tick 位置にあるイベントを二分探索し、
@@ -349,22 +318,15 @@ public class TrackEventListTableModel extends AbstractTableModel {
 	 * @return 行インデックス
 	 */
 	public int tickToIndex(long tick) {
-		if( track == null )
-			return 0;
+		if( track == null ) return 0;
 		int minIndex = 0;
 		int maxIndex = track.size() - 1;
 		while( minIndex < maxIndex ) {
 			int currentIndex = (minIndex + maxIndex) / 2 ;
 			long currentTick = track.get(currentIndex).getTick();
-			if( tick > currentTick ) {
-				minIndex = currentIndex + 1;
-			}
-			else if( tick < currentTick ) {
-				maxIndex = currentIndex - 1;
-			}
-			else {
-				return currentIndex;
-			}
+			if( tick > currentTick ) minIndex = currentIndex + 1;
+			else if( tick < currentTick ) maxIndex = currentIndex - 1;
+			else return currentIndex;
 		}
 		return (minIndex + maxIndex) / 2;
 	}
@@ -375,8 +337,7 @@ public class TrackEventListTableModel extends AbstractTableModel {
 	 * @return ペアを構成する相手の行インデックス（ない場合は -1）
 	 */
 	public int getIndexOfPartnerFor(int index) {
-		if( track == null || index >= track.size() )
-			return -1;
+		if( track == null || index >= track.size() ) return -1;
 		MidiMessage msg = track.get(index).getMessage();
 		if( ! (msg instanceof ShortMessage) ) return -1;
 		ShortMessage sm = (ShortMessage)msg;
@@ -492,8 +453,7 @@ public class TrackEventListTableModel extends AbstractTableModel {
 	 * @return 追加できたらtrue
 	 */
 	public boolean addMidiEvents(MidiEvent midiEvents[], long destinationTick, int sourcePPQ) {
-		if( track == null )
-			return false;
+		if( track == null ) return false;
 		int destinationPPQ = sequenceTrackListTableModel.getSequence().getResolution();
 		boolean done = false;
 		boolean hasTimeSignature = false;
@@ -523,16 +483,13 @@ public class TrackEventListTableModel extends AbstractTableModel {
 	}
 	/**
 	 * MIDIイベントを除去します。
-	 * 曲の長さが変わることがあるので、プレイリストにも通知します。
 	 * @param midiEvents 除去するMIDIイベント
 	 */
 	public void removeMidiEvents(MidiEvent midiEvents[]) {
-		if( track == null )
-			return;
+		if( track == null ) return;
 		boolean hadTimeSignature = false;
 		for( MidiEvent e : midiEvents ) {
-			if( MIDISpec.isTimeSignature(e.getMessage()) )
-				hadTimeSignature = true;
+			if( MIDISpec.isTimeSignature(e.getMessage()) ) hadTimeSignature = true;
 			track.remove(e);
 		}
 		if( hadTimeSignature ) {
@@ -543,7 +500,6 @@ public class TrackEventListTableModel extends AbstractTableModel {
 		int oldLastIndex = lastIndex + midiEvents.length;
 		if(lastIndex < 0) lastIndex = 0;
 		fireTableRowsDeleted(oldLastIndex, lastIndex);
-		sequenceTrackListTableModel.getParent().fireSelectedSequenceModified(true);
 	}
 	/**
 	 * 引数の選択内容が示すMIDIイベントを除去します。

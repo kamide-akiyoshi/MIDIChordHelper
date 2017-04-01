@@ -36,6 +36,11 @@ public class MidiKeyboardPanel extends JPanel {
 	MidiChannelButtonSelecter midiChannelButtons;
 	VelocitySelecter velocitySelecter;
 
+	public void setCapoKey(Key key) {
+		keySelecter.setSelectedKey(key);
+		keyboardCenterPanel.keyboard.setKeySignature(key);
+	}
+
 	public MidiKeyboardPanel(ChordMatrix chordMatrix) {
 		keyboardCenterPanel = new PianoKeyboardPanel();
 		keyboardCenterPanel.keyboard.chordMatrix = chordMatrix;
