@@ -434,24 +434,19 @@ public class PianoKeyboard extends JComponent {
 		addMouseMotionListener(mkl);
 		addKeyListener(mkl);
 		int octaves = getPerferredOctaves();
-		octaveSizeModel = new DefaultBoundedRangeModel(octaves, 0, MIN_OCTAVE_WIDTH, MAX_OCTAVE_WIDTH) {
-			{
-				addChangeListener(e->{
-					fireOctaveResized(e);
-					octaveSizeChanged();
-				});
-			}
-		};
-		octaveRangeModel = new DefaultBoundedRangeModel(
-			(MAX_OCTAVE_WIDTH - octaves) / 2, octaves, 0, MAX_OCTAVE_WIDTH) {
-			{
-				addChangeListener(e->{
-					fireOctaveMoved(e);
-					checkOutOfBounds();
-					repaint();
-				});
-			}
-		};
+		octaveSizeModel = new DefaultBoundedRangeModel
+				(octaves, 0, MIN_OCTAVE_WIDTH, MAX_OCTAVE_WIDTH);
+		octaveSizeModel.addChangeListener(e->{
+			fireOctaveResized(e);
+			octaveSizeChanged();
+		});
+		octaveRangeModel = new DefaultBoundedRangeModel
+				((MAX_OCTAVE_WIDTH - octaves) / 2, octaves, 0, MAX_OCTAVE_WIDTH);
+		octaveRangeModel.addChangeListener(e->{
+			fireOctaveMoved(e);
+			checkOutOfBounds();
+			repaint();
+		});
 		addComponentListener(new ComponentAdapter() {
 			@Override
 			public void componentResized(ComponentEvent e) {
@@ -714,7 +709,7 @@ public class PianoKeyboard extends JComponent {
 	public Integer[] getSelectedNotes() {
 		return selectedKeyNoteList.toArray(new Integer[0]);
 	}
-	Chord getChord() { return chord; }
+	public Chord getChord() { return chord; }
 	public void setChord(Chord c) { chordDisplay.setChord(chord = c); }
 	public void setKeySignature(Key ks) { keySignature = ks; repaint(); }
 	private int	maxSelectable = 1;

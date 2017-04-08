@@ -1,7 +1,10 @@
 package camidion.chordhelper.mididevice;
 
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
+
 import javax.sound.midi.MidiDevice;
-import javax.sound.midi.MidiSystem;
 import javax.sound.midi.MidiUnavailableException;
 import javax.sound.midi.Receiver;
 import javax.sound.midi.Transmitter;
@@ -52,16 +55,6 @@ public class MidiDeviceModel {
 	public MidiDeviceTreeModel getDeviceTreeModel() { return deviceTreeModel; }
 	protected MidiDeviceTreeModel deviceTreeModel;
 	/**
-	 * MIDIデバイス情報からMIDIデバイスモデルを構築します。
-	 *
-	 * @param deviceInfo 対象MIDIデバイス情報
-	 * @param deviceTreeModel 収容先のMIDIデバイスツリーモデル
-	 * @throws MidiUnavailableException {@link MidiSystem#getMidiDevice(MidiDevice.Info)}からの例外
-	 */
-	public MidiDeviceModel(MidiDevice.Info deviceInfo, MidiDeviceTreeModel deviceTreeModel) throws MidiUnavailableException {
-		this(MidiSystem.getMidiDevice(deviceInfo), deviceTreeModel);
-	}
-	/**
 	 * MIDIデバイスからモデルを構築します。
 	 *
 	 * @param device 対象MIDIデバイス
@@ -69,10 +62,9 @@ public class MidiDeviceModel {
 	 */
 	public MidiDeviceModel(MidiDevice device, MidiDeviceTreeModel deviceTreeModel) {
 		this.deviceTreeModel = deviceTreeModel;
-		this.device = device;
+		ioType = MidiDeviceInOutType.getValueFor(this.device = device);
 		if( device.getMaxTransmitters() != 0 ) txListModel = new TransmitterListModel(this);
 		if( device.getMaxReceivers() != 0 ) rxListModel = new ReceiverListModel(this);
-		ioType = MidiDeviceInOutType.getValueFor(device);
 		treePath = new TreePath(new Object[] {deviceTreeModel, ioType ,this});
 	}
 	/**
@@ -88,12 +80,29 @@ public class MidiDeviceModel {
 		if( rxListModel != null ) rxListModel.openSingleReceiver();
 	}
 	/**
+	 * 開かれている{@link Receiver}を返します。
+	 * @return このMIDIデバイスの開かれた{@link Receiver}（ない場合はnull）
+	 */
+	public Receiver getReceiver() {
+		if( rxListModel == null ) return null;
+		List<Receiver> rxList = rxListModel.getTransceivers();
+		return rxList.isEmpty() ? null : rxList.get(0);
+	}
+	/**
+	 * このリストモデルの{@link Receiver}に接続された{@link Transmitter}を全て閉じ、
+	 * 接続相手だったMIDIデバイスモデルのユニークな集合を返します。
+	 * 接続相手が存在していなかった場合は、空集合を返します。
+	 *
+	 * @return 閉じた{@link Transmitter}を持っていた接続相手の{@link MidiDeviceModel}の集合
+	 */
+	public Set<MidiDeviceModel> disconnectPeerTransmitters() {
+		return rxListModel == null ? Collections.emptySet() :
+			rxListModel.closeAllConnectedTransmitters();
+	}
+	/**
 	 * このMIDIデバイスを {@link MidiDevice#close()} で閉じます。
-	 * このMIDIデバイスの{@link Receiver}に接続している他デバイスの{@link Transmitter}があれば、
+	 * このMIDIデバイスの{@link Receiver}に接続している相手デバイスの{@link Transmitter}があれば、
 	 * それらも全て閉じます。
 	 */
-	public void close() {
-		if( rxListModel != null ) rxListModel.closeAllConnectedTransmitters();
-		device.close();
-	}
+	public void close() { disconnectPeerTransmitters(); device.close(); }
 }

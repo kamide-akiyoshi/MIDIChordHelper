@@ -57,19 +57,17 @@ public class MidiDeviceTreeView extends JTree {
 					boolean selected, boolean expanded, boolean leaf, int row, boolean hasFocus)
 			{
 				super.getTreeCellRendererComponent(tree, value, selected, expanded, leaf, row, hasFocus);
-				setToolTipText(value.toString());
 				if(leaf) {
-					MidiDeviceModel deviceModel = (MidiDeviceModel)value;
-					if( deviceModel.getMidiDevice().isOpen() ) {
+					boolean open = ((MidiDeviceModel)value).getMidiDevice().isOpen();
+					if(open) {
 						setDisabledIcon(MidiDeviceDialog.MIDI_CONNECTER_ICON);
-						setEnabled(false);
-						setToolTipText(getToolTipText()+"はすでに開いています");
+						setToolTipText(value+"はすでに開いています");
 					} else {
 						setIcon(MidiDeviceDialog.MIDI_CONNECTER_ICON);
-						setEnabled(true);
-						setToolTipText("ドラッグ＆ドロップで"+getToolTipText()+"が開きます");
+						setToolTipText("ドラッグ＆ドロップで"+value+"が開きます");
 					}
-				}
+					setEnabled(!open);
+				} else setToolTipText(value.toString());
 				return this;
 			}
 		});

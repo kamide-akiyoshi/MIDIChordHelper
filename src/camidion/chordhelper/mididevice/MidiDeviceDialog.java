@@ -41,9 +41,9 @@ public class MidiDeviceDialog extends JDialog {
 		setBounds( 300, 300, 820, 540 );
 		MidiDeviceTreeView deviceTreeView = new MidiDeviceTreeView(deviceTreeModel);
 		MidiDeviceInfoPane deviceInfoPane = new MidiDeviceInfoPane();
-		deviceTreeView.addTreeSelectionListener(deviceInfoPane);
-		MidiDeviceDesktopPane desktopPane = new MidiDeviceDesktopPane(deviceTreeView, deviceInfoPane, this);
-		deviceTreeView.addTreeSelectionListener(desktopPane);
+		deviceTreeView.addTreeSelectionListener(e->deviceInfoPane.setTreePath(e.getNewLeadSelectionPath()));
+		MidiDeviceDesktopPane desktopPane = new MidiDeviceDesktopPane(deviceTreeView, deviceInfoPane);
+		deviceTreeView.addTreeSelectionListener(e->desktopPane.setTreePath(e.getNewLeadSelectionPath()));
 		deviceTreeView.setSelectionRow(0);
 		add(new JSplitPane(
 			JSplitPane.HORIZONTAL_SPLIT,
@@ -55,7 +55,7 @@ public class MidiDeviceDialog extends JDialog {
 						add(new JButton("Detect USB MIDI devices", new ButtonIcon(ButtonIcon.REPEAT_ICON)) {{
 							setToolTipText("Update view for USB MIDI device newly plugged or removed");
 							addActionListener(e->{
-								deviceTreeModel.updateMidiDeviceList();
+								deviceTreeModel.update();
 								deviceTreeView.expandAll();
 							});
 						}});

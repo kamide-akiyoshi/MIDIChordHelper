@@ -8,14 +8,12 @@ import javax.swing.JInternalFrame;
 import javax.swing.event.InternalFrameAdapter;
 import javax.swing.event.InternalFrameEvent;
 import javax.swing.event.InternalFrameListener;
-import javax.swing.event.TreeSelectionEvent;
-import javax.swing.event.TreeSelectionListener;
 import javax.swing.tree.TreePath;
 
 /**
  * MIDIデバイス情報表示エリア
  */
-public class MidiDeviceInfoPane extends JEditorPane implements TreeSelectionListener {
+public class MidiDeviceInfoPane extends JEditorPane {
 	private String treeNodeTextOf(Object node) {
 		String html = "<html><head></head><body>";
 		if( node instanceof MidiDeviceModel ) {
@@ -75,11 +73,10 @@ public class MidiDeviceInfoPane extends JEditorPane implements TreeSelectionList
 		}
 	};
 	/**
-	 * ツリー上で選択状態が変わったとき、表示対象のMIDIデバイスを切り替えます。
+	 * ツリーパスを設定し、その内容を表示します。
+	 * @param treePath　表示するツリーパス
 	 */
-	@Override
-	public void valueChanged(TreeSelectionEvent e) {
-		TreePath treePath = e.getNewLeadSelectionPath();
+	public void setTreePath(TreePath treePath) {
 		setText(treeNodeTextOf(treePath == null ? null : treePath.getLastPathComponent()));
 	}
 	/**

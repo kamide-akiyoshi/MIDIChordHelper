@@ -650,9 +650,9 @@ public class MidiSequenceEditorDialog extends JDialog {
 			eventSelectionListener = new EventSelectionListener();
 			titleLabel = new TitleLabel();
 			//
-			TableColumnModel colModel = getColumnModel();
+			TableColumnModel cm = getColumnModel();
 			Arrays.stream(TrackEventListTableModel.Column.values()).forEach(c->
-				colModel.getColumn(c.ordinal()).setPreferredWidth(c.preferredWidth)
+				cm.getColumn(c.ordinal()).setPreferredWidth(c.preferredWidth)
 			);
 		}
 		/**

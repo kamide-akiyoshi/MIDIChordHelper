@@ -1,5 +1,8 @@
 package camidion.chordhelper.mididevice;
 
+import java.util.Arrays;
+import java.util.stream.Stream;
+
 import javax.sound.midi.MidiDevice;
 import javax.sound.midi.MidiEvent;
 import javax.sound.midi.Receiver;
@@ -30,6 +33,9 @@ public enum MidiDeviceInOutType {
 	private MidiDeviceInOutType(String description, String shortName) {
 		this.description = description;
 		this.shortName = shortName;
+	}
+	public static Stream<MidiDeviceInOutType> stream() {
+		return Arrays.stream(values());
 	}
 	/**
 	 * 指定されたMIDIデバイスがどの入出力タイプに該当するかを返します。

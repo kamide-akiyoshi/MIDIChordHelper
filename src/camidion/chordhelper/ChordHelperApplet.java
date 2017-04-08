@@ -272,7 +272,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public static class VersionInfo {
 		public static final String NAME = "MIDI Chord Helper";
-		public static final String VERSION = "Ver.20170401.1";
+		public static final String VERSION = "Ver.20170408.1";
 		public static final String COPYRIGHT = "Copyright (C) 2004-2017";
 		public static final String AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";
@@ -366,19 +366,13 @@ public class ChordHelperApplet extends JApplet {
 			));
 			keyboardCenterPanel.keyboard.setPreferredSize(new Dimension(571, 80));
 		}};
+		// MIDIデバイスとMIDIエディタのセットアップ
 		VirtualMidiDevice guiMidiDevice = keyboardPanel.keyboardCenterPanel.keyboard.midiDevice;
-		//
-		// MIDIデバイスツリーモデルを構築
 		deviceTreeModel = new MidiDeviceTreeModel(guiMidiDevice);
-		//
-		// MIDIシーケンサと連携するプレイリストモデルを構築
-		playlistModel = new PlaylistTableModel(sequencerModel = deviceTreeModel.getSequencerModel());
-		//
-		// MIDIデバイスダイアログの構築
+		sequencerModel = deviceTreeModel.getSequencerModel();
+		playlistModel = new PlaylistTableModel(sequencerModel);
 		MidiDeviceDialog midiDeviceDialog = new MidiDeviceDialog(deviceTreeModel);
 		midiDeviceDialog.setIconImage(iconImage);
-		//
-		// MIDIエディタダイアログの構築
 		midiEditor = new MidiSequenceEditorDialog(playlistModel, guiMidiDevice, midiDeviceDialog.getOpenAction());
 		midiEditor.setIconImage(iconImage);
 		//
