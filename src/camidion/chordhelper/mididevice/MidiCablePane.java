@@ -126,10 +126,8 @@ public class MidiCablePane extends JComponent {
 		public void internalFrameDeactivated(InternalFrameEvent e) { repaint(); }
 		@Override
 		public void internalFrameClosing(InternalFrameEvent e) {
-			JInternalFrame f = e.getInternalFrame();
-			if( ! (f instanceof MidiDeviceFrame) ) return;
-			MidiDeviceModel m = ((MidiDeviceFrame)f).getMidiDeviceModel();
-			m.getMidiDevice().getReceivers().forEach(rx->rxToColor.remove(rx));
+			((MidiDeviceFrame)e.getInternalFrame()).getMidiDeviceModel()
+				.getMidiDevice().getReceivers().forEach(rx->rxToColor.remove(rx));
 			repaint();
 		}
 	};

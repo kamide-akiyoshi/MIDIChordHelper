@@ -5,7 +5,6 @@ import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
 
 import javax.swing.JComponent;
-import javax.swing.JInternalFrame;
 import javax.swing.JTree;
 import javax.swing.ToolTipManager;
 import javax.swing.TransferHandler;
@@ -26,10 +25,8 @@ public class MidiDeviceTreeView extends JTree {
 	public final InternalFrameListener midiDeviceFrameListener = new InternalFrameAdapter() {
 		@Override
 		public void internalFrameActivated(InternalFrameEvent e) {
-			JInternalFrame frame = e.getInternalFrame();
-			if( ! (frame instanceof MidiDeviceFrame ) ) return;
 			// 選択されたフレームのツリーノードを選択
-			setSelectionPath(((MidiDeviceFrame)frame).getMidiDeviceModel().getTreePath());
+			setSelectionPath(((MidiDeviceFrame)e.getInternalFrame()).getMidiDeviceModel().getTreePath());
 		}
 		@Override
 		public void internalFrameClosing(InternalFrameEvent e) {

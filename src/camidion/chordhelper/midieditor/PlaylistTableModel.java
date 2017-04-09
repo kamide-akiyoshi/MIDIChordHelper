@@ -21,6 +21,7 @@ import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
+import javax.swing.event.TableModelEvent;
 import javax.swing.table.AbstractTableModel;
 
 import camidion.chordhelper.ButtonIcon;
@@ -52,6 +53,15 @@ public class PlaylistTableModel extends AbstractTableModel {
 			setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		}
 	};
+	/**
+	 * テーブルモデルの変更を示すイベントが、ファイル名の変更によるものかどうかをチェックします。
+	 * @param event テーブルモデルの変更を示すイベント
+	 * @return　ファイル名の変更による場合true
+	 */
+	public static boolean filenameChanged(TableModelEvent event) {
+		int c = event.getColumn();
+		return c == Column.FILENAME.ordinal() || c == TableModelEvent.ALL_COLUMNS ;
+	}
 	/** 再生中のシーケンサーの秒位置リスナー */
 	private ChangeListener mmssPosition = new ChangeListener() {
 		private int value = 0;

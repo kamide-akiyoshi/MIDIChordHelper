@@ -170,20 +170,20 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public boolean isPlaying() { return isRunning(); }
 	/**
-	 * 現在シーケンサにロードされているMIDIデータを
-	 * Base64テキストに変換した結果を返します。
-	 * @return MIDIデータをBase64テキストに変換した結果
+	 * 現在シーケンサにロードされているMIDIデータをBase64テキストに変換した結果を返します。
+	 * @return MIDIデータをBase64テキストに変換した結果（シーケンサにロードされていない場合null）
 	 * @throws IOException MIDIデータの読み込みに失敗した場合
 	 */
 	public String getMidiDataBase64() throws IOException {
-		SequenceTrackListTableModel sequenceModel = sequencerModel.getSequenceTrackListTableModel();
+		SequenceTrackListTableModel s = sequencerModel.getSequenceTrackListTableModel();
+		if( s == null ) return null;
 		Base64Dialog d = midiEditor.base64Dialog;
-		d.setMIDIData(sequenceModel.getMIDIdata());
+		d.setMIDIData(s.getMIDIdata());
 		return d.getBase64Data();
 	}
 	/**
 	 * 現在シーケンサにロードされているMIDIファイルのファイル名を返します。
-	 * @return MIDIファイル名（設定されていないときは空文字列）
+	 * @return MIDIファイル名（設定されていないときは空文字列、シーケンサにロードされていない場合null）
 	 */
 	public String getMidiFilename() {
 		SequenceTrackListTableModel s = sequencerModel.getSequenceTrackListTableModel();
@@ -272,7 +272,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public static class VersionInfo {
 		public static final String NAME = "MIDI Chord Helper";
-		public static final String VERSION = "Ver.20170408.1";
+		public static final String VERSION = "Ver.20170409.1";
 		public static final String COPYRIGHT = "Copyright (C) 2004-2017";
 		public static final String AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";
@@ -288,10 +288,12 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public static final Insets ZERO_INSETS = new Insets(0,0,0,0);
 
-	// GUIコンポーネント
+	// GUIコンポーネント（Javaアプリメインからの参照用）
 	MidiSequenceEditorDialog midiEditor;
 	PlaylistTableModel playlistModel;
-	MidiSequencerModel sequencerModel;
+
+	// GUIコンポーネント（内部保存用）
+	private MidiSequencerModel sequencerModel;
 	private ChordMatrix chordMatrix;
 	private JPanel keyboardSequencerPanel;
 	private JPanel chordGuide;
@@ -317,6 +319,7 @@ public class ChordHelperApplet extends JApplet {
 	private ImageIcon imageIcon;
 	public ImageIcon getImageIcon() { return imageIcon; }
 
+	@Override
 	public void init() {
 		// アイコン画像のロード
 		URL imageIconUrl = getClass().getResource("midichordhelper.png");

@@ -13,7 +13,6 @@ import java.util.stream.Stream;
 
 import javax.sound.midi.MidiUnavailableException;
 import javax.swing.JDesktopPane;
-import javax.swing.JInternalFrame;
 import javax.swing.JLayeredPane;
 import javax.swing.JOptionPane;
 import javax.swing.TransferHandler;
@@ -49,10 +48,10 @@ public class MidiDeviceDesktopPane extends JDesktopPane {
 				return;
 			}
 		}
-		JInternalFrame frame = getSelectedFrame();
-		if( frame instanceof MidiDeviceFrame ) try {
-			((MidiDeviceFrame)frame).setSelected(false);
-		} catch( PropertyVetoException ex ) {
+		try {
+			MidiDeviceFrame selectedFrame = (MidiDeviceFrame)getSelectedFrame();
+			if( selectedFrame != null ) selectedFrame.setSelected(false);
+		} catch( Exception ex ) {
 			ex.printStackTrace();
 		}
 	}

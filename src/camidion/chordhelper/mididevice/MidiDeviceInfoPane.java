@@ -4,7 +4,6 @@ import java.beans.PropertyVetoException;
 
 import javax.sound.midi.MidiDevice;
 import javax.swing.JEditorPane;
-import javax.swing.JInternalFrame;
 import javax.swing.event.InternalFrameAdapter;
 import javax.swing.event.InternalFrameEvent;
 import javax.swing.event.InternalFrameListener;
@@ -48,15 +47,12 @@ public class MidiDeviceInfoPane extends JEditorPane {
 		}
 		@Override
 		public void internalFrameActivated(InternalFrameEvent e) {
-			JInternalFrame frame = e.getInternalFrame();
-			if( ! (frame instanceof MidiDeviceFrame ) ) return;
-			setText(treeNodeTextOf(((MidiDeviceFrame)frame).getMidiDeviceModel()));
+			setText(treeNodeTextOf(((MidiDeviceFrame)e.getInternalFrame()).getMidiDeviceModel()));
 		}
 		@Override
 		public void internalFrameClosing(InternalFrameEvent e) {
-			JInternalFrame ｆ = e.getInternalFrame();
-			if( ! (ｆ instanceof MidiDeviceFrame ) ) return;
-			MidiDeviceModel m = ((MidiDeviceFrame)ｆ).getMidiDeviceModel();
+			MidiDeviceFrame ｆ = (MidiDeviceFrame)e.getInternalFrame();
+			MidiDeviceModel m = ｆ.getMidiDeviceModel();
 			m.close();
 			// デバイスが閉じたことを確認してから画面を閉じる
 			if( ! m.getMidiDevice().isOpen() ) {

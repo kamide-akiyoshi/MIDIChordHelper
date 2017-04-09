@@ -26,6 +26,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.WindowConstants;
 import javax.swing.event.TableModelEvent;
 
+import camidion.chordhelper.mididevice.MidiSequencerModel;
 import camidion.chordhelper.midieditor.PlaylistTableModel;
 import camidion.chordhelper.midieditor.SequenceTrackListTableModel;
 
@@ -46,30 +47,31 @@ public class MidiChordHelper {
 		private JLabel status_ = new JLabel("Welcome to "+ChordHelperApplet.VersionInfo.NAME) {
 			{ setFont(getFont().deriveFont(Font.PLAIN)); }
 		};
-		/**
-		 * 指定されたMIDIシーケンスモデルのファイル名をタイトルバーに反映します。
-		 * @param seq MIDIシーケンスモデル
-		 */
-		private void setFilenameToTitle(SequenceTrackListTableModel seq) {
+		private void updateFilename(SequenceTrackListTableModel sequence) {
 			String title = ChordHelperApplet.VersionInfo.NAME;
-			if( seq != null ) {
-				String filename = seq.getFilename();
-				if( filename != null && ! filename.isEmpty() ) title = filename + " - " + title;
+			if( sequence != null ) {
+				String filename = sequence.getFilename();
+				if( filename != null && ! filename.isEmpty() )
+					title = filename+" - "+title;
 			}
 			setTitle(title);
 		}
+		private void updateFilename(MidiSequencerModel sequencer) {
+			updateFilename(sequencer.getSequenceTrackListTableModel());
+		}
+		private void updateFilename(TableModelEvent event) {
+			if( ! PlaylistTableModel.filenameChanged(event) ) return;
+			updateFilename(((PlaylistTableModel)event.getSource()).getSequencerModel());
+		}
 		public AppletFrame(ChordHelperApplet applet, List<File> fileList) {
-			setTitle(ChordHelperApplet.VersionInfo.NAME);
 			add( applet, BorderLayout.CENTER );
 			add( status_, BorderLayout.SOUTH );
 			applet.setStub(this);
 			applet.init();
 			setIconImage(applet.getIconImage());
-			setDefaultCloseOperation( WindowConstants.DO_NOTHING_ON_CLOSE );
 			pack();
 			setLocationRelativeTo(null);
-			setVisible(true);
-			applet.start();
+			setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
 			addWindowListener(new WindowAdapter() {
 				@Override
 				public void windowClosing(WindowEvent event) {
@@ -79,15 +81,11 @@ public class MidiChordHelper {
 					)) { applet.destroy(); System.exit(0); }
 				}
 			});
-			// シーケンサで切り替わった再生対象ファイル名をタイトルバーに反映
-			applet.sequencerModel.addChangeListener(e->setFilenameToTitle(applet.sequencerModel.getSequenceTrackListTableModel()));
-			// プレイリスト上で変更された再生対象ファイル名をタイトルバーに反映
-			applet.playlistModel.addTableModelListener(tme->{
-				int col = tme.getColumn();
-				if( col == PlaylistTableModel.Column.FILENAME.ordinal() || col == TableModelEvent.ALL_COLUMNS ) {
-					setFilenameToTitle(applet.sequencerModel.getSequenceTrackListTableModel());
-				}
-			});
+			applet.playlistModel.getSequencerModel().addChangeListener(e->updateFilename((MidiSequencerModel)e.getSource()));
+			applet.playlistModel.addTableModelListener(e->updateFilename(e));
+			updateFilename(applet.playlistModel.getSequencerModel());
+			setVisible(true);
+			applet.start();
 			applet.midiEditor.play(fileList);
 		}
 		@Override
