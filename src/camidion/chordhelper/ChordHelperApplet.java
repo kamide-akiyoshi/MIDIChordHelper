@@ -272,7 +272,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public static class VersionInfo {
 		public static final String NAME = "MIDI Chord Helper";
-		public static final String VERSION = "Ver.20170409.1";
+		public static final String VERSION = "Ver.20170410.1";
 		public static final String COPYRIGHT = "Copyright (C) 2004-2017";
 		public static final String AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";
@@ -283,16 +283,14 @@ public class ChordHelperApplet extends JApplet {
 				VersionInfo.NAME, VersionInfo.VERSION,
 				VersionInfo.COPYRIGHT ,VersionInfo.AUTHER, VersionInfo.URL);
 	}
-	/**
-	 * ボタンの余白を詰めたいときに setMargin() の引数に指定するインセット
-	 */
+	/** ボタンの余白を詰めたいときに setMargin() の引数に指定するインセット */
 	public static final Insets ZERO_INSETS = new Insets(0,0,0,0);
 
-	// GUIコンポーネント（Javaアプリメインからの参照用）
+	// MIDIエディタダイアログ（Javaアプリメインからもアクセスできるようprivateにしていない）
 	MidiSequenceEditorDialog midiEditor;
-	PlaylistTableModel playlistModel;
 
 	// GUIコンポーネント（内部保存用）
+	private PlaylistTableModel playlistModel;
 	private MidiSequencerModel sequencerModel;
 	private ChordMatrix chordMatrix;
 	private JPanel keyboardSequencerPanel;

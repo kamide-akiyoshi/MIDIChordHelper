@@ -22,6 +22,7 @@ import java.util.stream.Collectors;
 
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import javax.swing.WindowConstants;
 import javax.swing.event.TableModelEvent;
@@ -64,8 +65,8 @@ public class MidiChordHelper {
 			updateFilename(((PlaylistTableModel)event.getSource()).getSequencerModel());
 		}
 		public AppletFrame(ChordHelperApplet applet, List<File> fileList) {
-			add( applet, BorderLayout.CENTER );
-			add( status_, BorderLayout.SOUTH );
+			add(applet, BorderLayout.CENTER);
+			add(status_, BorderLayout.SOUTH);
 			applet.setStub(this);
 			applet.init();
 			setIconImage(applet.getIconImage());
@@ -75,18 +76,26 @@ public class MidiChordHelper {
 			addWindowListener(new WindowAdapter() {
 				@Override
 				public void windowClosing(WindowEvent event) {
-					if( ! applet.isModified() || applet.midiEditor.confirm(
-						"MIDI file not saved, exit anyway ?\n"+
-						"保存されていないMIDIファイルがありますが、終了してよろしいですか？"
-					)) { applet.destroy(); System.exit(0); }
+					if( applet.isModified() && ! confirmBeforeExit() ) return;
+					applet.destroy();
+					System.exit(0);
 				}
 			});
-			applet.playlistModel.getSequencerModel().addChangeListener(e->updateFilename((MidiSequencerModel)e.getSource()));
-			applet.playlistModel.addTableModelListener(e->updateFilename(e));
-			updateFilename(applet.playlistModel.getSequencerModel());
+			PlaylistTableModel playlistModel = applet.midiEditor.sequenceListTable.getModel();
+			playlistModel.getSequencerModel().addChangeListener(e->updateFilename((MidiSequencerModel)e.getSource()));
+			playlistModel.addTableModelListener(e->updateFilename(e));
+			updateFilename(playlistModel.getSequencerModel());
 			setVisible(true);
 			applet.start();
 			applet.midiEditor.play(fileList);
+		}
+		private boolean confirmBeforeExit() {
+			String message = "MIDI file not saved, exit anyway ?\n"+
+					"MIDIファイルが保存されていません。終了してよろしいですか？";
+			return JOptionPane.showConfirmDialog(
+					null, message, ChordHelperApplet.VersionInfo.NAME,
+					JOptionPane.YES_NO_OPTION,
+					JOptionPane.WARNING_MESSAGE) == JOptionPane.YES_OPTION ;
 		}
 		@Override
 		public boolean isActive() { return true; }

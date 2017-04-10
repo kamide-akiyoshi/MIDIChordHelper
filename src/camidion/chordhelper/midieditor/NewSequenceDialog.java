@@ -4,7 +4,6 @@ import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.GridLayout;
-import java.awt.Insets;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
@@ -55,7 +54,6 @@ import camidion.chordhelper.pianokeyboard.PianoKeyboardPanel;
  * 新しいMIDIシーケンスを生成するダイアログ
  */
 public class NewSequenceDialog extends JDialog {
-	private static final Insets ZERO_INSETS = new Insets(0,0,0,0);
 	private static final Integer[] PPQList = {
 		48,60,80,96,120,160,192,240,320,384,480,960
 	};
@@ -138,7 +136,7 @@ public class NewSequenceDialog extends JDialog {
 					add(measureSelecter);
 				}});
 				add(new JButton("Randomize (Tempo, Time signature, Chord progression)") {{
-					setMargin(ZERO_INSETS);
+					setMargin(ChordHelperApplet.ZERO_INSETS);
 					addActionListener(e->setRandomChordProgression(measureSelecter.getMeasureDuration()));
 				}});
 				add(new JPanel() {{
@@ -154,7 +152,7 @@ public class NewSequenceDialog extends JDialog {
 					add(new JLabel("Chord progression :"));
 					add(new JLabel("Transpose"));
 					add(new JButton(" + Up ") {{
-						setMargin(ZERO_INSETS);
+						setMargin(ChordHelperApplet.ZERO_INSETS);
 						addActionListener(e->{
 							ChordProgression cp = createChordProgression();
 							cp.transpose(1);
@@ -162,7 +160,7 @@ public class NewSequenceDialog extends JDialog {
 						});
 					}});
 					add(new JButton(" - Down ") {{
-						setMargin(ZERO_INSETS);
+						setMargin(ChordHelperApplet.ZERO_INSETS);
 						addActionListener(e->{
 							ChordProgression cp = createChordProgression();
 							cp.transpose(-1);
@@ -170,7 +168,7 @@ public class NewSequenceDialog extends JDialog {
 						});
 					}});
 					add(new JButton(" Enharmonic ") {{
-						setMargin(ZERO_INSETS);
+						setMargin(ChordHelperApplet.ZERO_INSETS);
 						addActionListener(e->{
 							ChordProgression cp = createChordProgression();
 							cp.toggleEnharmonically();
@@ -178,7 +176,7 @@ public class NewSequenceDialog extends JDialog {
 						});
 					}});
 					add(new JButton("Relative key") {{
-						setMargin(ZERO_INSETS);
+						setMargin(ChordHelperApplet.ZERO_INSETS);
 						addActionListener(e->{
 							ChordProgression cp = createChordProgression();
 							cp.toggleKeyMajorMinor();
@@ -189,7 +187,9 @@ public class NewSequenceDialog extends JDialog {
 				add(new JScrollPane(chordText));
 				add(new JPanel() {{
 					setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
-					add(new JButton(generateAction){{setMargin(ZERO_INSETS);}});
+					add(new JButton(generateAction){{
+						setMargin(ChordHelperApplet.ZERO_INSETS);
+					}});
 				}});
 			}});
 			add("Track", trackSpecPanel);
