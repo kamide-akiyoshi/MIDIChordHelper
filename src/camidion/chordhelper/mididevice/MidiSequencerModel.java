@@ -45,7 +45,7 @@ public class MidiSequencerModel extends MidiDeviceModel implements BoundedRangeM
 	/**
 	 * このシーケンサーの再生スピード
 	 */
-	public BoundedRangeModel speedSliderModel = new DefaultBoundedRangeModel(0, 0, -7, 7) {{
+	public final BoundedRangeModel speedSliderModel = new DefaultBoundedRangeModel(0, 0, -7, 7) {{
 		addChangeListener(e->getSequencer().setTempoFactor(SequencerSpeedSlider.tempoFactorOf(getValue())));
 	}};
 	/**

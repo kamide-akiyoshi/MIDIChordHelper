@@ -128,14 +128,20 @@ public class MidiSequenceEditorDialog extends JDialog {
 			} catch (Exception e) { showError(e); return false; }
 		}
 	};
-
+	/**
+	 * このエディタダイアログが表示しているプレイリストモデルを返します。
+	 * @return プレイリストモデル
+	 */
+	public PlaylistTableModel getPlaylistModel() {
+		return sequenceListTable.getModel();
+	}
 	/**
 	 * 指定されたリストに格納されたMIDIファイルを読み込んで再生します。
 	 * すでに再生されていた場合、このエディタダイアログを表示します。
 	 * @param fileList 読み込むMIDIファイルのリスト
 	 */
 	public void play(List<File> fileList) {
-		PlaylistTableModel playlist = sequenceListTable.getModel();
+		PlaylistTableModel playlist = getPlaylistModel();
 		int firstIndex = -1;
 		Iterator<File> itr = fileList.iterator();
 		while(itr.hasNext()) {
@@ -176,7 +182,7 @@ public class MidiSequenceEditorDialog extends JDialog {
 	/**
 	 * プレイリストビュー（シーケンスリスト）
 	 */
-	public SequenceListTable sequenceListTable;
+	private SequenceListTable sequenceListTable;
 	/**
 	 * MIDIトラックリストテーブルビュー（選択中のシーケンスの中身）
 	 */
@@ -1124,7 +1130,6 @@ public class MidiSequenceEditorDialog extends JDialog {
 					add(new JButton(sequenceListTable.base64EncodeAction) {{ setMargin(ChordHelperApplet.ZERO_INSETS); }});
 				}
 				add(Box.createRigidArea(new Dimension(5, 0)));
-				PlaylistTableModel playlistTableModel = sequenceListTable.getModel();
 				add(new JButton(playlistTableModel.getMoveToTopAction()) {
 					{ setMargin(ChordHelperApplet.ZERO_INSETS); }
 				});
@@ -1147,7 +1152,7 @@ public class MidiSequenceEditorDialog extends JDialog {
 				add( Box.createRigidArea(new Dimension(5, 0)) );
 				add(new JPanel() {{
 					setBorder(new EtchedBorder());
-					MidiSequencerModel sequencerModel = sequenceListTable.getModel().getSequencerModel();
+					MidiSequencerModel sequencerModel = getPlaylistModel().getSequencerModel();
 					add(new JLabel("Sync Master"));
 					add(new JComboBox<Sequencer.SyncMode>(sequencerModel.masterSyncModeModel));
 					add(new JLabel("Slave"));

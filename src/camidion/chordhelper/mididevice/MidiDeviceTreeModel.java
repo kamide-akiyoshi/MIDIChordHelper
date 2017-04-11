@@ -30,7 +30,7 @@ import javax.swing.tree.TreePath;
 import camidion.chordhelper.ChordHelperApplet;
 
 /**
- * 仮想MIDIデバイスを含めたすべてのMIDIデバイスモデル{@link MidiDeviceModel}をリスト構造、ツリー構造で管理するモデル。
+ * 仮想MIDIデバイスを含めたすべての{@link MidiDeviceModel}をリスト構造、ツリー構造で管理するモデル。
  * 読み取り専用のMIDIデバイスリストとしても、I/Oタイプで分類されたMIDIデバイスツリーモデルとしても参照できます。
  */
 public class MidiDeviceTreeModel extends AbstractList<MidiDeviceModel> implements TreeModel {

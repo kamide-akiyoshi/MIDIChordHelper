@@ -34,102 +34,104 @@ import camidion.chordhelper.midieditor.SequenceTrackListTableModel;
 /**
  * MIDI Chord Helper を Java アプリとして起動します。
  */
-public class MidiChordHelper {
+public class MidiChordHelper extends JFrame implements AppletStub, AppletContext {
 	/**
 	 * MIDI Chord Helper を Java アプリとして起動します。
 	 * @param args コマンドライン引数
 	 * @throws Exception 何らかの異常が発生した場合にスローされる
 	 */
 	public static void main(String[] args) throws Exception {
-		List<File> fileList = Arrays.asList(args).stream().map(arg -> new File(arg)).collect(Collectors.toList());
-		SwingUtilities.invokeLater(()->new AppletFrame(new ChordHelperApplet(), fileList));
+		List<File> fileList = Arrays.asList(args).stream()
+				.map(arg -> new File(arg))
+				.collect(Collectors.toList());
+		SwingUtilities.invokeLater(()->new MidiChordHelper(fileList));
 	}
-	private static class AppletFrame extends JFrame implements AppletStub, AppletContext {
-		private JLabel status_ = new JLabel("Welcome to "+ChordHelperApplet.VersionInfo.NAME) {
-			{ setFont(getFont().deriveFont(Font.PLAIN)); }
-		};
-		private void updateFilename(SequenceTrackListTableModel sequence) {
-			String title = ChordHelperApplet.VersionInfo.NAME;
-			if( sequence != null ) {
-				String filename = sequence.getFilename();
-				if( filename != null && ! filename.isEmpty() )
-					title = filename+" - "+title;
+	private static boolean confirmBeforeExit() {
+		String message = "MIDI file not saved, exit anyway ?\n"+
+				"MIDIファイルが保存されていません。終了してよろしいですか？";
+		return JOptionPane.showConfirmDialog(
+				null, message, ChordHelperApplet.VersionInfo.NAME,
+				JOptionPane.YES_NO_OPTION,
+				JOptionPane.WARNING_MESSAGE) == JOptionPane.YES_OPTION ;
+	}
+	private JLabel statusBar = new JLabel("Welcome to "+ChordHelperApplet.VersionInfo.NAME) {
+		{ setFont(getFont().deriveFont(Font.PLAIN)); }
+	};
+	private void updateFilename(SequenceTrackListTableModel sequence) {
+		String title = ChordHelperApplet.VersionInfo.NAME;
+		if( sequence != null ) {
+			String filename = sequence.getFilename();
+			if( filename != null && ! filename.isEmpty() )
+				title = filename+" - "+title;
+		}
+		setTitle(title);
+	}
+	private void updateFilename(MidiSequencerModel sequencer) {
+		updateFilename(sequencer.getSequenceTrackListTableModel());
+	}
+	private void updateFilename(TableModelEvent event) {
+		if( ! PlaylistTableModel.filenameChanged(event) ) return;
+		updateFilename(((PlaylistTableModel)event.getSource()).getSequencerModel());
+	}
+	private MidiChordHelper(List<File> fileList) {
+		ChordHelperApplet applet = new ChordHelperApplet();
+		add(applet, BorderLayout.CENTER);
+		add(statusBar, BorderLayout.SOUTH);
+		applet.setStub(this);
+		applet.init();
+		setIconImage(applet.getIconImage());
+		pack();
+		setLocationRelativeTo(null);
+		setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
+		addWindowListener(new WindowAdapter() {
+			@Override
+			public void windowClosing(WindowEvent event) {
+				if( applet.isModified() && ! confirmBeforeExit() ) return;
+				applet.destroy();
+				System.exit(0);
 			}
-			setTitle(title);
-		}
-		private void updateFilename(MidiSequencerModel sequencer) {
-			updateFilename(sequencer.getSequenceTrackListTableModel());
-		}
-		private void updateFilename(TableModelEvent event) {
-			if( ! PlaylistTableModel.filenameChanged(event) ) return;
-			updateFilename(((PlaylistTableModel)event.getSource()).getSequencerModel());
-		}
-		public AppletFrame(ChordHelperApplet applet, List<File> fileList) {
-			add(applet, BorderLayout.CENTER);
-			add(status_, BorderLayout.SOUTH);
-			applet.setStub(this);
-			applet.init();
-			setIconImage(applet.getIconImage());
-			pack();
-			setLocationRelativeTo(null);
-			setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
-			addWindowListener(new WindowAdapter() {
-				@Override
-				public void windowClosing(WindowEvent event) {
-					if( applet.isModified() && ! confirmBeforeExit() ) return;
-					applet.destroy();
-					System.exit(0);
-				}
-			});
-			PlaylistTableModel playlistModel = applet.midiEditor.sequenceListTable.getModel();
-			playlistModel.getSequencerModel().addChangeListener(e->updateFilename((MidiSequencerModel)e.getSource()));
-			playlistModel.addTableModelListener(e->updateFilename(e));
-			updateFilename(playlistModel.getSequencerModel());
-			setVisible(true);
-			applet.start();
-			applet.midiEditor.play(fileList);
-		}
-		private boolean confirmBeforeExit() {
-			String message = "MIDI file not saved, exit anyway ?\n"+
-					"MIDIファイルが保存されていません。終了してよろしいですか？";
-			return JOptionPane.showConfirmDialog(
-					null, message, ChordHelperApplet.VersionInfo.NAME,
-					JOptionPane.YES_NO_OPTION,
-					JOptionPane.WARNING_MESSAGE) == JOptionPane.YES_OPTION ;
-		}
-		@Override
-		public boolean isActive() { return true; }
-		@Override
-		public URL getDocumentBase() { return null; }
-		@Override
-		public URL getCodeBase() { return null; }
-		@Override
-		public String getParameter(String name) { return null; }
-		@Override
-		public AppletContext getAppletContext() { return this; }
-		@Override
-		public void appletResize(int width, int height) {}
-		@Override
-		public AudioClip getAudioClip(URL url) { return null; }
-		@Override
-		public Image getImage(URL url) {
-			return Toolkit.getDefaultToolkit().getImage(url);
-		}
-		@Override
-		public Applet getApplet(String name) { return null; }
-		@Override
-		public Enumeration<Applet> getApplets() { return (null); }
-		@Override
-		public void showDocument(URL url) {}
-		@Override
-		public void showDocument(URL url, String target) {}
-		@Override
-		public void showStatus(String status) { status_.setText(status); }
-		@Override
-		public InputStream getStream(String key) { return null; }
-		@Override
-		public Iterator<String> getStreamKeys() { return null; }
-		@Override
-		public void setStream(String key, InputStream stream) throws IOException {}
+		});
+		PlaylistTableModel playlist = applet.midiEditor.getPlaylistModel();
+		MidiSequencerModel sequencer = playlist.getSequencerModel();
+		sequencer.addChangeListener(e->updateFilename((MidiSequencerModel)e.getSource()));
+		playlist.addTableModelListener(e->updateFilename(e));
+		updateFilename(sequencer);
+		setVisible(true);
+		applet.start();
+		applet.midiEditor.play(fileList);
 	}
+	@Override
+	public boolean isActive() { return true; }
+	@Override
+	public URL getDocumentBase() { return null; }
+	@Override
+	public URL getCodeBase() { return null; }
+	@Override
+	public String getParameter(String name) { return null; }
+	@Override
+	public AppletContext getAppletContext() { return this; }
+	@Override
+	public void appletResize(int width, int height) {}
+	@Override
+	public AudioClip getAudioClip(URL url) { return null; }
+	@Override
+	public Image getImage(URL url) {
+		return Toolkit.getDefaultToolkit().getImage(url);
+	}
+	@Override
+	public Applet getApplet(String name) { return null; }
+	@Override
+	public Enumeration<Applet> getApplets() { return (null); }
+	@Override
+	public void showDocument(URL url) {}
+	@Override
+	public void showDocument(URL url, String target) {}
+	@Override
+	public void showStatus(String status) { statusBar.setText(status); }
+	@Override
+	public InputStream getStream(String key) { return null; }
+	@Override
+	public Iterator<String> getStreamKeys() { return null; }
+	@Override
+	public void setStream(String key, InputStream stream) throws IOException {}
 }

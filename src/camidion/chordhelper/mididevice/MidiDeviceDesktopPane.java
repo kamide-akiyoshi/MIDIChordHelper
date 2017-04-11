@@ -35,7 +35,7 @@ public class MidiDeviceDesktopPane extends JDesktopPane {
 	 * nullを指定するとフレームの選択を解除します。
 	 * @param deviceModel 対象のMIDIデバイスモデル
 	 */
-	public void setSelectedMidiDeviceModel(MidiDeviceModel deviceModel) {
+	private void setSelectedMidiDeviceModel(MidiDeviceModel deviceModel) {
 		if( deviceModel != null ) {
 			MidiDeviceFrame deviceFrame = frameOfModel.get(deviceModel);
 			if( deviceFrame != null ) {
