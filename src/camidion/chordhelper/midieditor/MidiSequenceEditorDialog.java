@@ -88,30 +88,6 @@ public class MidiSequenceEditorDialog extends JDialog {
 			if( isVisible() ) toFront(); else setVisible(true);
 		}
 	};
-	private Action midiDeviceDialogOpenAction;
-
-	/**
-	 * エラーメッセージダイアログを表示します。
-	 * @param message エラーメッセージ
-	 */
-	public void showError(Object message) { showMessage(message, JOptionPane.ERROR_MESSAGE); }
-	/**
-	 * 警告メッセージダイアログを表示します。
-	 * @param message 警告メッセージ
-	 */
-	public void showWarning(Object message) { showMessage(message, JOptionPane.WARNING_MESSAGE); }
-	private void showMessage(Object message, int messageType) {
-		JOptionPane.showMessageDialog(this, message, ChordHelperApplet.VersionInfo.NAME, messageType);
-	}
-	/**
-	 * 確認ダイアログを表示します。
-	 * @param message 確認メッセージ
-	 * @return 確認OKのときtrue
-	 */
-	public boolean confirm(Object message) {
-		return JOptionPane.showConfirmDialog(this, message, ChordHelperApplet.VersionInfo.NAME,
-				JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE) == JOptionPane.YES_OPTION ;
-	}
 
 	/** ドロップされた複数のMIDIファイルを読み込むハンドラー */
 	public final TransferHandler transferHandler = new TransferHandler() {
@@ -125,7 +101,14 @@ public class MidiSequenceEditorDialog extends JDialog {
 			try {
 				play((List<File>)support.getTransferable().getTransferData(DataFlavor.javaFileListFlavor));
 				return true;
-			} catch (Exception e) { showError(e); return false; }
+			} catch (Exception e) {
+				JOptionPane.showMessageDialog(
+						MidiSequenceEditorDialog.this,
+						e,
+						ChordHelperApplet.VersionInfo.NAME,
+						JOptionPane.ERROR_MESSAGE);
+				return false;
+			}
 		}
 	};
 	/**
@@ -151,12 +134,19 @@ public class MidiSequenceEditorDialog extends JDialog {
 				if( firstIndex < 0 ) firstIndex = lastIndex;
 			} catch(IOException|InvalidMidiDataException e) {
 				String message = "Could not open as MIDI file "+file+"\n"+e;
-				if( ! itr.hasNext() ) { showWarning(message); break; }
-				if( ! confirm(message + "\n\nContinue to open next file ?") ) break;
-			} catch(AccessControlException e) {
-				showError(e); break;
+				if( ! itr.hasNext() ) {
+					JOptionPane.showMessageDialog(this, message, ChordHelperApplet.VersionInfo.NAME, JOptionPane.WARNING_MESSAGE);
+					break;
+				}
+				if( JOptionPane.showConfirmDialog(this,
+						message + "\n\nContinue to open next file ?",
+						ChordHelperApplet.VersionInfo.NAME,
+						JOptionPane.YES_NO_OPTION,
+						JOptionPane.WARNING_MESSAGE) != JOptionPane.YES_OPTION
+				) break;
 			} catch(Exception e) {
-				showError(e); break;
+				JOptionPane.showMessageDialog(this, e, ChordHelperApplet.VersionInfo.NAME, JOptionPane.ERROR_MESSAGE);
+				break;
 			}
 		}
 		try {
@@ -167,7 +157,9 @@ public class MidiSequenceEditorDialog extends JDialog {
 				return;
 			}
 			if( firstIndex >= 0 ) playlist.play(firstIndex);
-		} catch (Exception e) { showError(e); }
+		} catch (Exception e) {
+			JOptionPane.showMessageDialog(this, e, ChordHelperApplet.VersionInfo.NAME, JOptionPane.ERROR_MESSAGE);
+		}
 	}
 
 	private static final Icon deleteIcon = new ButtonIcon(ButtonIcon.X_ICON);
@@ -176,13 +168,9 @@ public class MidiSequenceEditorDialog extends JDialog {
 	 */
 	public NewSequenceDialog newSequenceDialog;
 	/**
-	 * BASE64テキスト入力ダイアログ
-	 */
-	public Base64Dialog base64Dialog;
-	/**
 	 * プレイリストビュー（シーケンスリスト）
 	 */
-	private SequenceListTable sequenceListTable;
+	public SequenceListTable sequenceListTable;
 	/**
 	 * MIDIトラックリストテーブルビュー（選択中のシーケンスの中身）
 	 */
@@ -208,15 +196,24 @@ public class MidiSequenceEditorDialog extends JDialog {
 		 */
 		private MidiFileChooser midiFileChooser;
 		/**
-		 * BASE64エンコードアクション（ライブラリが見えている場合のみ有効）
+		 * BASE64エンコードアクション
 		 */
 		private Action base64EncodeAction;
+		/**
+		 * BASE64ダイアログ
+		 */
+		public Base64Dialog base64Dialog;
+		/**
+		 * MIDIデバイスダイアログを開くアクション
+		 */
+		private Action midiDeviceDialogOpenAction;
 		/**
 		 * プレイリストビューを構築します。
 		 * @param model プレイリストデータモデル
 		 */
-		public SequenceListTable(PlaylistTableModel model) {
+		public SequenceListTable(PlaylistTableModel model, Action midiDeviceDialogOpenAction) {
 			super(model, null, model.sequenceListSelectionModel);
+			this.midiDeviceDialogOpenAction = midiDeviceDialogOpenAction;
 			try {
 				midiFileChooser = new MidiFileChooser();
 			}
@@ -315,8 +312,12 @@ public class MidiSequenceEditorDialog extends JDialog {
 			) {
 				try {
 					getModel().loadToSequencer(row);
-				} catch (InvalidMidiDataException|IllegalStateException ex) {
-					showError(ex);
+				} catch (InvalidMidiDataException|IllegalStateException e) {
+					JOptionPane.showMessageDialog(
+							SequenceListTable.this.getRootPane(),
+							e,
+							ChordHelperApplet.VersionInfo.NAME,
+							JOptionPane.ERROR_MESSAGE);
 				}
 				fireEditingStopped();
 				return null;
@@ -389,7 +390,13 @@ public class MidiSequenceEditorDialog extends JDialog {
 				}
 				try {
 					model.loadToSequencer(row);
-				} catch (InvalidMidiDataException ex) { showError(ex); }
+				} catch (InvalidMidiDataException e) {
+					JOptionPane.showMessageDialog(
+							SequenceListTable.this.getRootPane(),
+							e,
+							ChordHelperApplet.VersionInfo.NAME,
+							JOptionPane.ERROR_MESSAGE);
+				}
 				return null;
 			}
 			/**
@@ -436,14 +443,22 @@ public class MidiSequenceEditorDialog extends JDialog {
 				PlaylistTableModel model = getModel();
 				if( midiFileChooser != null ) {
 					SequenceTrackListTableModel seqModel = model.getSelectedSequenceModel();
-					if( seqModel != null && seqModel.isModified() && ! confirm(CONFIRM_MESSAGE) ) {
-						return;
-					}
+					if( seqModel != null && seqModel.isModified() && JOptionPane.showConfirmDialog(
+							SequenceListTable.this.getRootPane(),
+							CONFIRM_MESSAGE,
+							ChordHelperApplet.VersionInfo.NAME,
+							JOptionPane.YES_NO_OPTION,
+							JOptionPane.WARNING_MESSAGE) != JOptionPane.YES_OPTION
+					) return;
 				}
 				try {
 					model.removeSelectedSequence();
 				} catch (InvalidMidiDataException|IllegalStateException ex) {
-					showError(ex);
+					JOptionPane.showMessageDialog(
+							SequenceListTable.this.getRootPane(),
+							ex,
+							ChordHelperApplet.VersionInfo.NAME,
+							JOptionPane.ERROR_MESSAGE);
 				}
 			}
 		};
@@ -469,13 +484,25 @@ public class MidiSequenceEditorDialog extends JDialog {
 					File f = getSelectedFile();
 					if( f.exists() ) {
 						fn = f.getName();
-						if( ! confirm("Overwrite " + fn + " ?\n" + fn + " を上書きしてよろしいですか？") ) return;
+						if( JOptionPane.showConfirmDialog(
+								SequenceListTable.this.getRootPane(),
+								"Overwrite " + fn + " ?\n" + fn + " を上書きしてよろしいですか？",
+								ChordHelperApplet.VersionInfo.NAME,
+								JOptionPane.YES_NO_OPTION,
+								JOptionPane.WARNING_MESSAGE) != JOptionPane.YES_OPTION
+						) return;
 					}
 					try ( FileOutputStream o = new FileOutputStream(f) ) {
 						o.write(sequenceModel.getMIDIdata());
 						sequenceModel.setModified(false);
 					}
-					catch( Exception ex ) { showError(ex); }
+					catch( Exception ex ) {
+						JOptionPane.showMessageDialog(
+								SequenceListTable.this.getRootPane(),
+								ex,
+								ChordHelperApplet.VersionInfo.NAME,
+								JOptionPane.ERROR_MESSAGE);
+					}
 				}
 			};
 			/**
@@ -489,7 +516,13 @@ public class MidiSequenceEditorDialog extends JDialog {
 						if( showOpenDialog((Component)event.getSource()) == JFileChooser.APPROVE_OPTION ) {
 							play(Arrays.asList(getSelectedFile()));
 						}
-					} catch( Exception ex ) { showError(ex); }
+					} catch( Exception ex ) {
+						JOptionPane.showMessageDialog(
+								SequenceListTable.this.getRootPane(),
+								ex,
+								ChordHelperApplet.VersionInfo.NAME,
+								JOptionPane.ERROR_MESSAGE);
+					}
 				}
 			};
 		};
@@ -628,7 +661,13 @@ public class MidiSequenceEditorDialog extends JDialog {
 			}
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				if( confirm(CONFIRM_MESSAGE) ) getModel().deleteSelectedTracks();
+				if( JOptionPane.showConfirmDialog(
+						TrackListTable.this.getRootPane(),
+						CONFIRM_MESSAGE,
+						ChordHelperApplet.VersionInfo.NAME,
+						JOptionPane.YES_NO_OPTION,
+						JOptionPane.WARNING_MESSAGE) == JOptionPane.YES_OPTION
+				) getModel().deleteSelectedTracks();
 			}
 		};
 	}
@@ -978,7 +1017,13 @@ public class MidiSequenceEditorDialog extends JDialog {
 			{ setEnabled(false); }
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				if( confirm(CONFIRM_MESSAGE) ) clipBoard.cut(getModel());
+				if( JOptionPane.showConfirmDialog(
+						EventListTable.this.getRootPane(),
+						CONFIRM_MESSAGE,
+						ChordHelperApplet.VersionInfo.NAME,
+						JOptionPane.YES_NO_OPTION,
+						JOptionPane.WARNING_MESSAGE) == JOptionPane.YES_OPTION
+				) clipBoard.cut(getModel());
 			}
 		};
 		/**
@@ -998,7 +1043,13 @@ public class MidiSequenceEditorDialog extends JDialog {
 			{ setEnabled(false); }
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				if( confirm(CONFIRM_MESSAGE)) getModel().removeSelectedMidiEvents();
+				if( JOptionPane.showConfirmDialog(
+						EventListTable.this.getRootPane(),
+						CONFIRM_MESSAGE,
+						ChordHelperApplet.VersionInfo.NAME,
+						JOptionPane.YES_NO_OPTION,
+						JOptionPane.WARNING_MESSAGE) == JOptionPane.YES_OPTION
+				) getModel().removeSelectedMidiEvents();
 			}
 		};
 		/**
@@ -1101,8 +1152,7 @@ public class MidiSequenceEditorDialog extends JDialog {
 	 */
 	public MidiSequenceEditorDialog(PlaylistTableModel playlistTableModel, VirtualMidiDevice outputMidiDevice, Action midiDeviceDialogOpenAction) {
 		this.outputMidiDevice = outputMidiDevice;
-		this.midiDeviceDialogOpenAction = midiDeviceDialogOpenAction;
-		sequenceListTable = new SequenceListTable(playlistTableModel);
+		sequenceListTable = new SequenceListTable(playlistTableModel, midiDeviceDialogOpenAction);
 		trackListTable = new TrackListTable(playlistTableModel.emptyTrackListTableModel);
 		eventListTable = new EventListTable(playlistTableModel.emptyEventListTableModel);
 		newSequenceDialog = new NewSequenceDialog(playlistTableModel, outputMidiDevice);

@@ -13,7 +13,6 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.security.AccessControlException;
 import java.util.Arrays;
 
 import javax.sound.midi.InvalidMidiDataException;
@@ -29,6 +28,7 @@ import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JLayeredPane;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JSlider;
 import javax.swing.JSplitPane;
@@ -112,9 +112,9 @@ public class ChordHelperApplet extends JApplet {
 			Sequence sequence = MidiSystem.getSequence(url);
 			return playlistModel.add(sequence, filename);
 		} catch( URISyntaxException|IOException|InvalidMidiDataException e ) {
-			midiEditor.showWarning(e);
-		} catch( AccessControlException e ) {
-			midiEditor.showError(e);
+			JOptionPane.showMessageDialog(null, e, VersionInfo.NAME, JOptionPane.WARNING_MESSAGE);
+		} catch( Exception e ) {
+			JOptionPane.showMessageDialog(null, e, VersionInfo.NAME, JOptionPane.ERROR_MESSAGE);
 		}
 		return -1;
 	}
@@ -135,7 +135,7 @@ public class ChordHelperApplet extends JApplet {
 	 * @return 追加先のインデックス値（０から始まる）。追加できなかったときは -1
 	 */
 	public int addToPlaylistBase64(String base64EncodedText, String filename) {
-		Base64Dialog d = midiEditor.base64Dialog;
+		Base64Dialog d = midiEditor.sequenceListTable.base64Dialog;
 		d.setBase64Data(base64EncodedText, filename);
 		return d.addToPlaylist();
 	}
@@ -177,7 +177,7 @@ public class ChordHelperApplet extends JApplet {
 	public String getMidiDataBase64() throws IOException {
 		SequenceTrackListTableModel s = sequencerModel.getSequenceTrackListTableModel();
 		if( s == null ) return null;
-		Base64Dialog d = midiEditor.base64Dialog;
+		Base64Dialog d = midiEditor.sequenceListTable.base64Dialog;
 		d.setMIDIData(s.getMIDIdata());
 		return d.getBase64Data();
 	}
@@ -272,7 +272,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public static class VersionInfo {
 		public static final String NAME = "MIDI Chord Helper";
-		public static final String VERSION = "Ver.20170411.1";
+		public static final String VERSION = "Ver.20170412.1";
 		public static final String COPYRIGHT = "Copyright (C) 2004-2017";
 		public static final String AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";
@@ -570,8 +570,8 @@ public class ChordHelperApplet extends JApplet {
 		String midiUrl = getParameter("midi_file");
 		if( midiUrl != null ) try {
 			play(addToPlaylist(midiUrl));
-		} catch (Exception ex) {
-			midiEditor.showWarning(ex);
+		} catch (Exception e) {
+			JOptionPane.showMessageDialog(null, e, VersionInfo.NAME, JOptionPane.WARNING_MESSAGE);
 		}
 	}
 	@Override
