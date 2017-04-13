@@ -24,7 +24,7 @@ public class TrackEventListTableModel extends AbstractTableModel {
 	 */
 	public enum Column {
 		/** MIDIイベント番号 */
-		EVENT_NUMBER("No.", Integer.class, 15) {
+		EVENT_NUMBER("#", Integer.class, 15) {
 			@Override
 			public boolean isCellEditable() { return false; }
 		},

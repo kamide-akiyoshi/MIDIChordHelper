@@ -88,8 +88,9 @@ public class MidiSequenceEditorDialog extends JDialog {
 			if( isVisible() ) toFront(); else setVisible(true);
 		}
 	};
-
-	/** ドロップされた複数のMIDIファイルを読み込むハンドラー */
+	/**
+	 * ドロップされた複数のMIDIファイルを読み込むハンドラー
+	 */
 	public final TransferHandler transferHandler = new TransferHandler() {
 		@Override
 		public boolean canImport(TransferSupport support) {
@@ -1156,7 +1157,7 @@ public class MidiSequenceEditorDialog extends JDialog {
 		trackListTable = new TrackListTable(playlistTableModel.emptyTrackListTableModel);
 		eventListTable = new EventListTable(playlistTableModel.emptyEventListTableModel);
 		newSequenceDialog = new NewSequenceDialog(playlistTableModel, outputMidiDevice);
-		setTitle("MIDI Editor/Playlist - MIDI Chord Helper");
+		setTitle("MIDI Editor/Playlist - "+ChordHelperApplet.VersionInfo.NAME);
 		setBounds( 150, 200, 900, 500 );
 		setLayout(new FlowLayout());
 		setTransferHandler(transferHandler);
@@ -1202,7 +1203,7 @@ public class MidiSequenceEditorDialog extends JDialog {
 				add( Box.createRigidArea(new Dimension(5, 0)) );
 				add(new JPanel() {{
 					setBorder(new EtchedBorder());
-					MidiSequencerModel sequencerModel = getPlaylistModel().getSequencerModel();
+					MidiSequencerModel sequencerModel = playlistTableModel.getSequencerModel();
 					add(new JLabel("Sync Master"));
 					add(new JComboBox<Sequencer.SyncMode>(sequencerModel.masterSyncModeModel));
 					add(new JLabel("Slave"));
