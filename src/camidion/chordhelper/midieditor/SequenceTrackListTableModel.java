@@ -374,8 +374,7 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 		int maxIndex = trackListSelectionModel.getMaxSelectionIndex();
 		Track tracks[] = sequence.getTracks();
 		for( int i = maxIndex; i >= minIndex; i-- ) {
-			if( ! trackListSelectionModel.isSelectedIndex(i) )
-				continue;
+			if( ! trackListSelectionModel.isSelectedIndex(i) ) continue;
 			sequence.deleteTrack(tracks[i]);
 			trackModelList.remove(i);
 		}

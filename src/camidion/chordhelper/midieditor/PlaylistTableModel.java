@@ -48,7 +48,7 @@ public class PlaylistTableModel extends AbstractTableModel {
 	/**
 	 * 選択されているシーケンスのインデックス
 	 */
-	public ListSelectionModel sequenceListSelectionModel = new DefaultListSelectionModel() {
+	public final ListSelectionModel sequenceListSelectionModel = new DefaultListSelectionModel() {
 		{
 			setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		}
@@ -69,10 +69,12 @@ public class PlaylistTableModel extends AbstractTableModel {
 		public void stateChanged(ChangeEvent event) {
 			Object src = event.getSource();
 			if( src instanceof MidiSequencerModel ) {
-				int newValue = ((MidiSequencerModel)src).getValue() / 1000;
+				MidiSequencerModel sequencerModel = (MidiSequencerModel)src;
+				int newValue = sequencerModel.getValue() / 1000;
 				if(value != newValue) {
 					value = newValue;
-					fireTableCellUpdated(indexOfSequenceOnSequencer(), Column.POSITION.ordinal());
+					int rowIndex = sequenceModelList.indexOf(sequencerModel.getSequenceTrackListTableModel());
+					fireTableCellUpdated(rowIndex, Column.POSITION.ordinal());
 				}
 			}
 		}
@@ -120,7 +122,8 @@ public class PlaylistTableModel extends AbstractTableModel {
 			sequencerModel.stop();
 			// ここでボタンが停止状態に変わったはずなので、通常であれば再生ボタンが自力で再描画するところだが、
 			// セルのレンダラーが描く再生ボタンには効かないようなので、セルを突っついて再表示させる。
-			fireTableCellUpdated(indexOfSequenceOnSequencer(), Column.PLAY.ordinal());
+			int rowIndex = sequenceModelList.indexOf(sequencerModel.getSequenceTrackListTableModel());
+			fireTableCellUpdated(rowIndex, Column.PLAY.ordinal());
 		}
 	}
 	/**
@@ -400,22 +403,18 @@ public class PlaylistTableModel extends AbstractTableModel {
 		sequenceListSelectionModel.setSelectionInterval(lastIndex, lastIndex);
 		return lastIndex;
 	}
-
 	/**
-	 * 選択されたシーケンスを除去します。
-	 * 除去されたシーケンスがシーケンサーにロード済みの場合、アンロードします。
-	 *
+	 * MIDIシーケンスを除去します。除去されたMIDIシーケンスがシーケンサーにロード済みだった場合、アンロードします。
+	 * @param rowIndex 除去するMIDIシーケンスのインデックス（先頭が 0）
+	 * @return 除去されたMIDIシーケンス
 	 * @throws InvalidMidiDataException {@link Sequencer#setSequence(Sequence)} を参照
 	 * @throws IllegalStateException MIDIシーケンサデバイスが閉じている場合
 	 */
-	public void removeSelectedSequence() throws InvalidMidiDataException {
-		if( sequenceListSelectionModel.isSelectionEmpty() ) return;
-		int selectedIndex = sequenceListSelectionModel.getMinSelectionIndex();
-		SequenceTrackListTableModel removedSequence = sequenceModelList.remove(selectedIndex);
-		fireTableRowsDeleted(selectedIndex, selectedIndex);
-		if( removedSequence.isOnSequencer() ) {
-			sequencerModel.setSequenceTrackListTableModel(null);
-		}
+	public SequenceTrackListTableModel remove(int rowIndex) throws InvalidMidiDataException {
+		SequenceTrackListTableModel removedSequence = sequenceModelList.remove(rowIndex);
+		fireTableRowsDeleted(rowIndex, rowIndex);
+		if(removedSequence.isOnSequencer()) sequencerModel.setSequenceTrackListTableModel(null);
+		return removedSequence;
 	}
 	/**
 	 * テーブル内の指定したインデックス位置にあるシーケンスをシーケンサーにロードします。
@@ -466,21 +465,13 @@ public class PlaylistTableModel extends AbstractTableModel {
 		return lastIndex;
 	}
 	/**
-	 * 現在シーケンサにロードされているシーケンスのインデックスを返します。
-	 * ロードされていない場合は -1 を返します。
-	 * @return 現在シーケンサにロードされているシーケンスのインデックス
-	 */
-	public int indexOfSequenceOnSequencer() {
-		return sequenceModelList.indexOf(sequencerModel.getSequenceTrackListTableModel());
-	}
-	/**
 	 * 引数で示された数だけ次へ進めたシーケンスをロードします。
 	 * @param offset 進みたいシーケンス数
 	 * @return 以前と異なるインデックスのシーケンスをロードできた場合true
 	 * @throws InvalidMidiDataException {@link Sequencer#setSequence(Sequence)} を参照
 	 */
 	private boolean loadNext(int offset) throws InvalidMidiDataException {
-		int loadedIndex = indexOfSequenceOnSequencer();
+		int loadedIndex = sequenceModelList.indexOf(sequencerModel.getSequenceTrackListTableModel());
 		int newIndex = loadedIndex + offset;
 		if( newIndex < 0 ) newIndex = 0; else {
 			int sz = sequenceModelList.size();
