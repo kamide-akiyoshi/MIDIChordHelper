@@ -140,23 +140,16 @@ public class ChordHelperApplet extends JApplet {
 		return d.addToPlaylist();
 	}
 	/**
-	 * プレイリスト上で現在選択されているMIDIシーケンスを、
-	 * シーケンサへロードして再生します。
-	 * @throws InvalidMidiDataException {@link Sequencer#setSequence(Sequence)} を参照
-	 * @throws IllegalStateException MIDIシーケンサデバイスが閉じている場合
+	 * プレイリスト上で現在選択されているMIDIシーケンスをシーケンサへロードして再生します。
 	 */
-	public void play() throws InvalidMidiDataException {
+	public void play() {
 		play(playlistModel.sequenceListSelectionModel.getMinSelectionIndex());
 	}
 	/**
 	 * 指定されたインデックス値が示すプレイリスト上のMIDIシーケンスをシーケンサへロードして再生します。
 	 * @param index インデックス値（０から始まる）
-	 * @throws InvalidMidiDataException {@link Sequencer#setSequence(Sequence)} を参照
-	 * @throws IllegalStateException MIDIシーケンサデバイスが閉じている場合
 	 */
-	public void play(int index) throws InvalidMidiDataException {
-		playlistModel.play(index);
-	}
+	public void play(int index) { midiEditor.play(index); }
 	/**
 	 * シーケンサが実行中かどうかを返します。
 	 * {@link Sequencer#isRunning()} の戻り値をそのまま返します。
@@ -272,7 +265,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public static class VersionInfo {
 		public static final String NAME = "MIDI Chord Helper";
-		public static final String VERSION = "Ver.20170417.1";
+		public static final String VERSION = "Ver.20170419.1";
 		public static final String COPYRIGHT = "Copyright (C) 2004-2017";
 		public static final String AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";
@@ -381,7 +374,7 @@ public class ChordHelperApplet extends JApplet {
 		setTransferHandler(midiEditor.transferHandler);
 		//
 		// MIDIエディタのイベントダイアログを、ピアノ鍵盤のイベント送出ダイアログと共用
-		keyboardPanel.setEventDialog(midiEditor.eventDialog);
+		keyboardPanel.setEventDialog(midiEditor.eventListTable.eventDialog);
 		//
 		// 歌詞表示／コード入力フィールド
 		(lyricDisplay = new ChordTextField(sequencerModel)).addActionListener(

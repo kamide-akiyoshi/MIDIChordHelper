@@ -9,6 +9,7 @@ import java.net.URISyntaxException;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.ImageIcon;
+import javax.swing.JComponent;
 import javax.swing.JEditorPane;
 import javax.swing.JOptionPane;
 import javax.swing.event.HyperlinkEvent;
@@ -36,8 +37,10 @@ public class AboutMessagePane extends JEditorPane {
 			}
 			@Override
 			public void actionPerformed(ActionEvent e) {
+				JComponent c = (JComponent)e.getSource();
 				JOptionPane.showMessageDialog(
-					null, AboutMessagePane.this, getValue(NAME).toString(),
+					c.getRootPane(),
+					AboutMessagePane.this, getValue(NAME).toString(),
 					JOptionPane.INFORMATION_MESSAGE, imageIcon
 				);
 			}

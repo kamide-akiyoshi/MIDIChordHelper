@@ -47,7 +47,7 @@ public class MidiChordHelper extends JFrame implements AppletStub, AppletContext
 		SwingUtilities.invokeLater(()->new MidiChordHelper(fileList));
 	}
 	private static boolean confirmBeforeExit() {
-		String message = "MIDI file not saved, exit anyway ?\n"+
+		String message = "MIDI file not saved - Really exit ?\n"+
 				"MIDIファイルが保存されていません。終了してよろしいですか？";
 		return JOptionPane.showConfirmDialog(
 				null, message, ChordHelperApplet.VersionInfo.NAME,
