@@ -55,6 +55,7 @@ public class PlaylistTable extends JTable {
 	/**
 	 * プレイリストビューを構築します。
 	 * @param model プレイリストデータモデル
+	 * @param midiDeviceDialogOpenAction MIDIデバイスダイアログを開くアクション
 	 */
 	public PlaylistTable(PlaylistTableModel model, Action midiDeviceDialogOpenAction) {
 		super(model, null, model.sequenceListSelectionModel);
@@ -72,11 +73,10 @@ public class PlaylistTable extends JTable {
 		new PositionCellEditor();
 		//
 		// 文字コード選択をプルダウンにする
-		int column = PlaylistTableModel.Column.CHARSET.ordinal();
-		TableCellEditor ce = new DefaultCellEditor(new JComboBox<Charset>() {{
-			Charset.availableCharsets().values().stream().forEach(v->addItem(v));
-		}});
-		getColumnModel().getColumn(column).setCellEditor(ce);
+		getColumnModel().getColumn(PlaylistTableModel.Column.CHARSET.ordinal())
+			.setCellEditor(new DefaultCellEditor(new JComboBox<Charset>() {{
+				Charset.availableCharsets().values().stream().forEach(v->addItem(v));
+			}}));
 		setAutoCreateColumnsFromModel(false);
 		//
 		// Base64画面を開くアクションの生成

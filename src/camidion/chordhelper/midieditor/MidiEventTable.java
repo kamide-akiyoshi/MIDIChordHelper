@@ -37,13 +37,13 @@ import camidion.chordhelper.mididevice.VirtualMidiDevice;
  */
 public class MidiEventTable extends JTable {
 	/**
+	 * MIDIイベント入力ダイアログ（イベント入力とイベント送出で共用）
+	 */
+	public MidiEventDialog eventDialog;
+	/**
 	 * 操作音を鳴らすMIDI出力デバイス
 	 */
 	private VirtualMidiDevice outputMidiDevice;
-	/**
-	 * MIDIイベント入力ダイアログ（イベント入力とイベント送出で共用）
-	 */
-	public MidiEventDialog eventDialog = new MidiEventDialog();
 	/**
 	 * 新しいイベントリストテーブルを構築します。
 	 * <p>データモデルとして一つのトラックのイベントリストを指定できます。
@@ -52,11 +52,19 @@ public class MidiEventTable extends JTable {
 	 * </p>
 	 *
 	 * @param model トラック（イベントリスト）データモデル
+	 * @param eventDialog MIDIイベントダイアログ
 	 * @param outputMidiDevice 操作音出力先MIDIデバイス
 	 */
-	public MidiEventTable(TrackEventListTableModel model, VirtualMidiDevice outputMidiDevice) {
+	public MidiEventTable(TrackEventListTableModel model, MidiEventDialog eventDialog, VirtualMidiDevice outputMidiDevice) {
 		super(model, null, model.getSelectionModel());
 		this.outputMidiDevice = outputMidiDevice;
+		this.eventDialog = eventDialog;
+		pairNoteOnOffModel = new JToggleButton.ToggleButtonModel() {
+			{
+				addItemListener(e->eventDialog.midiMessageForm.durationForm.setEnabled(isSelected()));
+				setSelected(true);
+			}
+		};
 		//
 		// 列モデルにセルエディタを設定
 		eventCellEditor = new MidiEventCellEditor();
@@ -77,16 +85,13 @@ public class MidiEventTable extends JTable {
 	 */
 	@Override
 	public TrackEventListTableModel getModel() {
-		return (TrackEventListTableModel) super.getModel();
+		return (TrackEventListTableModel) dataModel;
 	}
-	public void updateTo(SequenceTrackListTableModel sequenceModel) {
-		titleLabel.updateTrackNumber(sequenceModel.getSelectionModel().getMinSelectionIndex());
-		TrackEventListTableModel oldTrackModel = getModel();
-		TrackEventListTableModel newTrackModel = sequenceModel.getSelectedTrackModel();
-		if( oldTrackModel == newTrackModel )
-			return;
-		if( newTrackModel == null ) {
-			newTrackModel = getModel().getParent().getParent().emptyEventListTableModel;
+	public void setModel(TrackEventListTableModel model) {
+		TrackEventListTableModel oldModel = getModel();
+		if( oldModel == model ) return;
+		if( model == null ) {
+			model = getModel().getParent().getParent().emptyEventListTableModel;
 			queryJumpEventAction.setEnabled(false);
 			queryAddEventAction.setEnabled(false);
 
@@ -99,10 +104,10 @@ public class MidiEventTable extends JTable {
 			queryJumpEventAction.setEnabled(true);
 			queryAddEventAction.setEnabled(true);
 		}
-		oldTrackModel.getSelectionModel().removeListSelectionListener(eventSelectionListener);
-		setModel(newTrackModel);
-		setSelectionModel(newTrackModel.getSelectionModel());
-		newTrackModel.getSelectionModel().addListSelectionListener(eventSelectionListener);
+		oldModel.getSelectionModel().removeListSelectionListener(eventSelectionListener);
+		super.setModel(model);
+		setSelectionModel(model.getSelectionModel());
+		model.getSelectionModel().addListSelectionListener(eventSelectionListener);
 	}
 	/**
 	 * タイトルラベル
@@ -112,10 +117,10 @@ public class MidiEventTable extends JTable {
 	 * 親テーブルの選択トラックの変更に反応する
 	 * トラック番号つきタイトルラベル
 	 */
-	private class TitleLabel extends JLabel {
+	class TitleLabel extends JLabel {
 		private static final String TITLE = "MIDI Events";
 		private TitleLabel() { super(TITLE); }
-		private void updateTrackNumber(int index) {
+		void updateTrackNumber(int index) {
 			String text = TITLE;
 			if( index >= 0 ) text = String.format(TITLE+" - track #%d", index);
 			setText(text);
@@ -182,13 +187,7 @@ public class MidiEventTable extends JTable {
 	/**
 	 * Pair noteON/OFF トグルボタンモデル
 	 */
-	JToggleButton.ToggleButtonModel
-		pairNoteOnOffModel = new JToggleButton.ToggleButtonModel() {
-			{
-				addItemListener(e->eventDialog.midiMessageForm.durationForm.setEnabled(isSelected()));
-				setSelected(true);
-			}
-		};
+	JToggleButton.ToggleButtonModel pairNoteOnOffModel;
 	private class EventEditContext {
 		/**
 		 * 編集対象トラック

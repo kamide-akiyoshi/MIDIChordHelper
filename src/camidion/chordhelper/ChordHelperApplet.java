@@ -50,6 +50,7 @@ import camidion.chordhelper.mididevice.SequencerTimeView;
 import camidion.chordhelper.mididevice.VirtualMidiDevice;
 import camidion.chordhelper.midieditor.Base64Dialog;
 import camidion.chordhelper.midieditor.KeySignatureLabel;
+import camidion.chordhelper.midieditor.MidiEventDialog;
 import camidion.chordhelper.midieditor.MidiSequenceEditorDialog;
 import camidion.chordhelper.midieditor.NewSequenceDialog;
 import camidion.chordhelper.midieditor.PlaylistTableModel;
@@ -135,7 +136,7 @@ public class ChordHelperApplet extends JApplet {
 	 * @return 追加先のインデックス値（０から始まる）。追加できなかったときは -1
 	 */
 	public int addToPlaylistBase64(String base64EncodedText, String filename) {
-		Base64Dialog d = midiEditor.sequenceListTable.base64Dialog;
+		Base64Dialog d = midiEditor.playlistTable.base64Dialog;
 		d.setBase64Data(base64EncodedText, filename);
 		return d.addToPlaylist();
 	}
@@ -170,7 +171,7 @@ public class ChordHelperApplet extends JApplet {
 	public String getMidiDataBase64() throws IOException {
 		SequenceTrackListTableModel s = sequencerModel.getSequenceTrackListTableModel();
 		if( s == null ) return null;
-		Base64Dialog d = midiEditor.sequenceListTable.base64Dialog;
+		Base64Dialog d = midiEditor.playlistTable.base64Dialog;
 		d.setMIDIData(s.getMIDIdata());
 		return d.getBase64Data();
 	}
@@ -265,7 +266,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public static class VersionInfo {
 		public static final String NAME = "MIDI Chord Helper";
-		public static final String VERSION = "Ver.20170419.1";
+		public static final String VERSION = "Ver.20170421.1";
 		public static final String COPYRIGHT = "Copyright (C) 2004-2017";
 		public static final String AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";
@@ -360,21 +361,24 @@ public class ChordHelperApplet extends JApplet {
 			));
 			keyboardCenterPanel.keyboard.setPreferredSize(new Dimension(571, 80));
 		}};
-		// MIDIデバイスとMIDIエディタのセットアップ
+		// MIDIデバイスツリーの構築
 		VirtualMidiDevice guiMidiDevice = keyboardPanel.keyboardCenterPanel.keyboard.midiDevice;
 		deviceTreeModel = new MidiDeviceTreeModel(guiMidiDevice);
-		sequencerModel = deviceTreeModel.getSequencerModel();
-		playlistModel = new PlaylistTableModel(sequencerModel);
+		//
+		// MIDIデバイスツリーを操作するダイアログの構築
 		MidiDeviceDialog midiDeviceDialog = new MidiDeviceDialog(deviceTreeModel);
 		midiDeviceDialog.setIconImage(iconImage);
-		midiEditor = new MidiSequenceEditorDialog(playlistModel, guiMidiDevice, midiDeviceDialog.getOpenAction());
+		//
+		// MIDIイベントダイアログの構築
+		MidiEventDialog eventDialog = new MidiEventDialog();
+		keyboardPanel.setEventDialog(eventDialog);
+		//
+		// MIDIエディタダイアログの構築・MIDIファイルのドロップ受付開始
+		sequencerModel = deviceTreeModel.getSequencerModel();
+		playlistModel = new PlaylistTableModel(sequencerModel);
+		midiEditor = new MidiSequenceEditorDialog(playlistModel, eventDialog, guiMidiDevice, midiDeviceDialog.getOpenAction());
 		midiEditor.setIconImage(iconImage);
-		//
-		// メイン画面へのMIDIファイルのドラッグ＆ドロップ受付開始
 		setTransferHandler(midiEditor.transferHandler);
-		//
-		// MIDIエディタのイベントダイアログを、ピアノ鍵盤のイベント送出ダイアログと共用
-		keyboardPanel.setEventDialog(midiEditor.eventListTable.eventDialog);
 		//
 		// 歌詞表示／コード入力フィールド
 		(lyricDisplay = new ChordTextField(sequencerModel)).addActionListener(
