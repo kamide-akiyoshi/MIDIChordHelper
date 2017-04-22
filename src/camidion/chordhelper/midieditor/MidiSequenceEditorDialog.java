@@ -79,6 +79,10 @@ public class MidiSequenceEditorDialog extends JDialog {
 		}
 	};
 	/**
+	 * プレイリストビュー（シーケンスリスト）
+	 */
+	public PlaylistTable playlistTable;
+	/**
 	 * このエディタダイアログが表示しているプレイリストモデルを返します。
 	 * @return プレイリストモデル
 	 */
@@ -115,10 +119,6 @@ public class MidiSequenceEditorDialog extends JDialog {
 	 */
 	public NewSequenceDialog newSequenceDialog;
 	/**
-	 * プレイリストビュー（シーケンスリスト）
-	 */
-	public PlaylistTable playlistTable;
-	/**
 	 * 新しい {@link MidiSequenceEditorDialog} を構築します。
 	 * @param playlistTableModel このエディタが参照するプレイリストモデル
 	 * @param eventDialog MIDIイベント入力ダイアログ
@@ -126,9 +126,9 @@ public class MidiSequenceEditorDialog extends JDialog {
 	 * @param midiDeviceDialogOpenAction MIDIデバイスダイアログを開くアクション
 	 */
 	public MidiSequenceEditorDialog(PlaylistTableModel playlistTableModel, MidiEventDialog eventDialog, VirtualMidiDevice outputMidiDevice, Action midiDeviceDialogOpenAction) {
-		playlistTable = new PlaylistTable(playlistTableModel, midiDeviceDialogOpenAction);
 		MidiEventTable eventListTable = new MidiEventTable(playlistTableModel.emptyEventListTableModel, eventDialog, outputMidiDevice);
 		SequenceTrackListTable trackListTable = new SequenceTrackListTable(playlistTableModel.emptyTrackListTableModel, eventListTable);
+		playlistTable = new PlaylistTable(playlistTableModel, midiDeviceDialogOpenAction, trackListTable);
 		newSequenceDialog = new NewSequenceDialog(playlistTableModel, outputMidiDevice);
 		setTitle("MIDI Editor/Playlist - "+ChordHelperApplet.VersionInfo.NAME);
 		setBounds( 150, 200, 900, 500 );
@@ -149,12 +149,10 @@ public class MidiSequenceEditorDialog extends JDialog {
 						{ setMargin(ChordHelperApplet.ZERO_INSETS); }
 					});
 				}
-				if(playlistTable.base64EncodeAction != null) {
-					add(Box.createRigidArea(new Dimension(5, 0)));
-					add(new JButton(playlistTable.base64EncodeAction) {
-						{ setMargin(ChordHelperApplet.ZERO_INSETS); }
-					});
-				}
+				add(Box.createRigidArea(new Dimension(5, 0)));
+				add(new JButton(playlistTable.base64EncodeAction) {
+					{ setMargin(ChordHelperApplet.ZERO_INSETS); }
+				});
 				add(Box.createRigidArea(new Dimension(5, 0)));
 				add(new JButton(playlistTableModel.getMoveToTopAction()) {
 					{ setMargin(ChordHelperApplet.ZERO_INSETS); }

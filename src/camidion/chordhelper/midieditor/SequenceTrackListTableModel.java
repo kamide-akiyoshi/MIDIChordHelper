@@ -47,40 +47,50 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 			this.preferredWidth = preferredWidth;
 		}
 	}
-	private PlaylistTableModel sequenceListTableModel;
 	/**
 	 * このモデルを収容している親のプレイリストを返します。
 	 */
 	public PlaylistTableModel getParent() { return sequenceListTableModel; }
-	/**
-	 * ラップされたMIDIシーケンス
-	 */
-	private Sequence sequence;
+	private PlaylistTableModel sequenceListTableModel;
 	/**
 	 * ラップされたMIDIシーケンスのtickインデックス
 	 */
 	private SequenceTickIndex sequenceTickIndex;
 	/**
-	 * MIDIファイル名
+	 * ファイル名を返します。
+	 * @return ファイル名
 	 */
+	public String getFilename() { return filename; }
 	private String filename;
 	/**
-	 * テキスト部分の文字コード（タイトル、歌詞など）
+	 * ファイル名を設定します。
+	 * @param filename ファイル名
 	 */
-	public Charset charset = Charset.defaultCharset();
+	public void setFilename(String filename) { this.filename = filename; }
+	/**
+	 * タイトルや歌詞などで使うテキストの文字コードを返します。
+	 * @return テキストの文字コード
+	 */
+	public Charset getCharset() { return charset; }
+	private Charset charset = Charset.defaultCharset();
+	/**
+	 * タイトルや歌詞などで使うテキストの文字コードを設定します。
+	 * @param charset テキストの文字コード
+	 */
+	public void setCharset(Charset charset) { this.charset = charset; }
 	/**
 	 * トラックリスト
 	 */
 	private List<TrackEventListTableModel> trackModelList = new ArrayList<>();
-	private ListSelectionModel trackListSelectionModel = new DefaultListSelectionModel(){
+	private ListSelectionModel selectionModel = new DefaultListSelectionModel(){
 		{
 			setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
 		}
 	};
 	/**
-	 * 選択状態を返します。
+	 * このトラックリストの選択モデルを返します。
 	 */
-	public ListSelectionModel getSelectionModel() { return trackListSelectionModel; }
+	public ListSelectionModel getSelectionModel() { return selectionModel; }
 	/**
 	 * MIDIシーケンスとファイル名から {@link SequenceTrackListTableModel} を構築します。
 	 * @param sequenceListTableModel 親のプレイリスト
@@ -203,6 +213,7 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 	 * @return MIDIシーケンス
 	 */
 	public Sequence getSequence() { return sequence; }
+	private Sequence sequence;
 	/**
 	 * MIDIシーケンスのマイクロ秒単位の長さを返します。
 	 * 曲が長すぎて {@link Sequence#getMicrosecondLength()} が負数を返してしまった場合の補正も行います。
@@ -259,12 +270,12 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 	public void fireTimeSignatureChanged() {
 		sequenceTickIndex = new SequenceTickIndex(sequence);
 	}
-	private boolean isModified = false;
 	/**
 	 * 変更されたかどうかを返します。
 	 * @return 変更済みのときtrue
 	 */
 	public boolean isModified() { return isModified; }
+	private boolean isModified = false;
 	/**
 	 * 変更されたかどうかを設定します。
 	 * @param isModified 変更されたときtrue
@@ -275,16 +286,6 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 		if( index >= 0 ) sequenceListTableModel.fireTableRowsUpdated(index, index);
 	}
 	/**
-	 * ファイル名を設定します。
-	 * @param filename ファイル名
-	 */
-	public void setFilename(String filename) { this.filename = filename; }
-	/**
-	 * ファイル名を返します。
-	 * @return ファイル名
-	 */
-	public String getFilename() { return filename; }
-	/**
 	 * このシーケンスを表す文字列としてシーケンス名を返します。シーケンス名がない場合は空文字列を返します。
 	 */
 	@Override
@@ -292,6 +293,7 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 		byte b[] = MIDISpec.getNameBytesOf(sequence);
 		return b == null ? "" : new String(b, charset);
 	}
+
 	/**
 	 * シーケンス名を設定します。
 	 * @param name シーケンス名
@@ -336,10 +338,10 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 	 * @return トラックモデル（見つからない場合null）
 	 */
 	public TrackEventListTableModel getSelectedTrackModel() {
-		if( trackListSelectionModel.isSelectionEmpty() ) return null;
+		if( selectionModel.isSelectionEmpty() ) return null;
 		Track tracks[] = sequence.getTracks();
 		if( tracks.length == 0 ) return null;
-		Track t = tracks[trackListSelectionModel.getMinSelectionIndex()];
+		Track t = tracks[selectionModel.getMinSelectionIndex()];
 		return trackModelList.stream().filter(tm -> tm.getTrack() == t).findFirst().orElse(null);
 	}
 	/**
@@ -361,20 +363,20 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 		setModified(true);
 		int lastRow = getRowCount() - 1;
 		fireTableRowsInserted(lastRow, lastRow);
-		trackListSelectionModel.setSelectionInterval(lastRow, lastRow);
+		selectionModel.setSelectionInterval(lastRow, lastRow);
 		return lastRow;
 	}
 	/**
 	 * 選択されているトラックを削除します。
 	 */
 	public void deleteSelectedTracks() {
-		if( trackListSelectionModel.isSelectionEmpty() )
+		if( selectionModel.isSelectionEmpty() )
 			return;
-		int minIndex = trackListSelectionModel.getMinSelectionIndex();
-		int maxIndex = trackListSelectionModel.getMaxSelectionIndex();
+		int minIndex = selectionModel.getMinSelectionIndex();
+		int maxIndex = selectionModel.getMaxSelectionIndex();
 		Track tracks[] = sequence.getTracks();
 		for( int i = maxIndex; i >= minIndex; i-- ) {
-			if( ! trackListSelectionModel.isSelectedIndex(i) ) continue;
+			if( ! selectionModel.isSelectedIndex(i) ) continue;
 			sequence.deleteTrack(tracks[i]);
 			trackModelList.remove(i);
 		}

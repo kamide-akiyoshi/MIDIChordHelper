@@ -56,9 +56,10 @@ public class PlaylistTable extends JTable {
 	 * プレイリストビューを構築します。
 	 * @param model プレイリストデータモデル
 	 * @param midiDeviceDialogOpenAction MIDIデバイスダイアログを開くアクション
+	 * @param trackListTable トラックリストテーブル（子テーブル）
 	 */
-	public PlaylistTable(PlaylistTableModel model, Action midiDeviceDialogOpenAction) {
-		super(model, null, model.sequenceListSelectionModel);
+	public PlaylistTable(PlaylistTableModel model, Action midiDeviceDialogOpenAction, SequenceTrackListTable trackListTable) {
+		super(model, null, model.getSelectionModel());
 		this.midiDeviceDialogOpenAction = midiDeviceDialogOpenAction;
 		try {
 			midiFileChooser = new MidiFileChooser();
@@ -110,6 +111,10 @@ public class PlaylistTable extends JTable {
 			TableColumn tc = colModel.getColumn(c.ordinal());
 			tc.setPreferredWidth(c.preferredWidth);
 			if( c == PlaylistTableModel.Column.LENGTH ) lengthColumn = tc;
+		});
+		selectionModel.addListSelectionListener(event->{
+			if( event.getValueIsAdjusting() ) return;
+			trackListTable.setModel(getModel().getSelectedSequenceModel());
 		});
 	}
 	private TableColumn lengthColumn;
@@ -301,8 +306,7 @@ public class PlaylistTable extends JTable {
 				) break;
 			} catch(Exception ex) {
 				JOptionPane.showMessageDialog(
-						getRootPane(), ex,
-						ChordHelperApplet.VersionInfo.NAME,
+						getRootPane(), ex, ChordHelperApplet.VersionInfo.NAME,
 						JOptionPane.ERROR_MESSAGE);
 				break;
 			}
@@ -332,12 +336,11 @@ public class PlaylistTable extends JTable {
 						JOptionPane.WARNING_MESSAGE) != JOptionPane.YES_OPTION
 				) return;
 			}
-			if( ! model.sequenceListSelectionModel.isSelectionEmpty() ) try {
-				model.remove(model.sequenceListSelectionModel.getMinSelectionIndex());
+			if( ! model.getSelectionModel().isSelectionEmpty() ) try {
+				model.remove(model.getSelectionModel().getMinSelectionIndex());
 			} catch (Exception ex) {
 				JOptionPane.showMessageDialog(
-						((JComponent)event.getSource()).getRootPane(),
-						ex,
+						((JComponent)event.getSource()).getRootPane(), ex,
 						ChordHelperApplet.VersionInfo.NAME,
 						JOptionPane.ERROR_MESSAGE);
 			}
@@ -380,8 +383,7 @@ public class PlaylistTable extends JTable {
 				}
 				catch( Exception ex ) {
 					JOptionPane.showMessageDialog(
-							rootPane, ex,
-							ChordHelperApplet.VersionInfo.NAME,
+							rootPane, ex, ChordHelperApplet.VersionInfo.NAME,
 							JOptionPane.ERROR_MESSAGE);
 				}
 			}
@@ -408,8 +410,7 @@ public class PlaylistTable extends JTable {
 					if( firstIndex >= 0 ) playlist.play(firstIndex);
 				} catch (Exception ex) {
 					JOptionPane.showMessageDialog(
-							rootPane, ex,
-							ChordHelperApplet.VersionInfo.NAME,
+							rootPane, ex, ChordHelperApplet.VersionInfo.NAME,
 							JOptionPane.ERROR_MESSAGE);
 				}
 			}

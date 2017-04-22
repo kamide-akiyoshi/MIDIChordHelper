@@ -46,9 +46,10 @@ public class PlaylistTableModel extends AbstractTableModel {
 	 */
 	public final TrackEventListTableModel emptyEventListTableModel = new TrackEventListTableModel(emptyTrackListTableModel, null);
 	/**
-	 * 選択されているシーケンスのインデックス
+	 * このプレイリストの選択モデルを返します。
 	 */
-	public final ListSelectionModel sequenceListSelectionModel = new DefaultListSelectionModel() {
+	public ListSelectionModel getSelectionModel() { return selectionModel; }
+	private ListSelectionModel selectionModel = new DefaultListSelectionModel() {
 		{
 			setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		}
@@ -152,12 +153,12 @@ public class PlaylistTableModel extends AbstractTableModel {
 			setEnebledBySelection();
 		}
 		protected void setEnebledBySelection() {
-			int index = sequenceListSelectionModel.getMinSelectionIndex();
+			int index = selectionModel.getMinSelectionIndex();
 			setEnabled(index >= 0);
 		}
 		private void init(String tooltip) {
 			putValue(Action.SHORT_DESCRIPTION, tooltip);
-			sequenceListSelectionModel.addListSelectionListener(this);
+			selectionModel.addListSelectionListener(this);
 			setEnebledBySelection();
 		}
 	}
@@ -274,7 +275,7 @@ public class PlaylistTableModel extends AbstractTableModel {
 			public boolean isCellEditable() { return true; }
 			@Override
 			public Object getValueOf(SequenceTrackListTableModel sequenceModel) {
-				return sequenceModel.charset;
+				return sequenceModel.getCharset();
 			}
 		},
 		/** タイミング解像度 */
@@ -361,7 +362,7 @@ public class PlaylistTableModel extends AbstractTableModel {
 		case CHARSET:
 			// 文字コードの変更
 			SequenceTrackListTableModel seq = sequenceModelList.get(row);
-			seq.charset = Charset.forName(val.toString());
+			seq.setCharset(Charset.forName(val.toString()));
 			fireTableCellUpdated(row, column);
 			// シーケンス名の表示更新
 			fireTableCellUpdated(row, Column.NAME.ordinal());
@@ -384,8 +385,8 @@ public class PlaylistTableModel extends AbstractTableModel {
 	 * @return 選択されたMIDIシーケンスのテーブルモデル（非選択時はnull）
 	 */
 	public SequenceTrackListTableModel getSelectedSequenceModel() {
-		if( sequenceListSelectionModel.isSelectionEmpty() ) return null;
-		int selectedIndex = sequenceListSelectionModel.getMinSelectionIndex();
+		if( selectionModel.isSelectionEmpty() ) return null;
+		int selectedIndex = selectionModel.getMinSelectionIndex();
 		if( selectedIndex >= sequenceModelList.size() ) return null;
 		return sequenceModelList.get(selectedIndex);
 	}
@@ -400,7 +401,7 @@ public class PlaylistTableModel extends AbstractTableModel {
 		sequenceModelList.add(new SequenceTrackListTableModel(this, sequence, filename));
 		int lastIndex = sequenceModelList.size() - 1;
 		fireTableRowsInserted(lastIndex, lastIndex);
-		sequenceListSelectionModel.setSelectionInterval(lastIndex, lastIndex);
+		selectionModel.setSelectionInterval(lastIndex, lastIndex);
 		return lastIndex;
 	}
 	/**

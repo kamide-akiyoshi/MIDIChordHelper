@@ -63,7 +63,7 @@ public class TrackEventListTableModel extends AbstractTableModel {
 		MESSAGE("MIDI Message", String.class, 300) {
 			@Override
 			public Object getValue(SequenceTrackListTableModel seq, MidiEvent event) {
-				return MIDISpec.msgToString(event.getMessage(), seq.charset);
+				return MIDISpec.msgToString(event.getMessage(), seq.getCharset());
 			}
 		};
 		private String title;
@@ -224,7 +224,8 @@ public class TrackEventListTableModel extends AbstractTableModel {
 		byte b[] = MIDISpec.getNameBytesOf(track);
 		if( b == null ) return "";
 		Charset cs = Charset.defaultCharset();
-		if( sequenceTrackListTableModel != null ) cs = sequenceTrackListTableModel.charset;
+		if( sequenceTrackListTableModel != null )
+			cs = sequenceTrackListTableModel.getCharset();
 		return new String(b, cs);
 	}
 	/**
@@ -234,7 +235,7 @@ public class TrackEventListTableModel extends AbstractTableModel {
 	 */
 	public boolean setString(String name) {
 		if( name.equals(toString()) || ! MIDISpec.setNameBytesOf(
-			track, name.getBytes(sequenceTrackListTableModel.charset))
+			track, name.getBytes(sequenceTrackListTableModel.getCharset()))
 		) return false;
 		sequenceTrackListTableModel.setModified(true);
 		fireTableDataChanged();
@@ -500,12 +501,5 @@ public class TrackEventListTableModel extends AbstractTableModel {
 		int oldLastIndex = lastIndex + midiEvents.length;
 		if(lastIndex < 0) lastIndex = 0;
 		fireTableRowsDeleted(oldLastIndex, lastIndex);
-	}
-	/**
-	 * 引数の選択内容が示すMIDIイベントを除去します。
-	 * @param selectionModel 選択内容
-	 */
-	public void removeSelectedMidiEvents() {
-		removeMidiEvents(getSelectedMidiEvents());
 	}
 }

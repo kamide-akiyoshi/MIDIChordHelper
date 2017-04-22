@@ -63,7 +63,7 @@ public class ChordTextField extends JTextField {
 		// 追加するデータを適切な文字コードで文字列に変換
 		String additionalText;
 		if( m != null ) {
-			additionalText = new String(data,m.charset);
+			additionalText = new String(data,m.getCharset());
 		}
 		else try {
 			additionalText = new String(data,"JISAutoDetect");

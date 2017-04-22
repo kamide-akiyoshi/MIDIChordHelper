@@ -12,11 +12,9 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JTable;
 import javax.swing.ListSelectionModel;
-import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 import javax.swing.event.TableModelEvent;
 import javax.swing.table.TableCellEditor;
-import javax.swing.table.TableColumnModel;
 
 import camidion.chordhelper.ChordHelperApplet;
 import camidion.chordhelper.music.MIDISpec;
@@ -25,104 +23,6 @@ import camidion.chordhelper.music.MIDISpec;
  * シーケンス（トラックリスト）テーブルビュー
  */
 public class SequenceTrackListTable extends JTable {
-	/**
-	 * MIDIイベントリストテーブルビュー（選択中のトラックの中身）
-	 */
-	public MidiEventTable eventListTable;
-	/**
-	 * トラックリストテーブルビューを構築します。
-	 * @param model シーケンス（トラックリスト）データモデル
-	 * @param eventListTable イベントリストテーブル
-	 */
-	public SequenceTrackListTable(SequenceTrackListTableModel model, MidiEventTable eventListTable) {
-		super(model, null, model.getSelectionModel());
-		this.eventListTable = eventListTable;
-		//
-		// 録音対象のMIDIチャンネルをコンボボックスで選択できるようにする
-		getColumnModel()
-			.getColumn(SequenceTrackListTableModel.Column.RECORD_CHANNEL.ordinal())
-			.setCellEditor(new DefaultCellEditor(new JComboBox<String>(){{
-				addItem("OFF");
-				for(int i=1; i <= MIDISpec.MAX_CHANNELS; i++) addItem(String.format("%d", i));
-				addItem("ALL");
-			}}));
-		setAutoCreateColumnsFromModel(false);
-		model.getParent().sequenceListSelectionModel.addListSelectionListener(titleLabel);
-		TableColumnModel colModel = getColumnModel();
-		Arrays.stream(SequenceTrackListTableModel.Column.values()).forEach(c->
-			colModel.getColumn(c.ordinal()).setPreferredWidth(c.preferredWidth)
-		);
-	}
-	/**
-	 * このテーブルビューが表示するデータを提供する
-	 * シーケンス（トラックリスト）データモデルを返します。
-	 * @return シーケンス（トラックリスト）データモデル
-	 */
-	@Override
-	public SequenceTrackListTableModel getModel() {
-		return (SequenceTrackListTableModel)dataModel;
-	}
-	/**
-	 * タイトルラベル
-	 */
-	TitleLabel titleLabel = new TitleLabel();
-	/**
-	 * 親テーブルの選択シーケンスの変更に反応する
-	 * 曲番号表示付きタイトルラベル
-	 */
-	private class TitleLabel extends JLabel implements ListSelectionListener {
-		private static final String TITLE = "Tracks";
-		public TitleLabel() { setText(TITLE); }
-		@Override
-		public void valueChanged(ListSelectionEvent event) {
-			if( event.getValueIsAdjusting() ) return;
-			SequenceTrackListTableModel oldModel = getModel();
-			SequenceTrackListTableModel newModel = oldModel.getParent().getSelectedSequenceModel();
-			if( oldModel == newModel ) return;
-			//
-			// MIDIチャンネル選択中のときはキャンセルする
-			cancelCellEditing();
-			//
-			String text = TITLE;
-			ListSelectionModel sm = oldModel.getParent().sequenceListSelectionModel;
-			if( ! sm.isSelectionEmpty() ) {
-				int index = sm.getMinSelectionIndex();
-				if( index >= 0 ) text = String.format(text+" - MIDI file #%d", index);
-			}
-			setText(text);
-			if( newModel == null ) {
-				newModel = oldModel.getParent().emptyTrackListTableModel;
-				addTrackAction.setEnabled(false);
-			}
-			else {
-				addTrackAction.setEnabled(true);
-			}
-			oldModel.getSelectionModel().removeListSelectionListener(trackSelectionListener);
-			setModel(newModel);
-			setSelectionModel(newModel.getSelectionModel());
-			newModel.getSelectionModel().addListSelectionListener(trackSelectionListener);
-		}
-	}
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>このトラックリストテーブルのデータが変わったときに編集を解除します。
-	 * 例えば、イベントが編集された場合や、
-	 * シーケンサーからこのモデルが外された場合がこれに該当します。
-	 * </p>
-	 */
-	@Override
-	public void tableChanged(TableModelEvent e) {
-		super.tableChanged(e);
-		cancelCellEditing();
-	}
-	/**
-	 * このトラックリストテーブルが編集モードになっていたら解除します。
-	 */
-	private void cancelCellEditing() {
-		TableCellEditor currentCellEditor = getCellEditor();
-		if( currentCellEditor != null ) currentCellEditor.cancelCellEditing();
-	}
 	/**
 	 * トラック追加アクション
 	 */
@@ -159,11 +59,96 @@ public class SequenceTrackListTable extends JTable {
 	/**
 	 * トラック選択リスナー
 	 */
-	private ListSelectionListener trackSelectionListener = event->{
-		if( event.getValueIsAdjusting() ) return;
-		ListSelectionModel selModel = getModel().getSelectionModel();
-		deleteTrackAction.setEnabled(! selModel.isSelectionEmpty());
-		eventListTable.titleLabel.updateTrackNumber(selModel.getMinSelectionIndex());
-		eventListTable.setModel(getModel().getSelectedTrackModel());
-	};
+	private ListSelectionListener trackSelectionListener;
+	/**
+	 * トラックリストテーブルビューを構築します。
+	 * @param model シーケンス（トラックリスト）データモデル
+	 * @param eventListTable イベントリストテーブル
+	 */
+	public SequenceTrackListTable(SequenceTrackListTableModel model, MidiEventTable eventListTable) {
+		super(model, null, model.getSelectionModel());
+		getColumnModel()
+			.getColumn(SequenceTrackListTableModel.Column.RECORD_CHANNEL.ordinal())
+			.setCellEditor(new DefaultCellEditor(new JComboBox<String>(){{
+				addItem("OFF");
+				for(int i=1; i <= MIDISpec.MAX_CHANNELS; i++) addItem(String.format("%d", i));
+				addItem("ALL");
+			}}));
+		setAutoCreateColumnsFromModel(false);
+		Arrays.stream(SequenceTrackListTableModel.Column.values()).forEach(c->
+			getColumnModel().getColumn(c.ordinal()).setPreferredWidth(c.preferredWidth)
+		);
+		selectionModel.addListSelectionListener(trackSelectionListener = event->{
+			if( event.getValueIsAdjusting() ) return;
+			deleteTrackAction.setEnabled(! selectionModel.isSelectionEmpty());
+			eventListTable.setModel(getModel().getSelectedTrackModel());
+		});
+	}
+	/**
+	 * このテーブルビューが表示するデータを提供するシーケンス（トラックリスト）データモデルを返します。
+	 * @return シーケンス（トラックリスト）データモデル
+	 */
+	@Override
+	public SequenceTrackListTableModel getModel() {
+		return (SequenceTrackListTableModel)dataModel;
+	}
+	/**
+	 * このテーブルビューが表示するデータを提供するシーケンス（トラックリスト）データモデルを設定します。
+	 * @param model シーケンス（トラックリスト）データモデル
+	 */
+	public void setModel(SequenceTrackListTableModel model) {
+		if( dataModel == model ) return;
+		cancelCellEditing();
+		if( model == null ) {
+			model = getModel().getParent().emptyTrackListTableModel;
+			addTrackAction.setEnabled(false);
+		}
+		else {
+			addTrackAction.setEnabled(true);
+		}
+		selectionModel.clearSelection();
+		selectionModel.removeListSelectionListener(trackSelectionListener);
+		super.setModel(model);
+		setSelectionModel(model.getSelectionModel());
+		titleLabel.setSelection(model.getParent().getSelectionModel());
+		selectionModel.addListSelectionListener(trackSelectionListener);
+	}
+	/**
+	 * 曲番号表示付きタイトルラベル
+	 */
+	TitleLabel titleLabel = new TitleLabel();
+	/**
+	 * 曲番号表示付きタイトルラベル
+	 */
+	private class TitleLabel extends JLabel {
+		private static final String TITLE = "Tracks";
+		public TitleLabel() { setText(TITLE); }
+		public void setSelection(ListSelectionModel sequenceSelectionModel) {
+			String text = TITLE;
+			if( ! sequenceSelectionModel.isSelectionEmpty() ) {
+				int index = sequenceSelectionModel.getMinSelectionIndex();
+				if( index >= 0 ) text = String.format(text+" - MIDI file #%d", index);
+			}
+			setText(text);
+		}
+	}
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>このトラックリストテーブルのデータが変わったときに編集を解除します。
+	 * 例えば、イベントが編集された場合や、シーケンサーからこのモデルが外された場合がこれに該当します。
+	 * </p>
+	 */
+	@Override
+	public void tableChanged(TableModelEvent e) {
+		super.tableChanged(e);
+		cancelCellEditing();
+	}
+	/**
+	 * このトラックリストテーブルが編集モードになっていたら解除します。
+	 */
+	private void cancelCellEditing() {
+		TableCellEditor currentCellEditor = getCellEditor();
+		if( currentCellEditor != null ) currentCellEditor.cancelCellEditing();
+	}
 }

@@ -144,7 +144,7 @@ public class ChordHelperApplet extends JApplet {
 	 * プレイリスト上で現在選択されているMIDIシーケンスをシーケンサへロードして再生します。
 	 */
 	public void play() {
-		play(playlistModel.sequenceListSelectionModel.getMinSelectionIndex());
+		play(playlistModel.getSelectionModel().getMinSelectionIndex());
 	}
 	/**
 	 * 指定されたインデックス値が示すプレイリスト上のMIDIシーケンスをシーケンサへロードして再生します。
@@ -266,7 +266,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public static class VersionInfo {
 		public static final String NAME = "MIDI Chord Helper";
-		public static final String VERSION = "Ver.20170421.1";
+		public static final String VERSION = "Ver.20170422.1";
 		public static final String COPYRIGHT = "Copyright (C) 2004-2017";
 		public static final String AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";
