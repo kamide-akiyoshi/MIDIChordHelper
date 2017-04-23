@@ -33,7 +33,10 @@ public class SequenceTrackListTable extends JTable {
 			setEnabled(false);
 		}
 		@Override
-		public void actionPerformed(ActionEvent e) { getModel().createTrack(); }
+		public void actionPerformed(ActionEvent e) {
+			int newIndex = getModel().createTrack();
+			selectionModel.setSelectionInterval(newIndex, newIndex);
+		}
 	};
 	/**
 	 * トラック削除アクション
@@ -53,13 +56,9 @@ public class SequenceTrackListTable extends JTable {
 					ChordHelperApplet.VersionInfo.NAME,
 					JOptionPane.YES_NO_OPTION,
 					JOptionPane.WARNING_MESSAGE) == JOptionPane.YES_OPTION
-			) getModel().deleteSelectedTracks();
+			) getModel().deleteSelectedTracks(selectionModel);
 		}
 	};
-	/**
-	 * トラック選択リスナー
-	 */
-	private ListSelectionListener trackSelectionListener;
 	/**
 	 * トラックリストテーブルビューを構築します。
 	 * @param model シーケンス（トラックリスト）データモデル
@@ -78,12 +77,16 @@ public class SequenceTrackListTable extends JTable {
 		Arrays.stream(SequenceTrackListTableModel.Column.values()).forEach(c->
 			getColumnModel().getColumn(c.ordinal()).setPreferredWidth(c.preferredWidth)
 		);
-		selectionModel.addListSelectionListener(trackSelectionListener = event->{
+		selectionModel.addListSelectionListener(selectionListener = event->{
 			if( event.getValueIsAdjusting() ) return;
 			deleteTrackAction.setEnabled(! selectionModel.isSelectionEmpty());
 			eventListTable.setModel(getModel().getSelectedTrackModel());
 		});
 	}
+	/**
+	 * トラック選択リスナー
+	 */
+	private ListSelectionListener selectionListener;
 	/**
 	 * このテーブルビューが表示するデータを提供するシーケンス（トラックリスト）データモデルを返します。
 	 * @return シーケンス（トラックリスト）データモデル
@@ -107,11 +110,11 @@ public class SequenceTrackListTable extends JTable {
 			addTrackAction.setEnabled(true);
 		}
 		selectionModel.clearSelection();
-		selectionModel.removeListSelectionListener(trackSelectionListener);
+		selectionModel.removeListSelectionListener(selectionListener);
 		super.setModel(model);
 		setSelectionModel(model.getSelectionModel());
 		titleLabel.setSelection(model.getParent().getSelectionModel());
-		selectionModel.addListSelectionListener(trackSelectionListener);
+		selectionModel.addListSelectionListener(selectionListener);
 	}
 	/**
 	 * 曲番号表示付きタイトルラベル

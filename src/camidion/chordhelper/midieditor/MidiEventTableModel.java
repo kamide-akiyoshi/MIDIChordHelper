@@ -18,7 +18,7 @@ import camidion.chordhelper.music.MIDISpec;
 /**
  * MIDIトラック（MIDIイベントリスト）テーブルモデル
  */
-public class TrackEventListTableModel extends AbstractTableModel {
+public class MidiEventTableModel extends AbstractTableModel {
 	/**
 	 * 列
 	 */
@@ -112,15 +112,15 @@ public class TrackEventListTableModel extends AbstractTableModel {
 	public SequenceTrackListTableModel getParent() {
 		return sequenceTrackListTableModel;
 	}
-	private ListSelectionModel eventSelectionModel = new DefaultListSelectionModel() {
+	/**
+	 * 選択状態を返します。
+	 */
+	public ListSelectionModel getSelectionModel() { return selectionModel; }
+	private ListSelectionModel selectionModel = new DefaultListSelectionModel() {
 		{
 			setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
 		}
 	};
-	/**
-	 * 選択状態を返します。
-	 */
-	public ListSelectionModel getSelectionModel() { return eventSelectionModel; }
 	/**
 	 * シーケンスを親にして、その特定のトラックに連動する
 	 * MIDIトラックモデルを構築します。
@@ -128,9 +128,7 @@ public class TrackEventListTableModel extends AbstractTableModel {
 	 * @param parent 親のシーケンスモデル
 	 * @param track ラップするMIDIトラック（ない場合はnull）
 	 */
-	public TrackEventListTableModel(
-		SequenceTrackListTableModel sequenceTrackListTableModel, Track track
-	) {
+	public MidiEventTableModel(SequenceTrackListTableModel sequenceTrackListTableModel, Track track) {
 		this.track = track;
 		this.sequenceTrackListTableModel = sequenceTrackListTableModel;
 	}
@@ -154,7 +152,7 @@ public class TrackEventListTableModel extends AbstractTableModel {
 	}
 	@Override
 	public Object getValueAt(int row, int column) {
-		TrackEventListTableModel.Column c = Column.values()[column];
+		MidiEventTableModel.Column c = Column.values()[column];
 		if( c == Column.EVENT_NUMBER ) return row;
 		MidiEvent event = track.get(row);
 		switch(c) {
@@ -418,9 +416,10 @@ public class TrackEventListTableModel extends AbstractTableModel {
 	}
 	/**
 	 * 選択されているMIDIイベントを返します。
+	 * @param eventSelectionModel 選択モデル
 	 * @return 選択されているMIDIイベント
 	 */
-	public MidiEvent[] getSelectedMidiEvents() {
+	public MidiEvent[] getSelectedMidiEvents(ListSelectionModel eventSelectionModel) {
 		Vector<MidiEvent> events = new Vector<MidiEvent>();
 		if( ! eventSelectionModel.isSelectionEmpty() ) {
 			int i = eventSelectionModel.getMinSelectionIndex();

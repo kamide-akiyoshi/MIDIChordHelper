@@ -81,16 +81,16 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 	/**
 	 * トラックリスト
 	 */
-	private List<TrackEventListTableModel> trackModelList = new ArrayList<>();
+	private List<MidiEventTableModel> trackModelList = new ArrayList<>();
+	/**
+	 * このトラックリストの選択モデルを返します。
+	 */
+	public ListSelectionModel getSelectionModel() { return selectionModel; }
 	private ListSelectionModel selectionModel = new DefaultListSelectionModel(){
 		{
 			setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
 		}
 	};
-	/**
-	 * このトラックリストの選択モデルを返します。
-	 */
-	public ListSelectionModel getSelectionModel() { return selectionModel; }
 	/**
 	 * MIDIシーケンスとファイル名から {@link SequenceTrackListTableModel} を構築します。
 	 * @param sequenceListTableModel 親のプレイリスト
@@ -196,7 +196,7 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 			}
 			if( --ch <= 0 || ch > MIDISpec.MAX_CHANNELS )
 				break;
-			TrackEventListTableModel trackTableModel = trackModelList.get(row);
+			MidiEventTableModel trackTableModel = trackModelList.get(row);
 			if( ch == trackTableModel.getChannel() ) break;
 			trackTableModel.setChannel(ch);
 			setModified(true);
@@ -255,7 +255,7 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 		// トラックリストを再構築
 		Track tracks[] = sequence.getTracks();
 		for(Track track : tracks) {
-			trackModelList.add(new TrackEventListTableModel(this, track));
+			trackModelList.add(new MidiEventTableModel(this, track));
 		}
 		// 文字コードの判定
 		Charset cs = MIDISpec.getCharsetOf(sequence);
@@ -337,7 +337,7 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 	 * @param index トラックのインデックス
 	 * @return トラックモデル（見つからない場合null）
 	 */
-	public TrackEventListTableModel getSelectedTrackModel() {
+	public MidiEventTableModel getSelectedTrackModel() {
 		if( selectionModel.isSelectionEmpty() ) return null;
 		Track tracks[] = sequence.getTracks();
 		if( tracks.length == 0 ) return null;
@@ -359,19 +359,17 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 	 * @return 追加したトラックのインデックス（先頭 0）
 	 */
 	public int createTrack() {
-		trackModelList.add(new TrackEventListTableModel(this, sequence.createTrack()));
+		trackModelList.add(new MidiEventTableModel(this, sequence.createTrack()));
 		setModified(true);
-		int lastRow = getRowCount() - 1;
-		fireTableRowsInserted(lastRow, lastRow);
-		selectionModel.setSelectionInterval(lastRow, lastRow);
-		return lastRow;
+		int newIndex = getRowCount() - 1;
+		fireTableRowsInserted(newIndex, newIndex);
+		return newIndex;
 	}
 	/**
 	 * 選択されているトラックを削除します。
 	 */
-	public void deleteSelectedTracks() {
-		if( selectionModel.isSelectionEmpty() )
-			return;
+	public void deleteSelectedTracks(ListSelectionModel selectionModel) {
+		if( selectionModel.isSelectionEmpty() ) return;
 		int minIndex = selectionModel.getMinSelectionIndex();
 		int maxIndex = selectionModel.getMaxSelectionIndex();
 		Track tracks[] = sequence.getTracks();

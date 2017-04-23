@@ -35,18 +35,6 @@ import camidion.chordhelper.mididevice.VirtualMidiDevice;
  */
 public class MidiEventTable extends JTable {
 	/**
-	 * MIDIイベント入力ダイアログ（イベント入力とイベント送出で共用）
-	 */
-	private MidiEventDialog eventDialog;
-	/**
-	 * 操作音を鳴らすMIDI出力デバイス
-	 */
-	private VirtualMidiDevice outputMidiDevice;
-	/**
-	 * イベント選択リスナー
-	 */
-	private ListSelectionListener selectionListener;
-	/**
 	 * 新しいイベントリストテーブルを構築します。
 	 * <p>データモデルとして一つのトラックのイベントリストを指定できます。
 	 * トラックを切り替えたいときは {@link #setModel(TableModel)}
@@ -57,12 +45,12 @@ public class MidiEventTable extends JTable {
 	 * @param eventDialog MIDIイベントダイアログ
 	 * @param outputMidiDevice 操作音出力先MIDIデバイス
 	 */
-	public MidiEventTable(TrackEventListTableModel model, MidiEventDialog eventDialog, VirtualMidiDevice outputMidiDevice) {
+	public MidiEventTable(MidiEventTableModel model, MidiEventDialog eventDialog, VirtualMidiDevice outputMidiDevice) {
 		super(model, null, model.getSelectionModel());
 		this.outputMidiDevice = outputMidiDevice;
 		this.eventDialog = eventDialog;
 		titleLabel = new TitleLabel();
-		Arrays.stream(TrackEventListTableModel.Column.values()).forEach(c->
+		Arrays.stream(MidiEventTableModel.Column.values()).forEach(c->
 			getColumnModel().getColumn(c.ordinal()).setPreferredWidth(c.preferredWidth)
 		);
 		pairNoteOnOffModel = new JToggleButton.ToggleButtonModel() {
@@ -117,18 +105,30 @@ public class MidiEventTable extends JTable {
 		});
 	}
 	/**
+	 * MIDIイベント入力ダイアログ（イベント入力とイベント送出で共用）
+	 */
+	private MidiEventDialog eventDialog;
+	/**
+	 * 操作音を鳴らすMIDI出力デバイス
+	 */
+	private VirtualMidiDevice outputMidiDevice;
+	/**
+	 * イベント選択リスナー
+	 */
+	private ListSelectionListener selectionListener;
+	/**
 	 * このテーブルビューが表示するデータを提供するトラック（イベントリスト）データモデルを返します。
 	 * @return トラック（イベントリスト）データモデル
 	 */
 	@Override
-	public TrackEventListTableModel getModel() {
-		return (TrackEventListTableModel) dataModel;
+	public MidiEventTableModel getModel() {
+		return (MidiEventTableModel) dataModel;
 	}
 	/**
 	 * このテーブルビューが表示するデータを提供するトラック（イベントリスト）データモデルを設定します。
 	 * @param model トラック（イベントリスト）データモデル
 	 */
-	public void setModel(TrackEventListTableModel model) {
+	public void setModel(MidiEventTableModel model) {
 		if( dataModel == model ) return;
 		if( model == null ) {
 			PlaylistTableModel playlist = getModel().getParent().getParent();
@@ -176,7 +176,7 @@ public class MidiEventTable extends JTable {
 		/**
 		 * 編集対象トラック
 		 */
-		private TrackEventListTableModel trackModel;
+		private MidiEventTableModel trackModel;
 		/**
 		 * tick位置入力モデル
 		 */
@@ -201,19 +201,19 @@ public class MidiEventTable extends JTable {
 		 * 選択したイベントを入力ダイアログなどに反映します。
 		 * @param model 対象データモデル
 		 */
-		private void setSelectedEvent(TrackEventListTableModel trackModel) {
+		private void setSelectedEvent(MidiEventTableModel trackModel) {
 			this.trackModel = trackModel;
 			SequenceTrackListTableModel sequenceTableModel = trackModel.getParent();
 			int ppq = sequenceTableModel.getSequence().getResolution();
 			eventDialog.midiMessageForm.durationForm.setPPQ(ppq);
 			tickPositionModel.setSequenceIndex(sequenceTableModel.getSequenceTickIndex());
 
-			selectedIndex = trackModel.getSelectionModel().getMinSelectionIndex();
+			selectedIndex = selectionModel.getMinSelectionIndex();
 			selectedMidiEvent = selectedIndex < 0 ? null : trackModel.getMidiEvent(selectedIndex);
 			currentTick = selectedMidiEvent == null ? 0 : selectedMidiEvent.getTick();
 			tickPositionModel.setTickPosition(currentTick);
 		}
-		public void setupForEdit(TrackEventListTableModel trackModel) {
+		public void setupForEdit(MidiEventTableModel trackModel) {
 			MidiEvent partnerEvent = null;
 			eventDialog.midiMessageForm.setMessage(
 				selectedMidiEvent.getMessage(),
@@ -322,7 +322,7 @@ public class MidiEventTable extends JTable {
 			setEnabled(false);
 		}
 		public void actionPerformed(ActionEvent e) {
-			TrackEventListTableModel model = getModel();
+			MidiEventTableModel model = getModel();
 			editContext.setSelectedEvent(model);
 			editContext.midiEventsToBeOverwritten = null;
 			eventDialog.openEventForm("New MIDI event", eventCellEditor.applyEventAction, model.getChannel());
@@ -334,16 +334,16 @@ public class MidiEventTable extends JTable {
 	private class LocalClipBoard {
 		private MidiEvent copiedEventsToPaste[];
 		private int copiedEventsPPQ = 0;
-		public void copy(TrackEventListTableModel model, boolean withRemove) {
-			copiedEventsToPaste = model.getSelectedMidiEvents();
+		public void copy(MidiEventTableModel model, boolean withRemove) {
+			copiedEventsToPaste = model.getSelectedMidiEvents(selectionModel);
 			copiedEventsPPQ = model.getParent().getSequence().getResolution();
 			if( withRemove ) model.removeMidiEvents(copiedEventsToPaste);
 			boolean en = (copiedEventsToPaste != null && copiedEventsToPaste.length > 0);
 			queryPasteEventAction.setEnabled(en);
 		}
-		public void cut(TrackEventListTableModel model) {copy(model,true);}
-		public void copy(TrackEventListTableModel model){copy(model,false);}
-		public void paste(TrackEventListTableModel model, long tick) {
+		public void cut(MidiEventTableModel model) {copy(model,true);}
+		public void copy(MidiEventTableModel model){copy(model,false);}
+		public void paste(MidiEventTableModel model, long tick) {
 			model.addMidiEvents(copiedEventsToPaste, tick, copiedEventsPPQ);
 		}
 	}
@@ -403,7 +403,7 @@ public class MidiEventTable extends JTable {
 					JOptionPane.YES_NO_OPTION,
 					JOptionPane.WARNING_MESSAGE) == JOptionPane.YES_OPTION
 			) {
-				getModel().removeMidiEvents(getModel().getSelectedMidiEvents());
+				getModel().removeMidiEvents(getModel().getSelectedMidiEvents(selectionModel));
 			}
 		}
 	};
@@ -421,7 +421,7 @@ public class MidiEventTable extends JTable {
 		public MidiEventCellEditor() {
 			eventDialog.midiMessageForm.setOutputMidiChannels(outputMidiDevice.getChannels());
 			eventDialog.tickPositionInputForm.setModel(editContext.tickPositionModel);
-			int index = TrackEventListTableModel.Column.MESSAGE.ordinal();
+			int index = MidiEventTableModel.Column.MESSAGE.ordinal();
 			getColumnModel().getColumn(index).setCellEditor(this);
 		}
 		/**
@@ -452,7 +452,7 @@ public class MidiEventTable extends JTable {
 		 */
 		private Action editEventAction = new AbstractAction() {
 			public void actionPerformed(ActionEvent e) {
-				TrackEventListTableModel model = getModel();
+				MidiEventTableModel model = getModel();
 				editContext.setSelectedEvent(model);
 				if( editContext.selectedMidiEvent == null )
 					return;

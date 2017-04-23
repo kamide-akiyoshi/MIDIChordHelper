@@ -44,7 +44,7 @@ public class PlaylistTableModel extends AbstractTableModel {
 	/**
 	 * 空のイベントリストモデル
 	 */
-	public final TrackEventListTableModel emptyEventListTableModel = new TrackEventListTableModel(emptyTrackListTableModel, null);
+	public final MidiEventTableModel emptyEventListTableModel = new MidiEventTableModel(emptyTrackListTableModel, null);
 	/**
 	 * このプレイリストの選択モデルを返します。
 	 */
