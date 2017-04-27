@@ -13,14 +13,9 @@ import javax.sound.midi.Sequence;
 import javax.sound.midi.Sequencer;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
-import javax.swing.DefaultListSelectionModel;
-import javax.swing.Icon;
-import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
-import javax.swing.event.ListSelectionEvent;
-import javax.swing.event.ListSelectionListener;
 import javax.swing.event.TableModelEvent;
 import javax.swing.table.AbstractTableModel;
 
@@ -45,15 +40,6 @@ public class PlaylistTableModel extends AbstractTableModel {
 	 * 空のイベントリストモデル
 	 */
 	public final MidiEventTableModel emptyEventListTableModel = new MidiEventTableModel(emptyTrackListTableModel, null);
-	/**
-	 * このプレイリストの選択モデルを返します。
-	 */
-	public ListSelectionModel getSelectionModel() { return selectionModel; }
-	private ListSelectionModel selectionModel = new DefaultListSelectionModel() {
-		{
-			setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-		}
-	};
 	/**
 	 * テーブルモデルの変更を示すイベントが、ファイル名の変更によるものかどうかをチェックします。
 	 * @param event テーブルモデルの変更を示すイベント
@@ -136,31 +122,6 @@ public class PlaylistTableModel extends AbstractTableModel {
 	 */
 	public List<SequenceTrackListTableModel> getSequenceModelList() {
 		return sequenceModelList;
-	}
-	/**
-	 * 行が選択されているときだけイネーブルになるアクション
-	 */
-	public abstract class SelectedSequenceAction extends AbstractAction implements ListSelectionListener {
-		public SelectedSequenceAction(String name, Icon icon, String tooltip) {
-			super(name,icon); init(tooltip);
-		}
-		public SelectedSequenceAction(String name, String tooltip) {
-			super(name); init(tooltip);
-		}
-		@Override
-		public void valueChanged(ListSelectionEvent e) {
-			if( e.getValueIsAdjusting() ) return;
-			setEnebledBySelection();
-		}
-		protected void setEnebledBySelection() {
-			int index = selectionModel.getMinSelectionIndex();
-			setEnabled(index >= 0);
-		}
-		private void init(String tooltip) {
-			putValue(Action.SHORT_DESCRIPTION, tooltip);
-			selectionModel.addListSelectionListener(this);
-			setEnebledBySelection();
-		}
 	}
 	/**
 	 * 繰り返し再生ON/OFF切り替えアクション
@@ -381,16 +342,6 @@ public class PlaylistTableModel extends AbstractTableModel {
 		return (int)(sequenceModelList.stream().mapToLong(m -> m.getMicrosecondLength() / 1000L).sum() / 1000L);
 	}
 	/**
-	 * 選択されたMIDIシーケンスのテーブルモデルを返します。
-	 * @return 選択されたMIDIシーケンスのテーブルモデル（非選択時はnull）
-	 */
-	public SequenceTrackListTableModel getSelectedSequenceModel() {
-		if( selectionModel.isSelectionEmpty() ) return null;
-		int selectedIndex = selectionModel.getMinSelectionIndex();
-		if( selectedIndex >= sequenceModelList.size() ) return null;
-		return sequenceModelList.get(selectedIndex);
-	}
-	/**
 	 * MIDIシーケンスを追加します。
 	 * @param sequence MIDIシーケンス（nullの場合、シーケンスを自動生成して追加）
 	 * @param filename ファイル名（nullの場合、ファイル名なし）
@@ -401,7 +352,6 @@ public class PlaylistTableModel extends AbstractTableModel {
 		sequenceModelList.add(new SequenceTrackListTableModel(this, sequence, filename));
 		int lastIndex = sequenceModelList.size() - 1;
 		fireTableRowsInserted(lastIndex, lastIndex);
-		selectionModel.setSelectionInterval(lastIndex, lastIndex);
 		return lastIndex;
 	}
 	/**

@@ -103,7 +103,8 @@ public class NewSequenceDialog extends JDialog {
 		@Override
 		public void actionPerformed(ActionEvent event) {
 			try {
-				playlist.getSequenceModelList().get(playlist.play(getMidiSequence())).setModified(true);
+				int index = playlist.play(getMidiSequence());
+				playlist.getSequenceModelList().get(index).setModified(true);
 			} catch (Exception ex) {
 				JOptionPane.showMessageDialog(
 					NewSequenceDialog.this, ex,

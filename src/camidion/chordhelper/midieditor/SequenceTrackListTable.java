@@ -12,7 +12,6 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JTable;
 import javax.swing.ListSelectionModel;
-import javax.swing.event.ListSelectionListener;
 import javax.swing.event.TableModelEvent;
 import javax.swing.table.TableCellEditor;
 
@@ -65,7 +64,7 @@ public class SequenceTrackListTable extends JTable {
 	 * @param eventListTable イベントリストテーブル
 	 */
 	public SequenceTrackListTable(SequenceTrackListTableModel model, MidiEventTable eventListTable) {
-		super(model, null, model.getSelectionModel());
+		super(model);
 		getColumnModel()
 			.getColumn(SequenceTrackListTableModel.Column.RECORD_CHANNEL.ordinal())
 			.setCellEditor(new DefaultCellEditor(new JComboBox<String>(){{
@@ -77,16 +76,13 @@ public class SequenceTrackListTable extends JTable {
 		Arrays.stream(SequenceTrackListTableModel.Column.values()).forEach(c->
 			getColumnModel().getColumn(c.ordinal()).setPreferredWidth(c.preferredWidth)
 		);
-		selectionModel.addListSelectionListener(selectionListener = event->{
+		selectionModel.addListSelectionListener(event->{
 			if( event.getValueIsAdjusting() ) return;
 			deleteTrackAction.setEnabled(! selectionModel.isSelectionEmpty());
-			eventListTable.setModel(getModel().getSelectedTrackModel());
+			eventListTable.setModel(getModel().getSelectedTrackModel(selectionModel));
+			eventListTable.titleLabel.showTrackNumber(selectionModel.getMinSelectionIndex());
 		});
 	}
-	/**
-	 * トラック選択リスナー
-	 */
-	private ListSelectionListener selectionListener;
 	/**
 	 * このテーブルビューが表示するデータを提供するシーケンス（トラックリスト）データモデルを返します。
 	 * @return シーケンス（トラックリスト）データモデル
@@ -109,12 +105,7 @@ public class SequenceTrackListTable extends JTable {
 		else {
 			addTrackAction.setEnabled(true);
 		}
-		selectionModel.clearSelection();
-		selectionModel.removeListSelectionListener(selectionListener);
 		super.setModel(model);
-		setSelectionModel(model.getSelectionModel());
-		titleLabel.setSelection(model.getParent().getSelectionModel());
-		selectionModel.addListSelectionListener(selectionListener);
 	}
 	/**
 	 * 曲番号表示付きタイトルラベル
@@ -123,10 +114,10 @@ public class SequenceTrackListTable extends JTable {
 	/**
 	 * 曲番号表示付きタイトルラベル
 	 */
-	private class TitleLabel extends JLabel {
+	class TitleLabel extends JLabel {
 		private static final String TITLE = "Tracks";
 		public TitleLabel() { setText(TITLE); }
-		public void setSelection(ListSelectionModel sequenceSelectionModel) {
+		public void showMidiFileNumber(ListSelectionModel sequenceSelectionModel) {
 			String text = TITLE;
 			if( ! sequenceSelectionModel.isSelectionEmpty() ) {
 				int index = sequenceSelectionModel.getMinSelectionIndex();

@@ -21,6 +21,7 @@ import javax.swing.AbstractAction;
 import javax.swing.AbstractCellEditor;
 import javax.swing.Action;
 import javax.swing.DefaultCellEditor;
+import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
@@ -29,6 +30,9 @@ import javax.swing.JOptionPane;
 import javax.swing.JRootPane;
 import javax.swing.JTable;
 import javax.swing.JToggleButton;
+import javax.swing.ListSelectionModel;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
 import javax.swing.event.TableModelEvent;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.JTableHeader;
@@ -53,13 +57,49 @@ public class PlaylistTable extends JTable {
 	/** MIDIデバイスダイアログを開くアクション */
 	private Action midiDeviceDialogOpenAction;
 	/**
+	 * 選択されたMIDIシーケンスのテーブルモデルを返します。
+	 * @return 選択されたMIDIシーケンスのテーブルモデル（非選択時はnull）
+	 */
+	private SequenceTrackListTableModel getSelectedSequenceModel() {
+		if( selectionModel.isSelectionEmpty() ) return null;
+		int selectedIndex = selectionModel.getMinSelectionIndex();
+		List<SequenceTrackListTableModel> list = getModel().getSequenceModelList();
+		return selectedIndex >= list.size() ? null : list.get(selectedIndex);
+	}
+	/**
+	 * 行が選択されているときだけイネーブルになるアクション
+	 */
+	private abstract class SelectedSequenceAction extends AbstractAction implements ListSelectionListener {
+		public SelectedSequenceAction(String name, Icon icon, String tooltip) {
+			super(name,icon); init(tooltip);
+		}
+		public SelectedSequenceAction(String name, String tooltip) {
+			super(name); init(tooltip);
+		}
+		@Override
+		public void valueChanged(ListSelectionEvent e) {
+			if( e.getValueIsAdjusting() ) return;
+			setEnebledBySelection();
+		}
+		protected void setEnebledBySelection() {
+			int index = selectionModel.getMinSelectionIndex();
+			setEnabled(index >= 0);
+		}
+		private void init(String tooltip) {
+			putValue(Action.SHORT_DESCRIPTION, tooltip);
+			selectionModel.addListSelectionListener(this);
+			setEnebledBySelection();
+		}
+	}
+	/**
 	 * プレイリストビューを構築します。
 	 * @param model プレイリストデータモデル
 	 * @param midiDeviceDialogOpenAction MIDIデバイスダイアログを開くアクション
 	 * @param trackListTable トラックリストテーブル（子テーブル）
 	 */
 	public PlaylistTable(PlaylistTableModel model, Action midiDeviceDialogOpenAction, SequenceTrackListTable trackListTable) {
-		super(model, null, model.getSelectionModel());
+		super(model);
+		setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		this.midiDeviceDialogOpenAction = midiDeviceDialogOpenAction;
 		try {
 			midiFileChooser = new MidiFileChooser();
@@ -89,7 +129,7 @@ public class PlaylistTable extends JTable {
 			}
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				SequenceTrackListTableModel sequenceModel = getModel().getSelectedSequenceModel();
+				SequenceTrackListTableModel sequenceModel = getSelectedSequenceModel();
 				byte[] data = null;
 				String filename = null;
 				if( sequenceModel != null ) {
@@ -114,7 +154,8 @@ public class PlaylistTable extends JTable {
 		});
 		selectionModel.addListSelectionListener(event->{
 			if( event.getValueIsAdjusting() ) return;
-			trackListTable.setModel(getModel().getSelectedSequenceModel());
+			trackListTable.setModel(getSelectedSequenceModel());
+			trackListTable.titleLabel.showMidiFileNumber(selectionModel);
 		});
 	}
 	private TableColumn lengthColumn;
@@ -280,13 +321,12 @@ public class PlaylistTable extends JTable {
 	 * @return 追加されたMIDIファイルのインデックス値（先頭が0、追加されなかった場合は-1）
 	 */
 	public int add(List<File> fileList) {
-		PlaylistTableModel model = getModel();
 		int firstIndex = -1;
 		Iterator<File> itr = fileList.iterator();
 		while(itr.hasNext()) {
 			File file = itr.next();
 			try (FileInputStream in = new FileInputStream(file)) {
-				int lastIndex = model.add(MidiSystem.getSequence(in), file.getName());
+				int lastIndex = ((PlaylistTableModel)dataModel).add(MidiSystem.getSequence(in), file.getName());
 				if( firstIndex < 0 ) firstIndex = lastIndex;
 			} catch(IOException|InvalidMidiDataException e) {
 				String message = "Could not open as MIDI file "+file+"\n"+e;
@@ -316,7 +356,7 @@ public class PlaylistTable extends JTable {
 	/**
 	 * シーケンスを削除するアクション
 	 */
-	Action deleteSequenceAction = getModel().new SelectedSequenceAction(
+	Action deleteSequenceAction = new SelectedSequenceAction(
 		"Delete", MidiSequenceEditorDialog.deleteIcon,
 		"Delete selected MIDI sequence - 選択した曲をプレイリストから削除"
 	) {
@@ -327,8 +367,8 @@ public class PlaylistTable extends JTable {
 		public void actionPerformed(ActionEvent event) {
 			PlaylistTableModel model = getModel();
 			if( midiFileChooser != null ) {
-				SequenceTrackListTableModel seqModel = model.getSelectedSequenceModel();
-				if( seqModel != null && seqModel.isModified() && JOptionPane.showConfirmDialog(
+				SequenceTrackListTableModel sequenceModel = getSelectedSequenceModel();
+				if( sequenceModel != null && sequenceModel.isModified() && JOptionPane.showConfirmDialog(
 						((JComponent)event.getSource()).getRootPane(),
 						CONFIRM_MESSAGE,
 						ChordHelperApplet.VersionInfo.NAME,
@@ -336,8 +376,8 @@ public class PlaylistTable extends JTable {
 						JOptionPane.WARNING_MESSAGE) != JOptionPane.YES_OPTION
 				) return;
 			}
-			if( ! model.getSelectionModel().isSelectionEmpty() ) try {
-				model.remove(model.getSelectionModel().getMinSelectionIndex());
+			if( ! selectionModel.isSelectionEmpty() ) try {
+				model.remove(selectionModel.getMinSelectionIndex());
 			} catch (Exception ex) {
 				JOptionPane.showMessageDialog(
 						((JComponent)event.getSource()).getRootPane(), ex,
@@ -354,13 +394,13 @@ public class PlaylistTable extends JTable {
 		/**
 		 * ファイル保存アクション
 		 */
-		public Action saveMidiFileAction = getModel().new SelectedSequenceAction(
+		public Action saveMidiFileAction = new SelectedSequenceAction(
 			"Save",
 			"Save selected MIDI sequence to file - 選択したMIDIシーケンスをファイルに保存"
 		) {
 			@Override
 			public void actionPerformed(ActionEvent event) {
-				SequenceTrackListTableModel sequenceModel = getModel().getSelectedSequenceModel();
+				SequenceTrackListTableModel sequenceModel = getSelectedSequenceModel();
 				if( sequenceModel == null ) return;
 				String fn = sequenceModel.getFilename();
 				if( fn != null && ! fn.isEmpty() ) setSelectedFile(new File(fn));

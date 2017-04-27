@@ -23,7 +23,6 @@ import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JToggleButton;
-import javax.swing.event.ListSelectionListener;
 import javax.swing.table.TableCellEditor;
 import javax.swing.table.TableModel;
 
@@ -46,7 +45,7 @@ public class MidiEventTable extends JTable {
 	 * @param outputMidiDevice 操作音出力先MIDIデバイス
 	 */
 	public MidiEventTable(MidiEventTableModel model, MidiEventDialog eventDialog, VirtualMidiDevice outputMidiDevice) {
-		super(model, null, model.getSelectionModel());
+		super(model);
 		this.outputMidiDevice = outputMidiDevice;
 		this.eventDialog = eventDialog;
 		titleLabel = new TitleLabel();
@@ -61,7 +60,7 @@ public class MidiEventTable extends JTable {
 		};
 		eventCellEditor = new MidiEventCellEditor();
 		setAutoCreateColumnsFromModel(false);
-		selectionModel.addListSelectionListener(selectionListener = event->{
+		selectionModel.addListSelectionListener(event->{
 			if( event.getValueIsAdjusting() ) return;
 			if( selectionModel.isSelectionEmpty() ) {
 				queryPasteEventAction.setEnabled(false);
@@ -113,10 +112,6 @@ public class MidiEventTable extends JTable {
 	 */
 	private VirtualMidiDevice outputMidiDevice;
 	/**
-	 * イベント選択リスナー
-	 */
-	private ListSelectionListener selectionListener;
-	/**
 	 * このテーブルビューが表示するデータを提供するトラック（イベントリスト）データモデルを返します。
 	 * @return トラック（イベントリスト）データモデル
 	 */
@@ -131,8 +126,7 @@ public class MidiEventTable extends JTable {
 	public void setModel(MidiEventTableModel model) {
 		if( dataModel == model ) return;
 		if( model == null ) {
-			PlaylistTableModel playlist = getModel().getParent().getParent();
-			model = playlist.emptyEventListTableModel;
+			model = getModel().getParent().getParent().emptyEventListTableModel;
 			queryJumpEventAction.setEnabled(false);
 			queryAddEventAction.setEnabled(false);
 
@@ -145,11 +139,7 @@ public class MidiEventTable extends JTable {
 			queryJumpEventAction.setEnabled(true);
 			queryAddEventAction.setEnabled(true);
 		}
-		selectionModel.removeListSelectionListener(selectionListener);
 		super.setModel(model);
-		setSelectionModel(model.getSelectionModel());
-		titleLabel.updateTrackNumber(model.getParent().getSelectionModel().getMinSelectionIndex());
-		selectionModel.addListSelectionListener(selectionListener);
 	}
 	/**
 	 * タイトルラベル
@@ -162,7 +152,7 @@ public class MidiEventTable extends JTable {
 	class TitleLabel extends JLabel {
 		private static final String TITLE = "MIDI Events";
 		private TitleLabel() { super(TITLE); }
-		void updateTrackNumber(int index) {
+		void showTrackNumber(int index) {
 			String text = TITLE;
 			if( index >= 0 ) text = String.format(TITLE+" - track #%d", index);
 			setText(text);

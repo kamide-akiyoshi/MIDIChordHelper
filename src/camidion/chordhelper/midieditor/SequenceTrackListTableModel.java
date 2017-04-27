@@ -9,7 +9,6 @@ import java.util.List;
 import javax.sound.midi.MidiSystem;
 import javax.sound.midi.Sequence;
 import javax.sound.midi.Track;
-import javax.swing.DefaultListSelectionModel;
 import javax.swing.ListSelectionModel;
 import javax.swing.table.AbstractTableModel;
 
@@ -82,15 +81,6 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 	 * トラックリスト
 	 */
 	private List<MidiEventTableModel> trackModelList = new ArrayList<>();
-	/**
-	 * このトラックリストの選択モデルを返します。
-	 */
-	public ListSelectionModel getSelectionModel() { return selectionModel; }
-	private ListSelectionModel selectionModel = new DefaultListSelectionModel(){
-		{
-			setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
-		}
-	};
 	/**
 	 * MIDIシーケンスとファイル名から {@link SequenceTrackListTableModel} を構築します。
 	 * @param sequenceListTableModel 親のプレイリスト
@@ -337,7 +327,7 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 	 * @param index トラックのインデックス
 	 * @return トラックモデル（見つからない場合null）
 	 */
-	public MidiEventTableModel getSelectedTrackModel() {
+	public MidiEventTableModel getSelectedTrackModel(ListSelectionModel selectionModel) {
 		if( selectionModel.isSelectionEmpty() ) return null;
 		Track tracks[] = sequence.getTracks();
 		if( tracks.length == 0 ) return null;

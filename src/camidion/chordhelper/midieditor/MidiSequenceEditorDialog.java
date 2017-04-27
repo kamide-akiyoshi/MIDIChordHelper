@@ -112,6 +112,13 @@ public class MidiSequenceEditorDialog extends JDialog {
 			JOptionPane.showMessageDialog(this, e, ChordHelperApplet.VersionInfo.NAME, JOptionPane.ERROR_MESSAGE);
 		}
 	}
+	/**
+	 * 現在選択されているMIDIシーケンスから再生します。
+	 * すでに再生されていた場合、このエディタダイアログを表示します。
+	 */
+	public void play() {
+		play(playlistTable.getSelectionModel().getMinSelectionIndex());
+	}
 
 	static final Icon deleteIcon = new ButtonIcon(ButtonIcon.X_ICON);
 	/**

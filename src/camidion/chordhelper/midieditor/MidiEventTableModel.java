@@ -9,7 +9,6 @@ import javax.sound.midi.MidiMessage;
 import javax.sound.midi.Sequencer;
 import javax.sound.midi.ShortMessage;
 import javax.sound.midi.Track;
-import javax.swing.DefaultListSelectionModel;
 import javax.swing.ListSelectionModel;
 import javax.swing.table.AbstractTableModel;
 
@@ -112,15 +111,6 @@ public class MidiEventTableModel extends AbstractTableModel {
 	public SequenceTrackListTableModel getParent() {
 		return sequenceTrackListTableModel;
 	}
-	/**
-	 * 選択状態を返します。
-	 */
-	public ListSelectionModel getSelectionModel() { return selectionModel; }
-	private ListSelectionModel selectionModel = new DefaultListSelectionModel() {
-		{
-			setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
-		}
-	};
 	/**
 	 * シーケンスを親にして、その特定のトラックに連動する
 	 * MIDIトラックモデルを構築します。
