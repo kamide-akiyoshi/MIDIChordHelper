@@ -107,7 +107,10 @@ public class MidiSequenceEditorDialog extends JDialog {
 			PlaylistTableModel playlist = getPlaylistModel();
 			MidiSequencerModel sequencerModel = playlist.getSequencerModel();
 			if( sequencerModel.getSequencer().isRunning() ) { open(); return; }
-			if( index >= 0 ) playlist.play(index);
+			if( index >= 0 ) {
+				playlist.play(index);
+				playlistTable.getSelectionModel().setSelectionInterval(index, index);
+			}
 		} catch (Exception e) {
 			JOptionPane.showMessageDialog(this, e, ChordHelperApplet.VersionInfo.NAME, JOptionPane.ERROR_MESSAGE);
 		}
@@ -136,7 +139,7 @@ public class MidiSequenceEditorDialog extends JDialog {
 		MidiEventTable eventListTable = new MidiEventTable(playlistTableModel.emptyEventListTableModel, eventDialog, outputMidiDevice);
 		SequenceTrackListTable trackListTable = new SequenceTrackListTable(playlistTableModel.emptyTrackListTableModel, eventListTable);
 		playlistTable = new PlaylistTable(playlistTableModel, midiDeviceDialogOpenAction, trackListTable);
-		newSequenceDialog = new NewSequenceDialog(playlistTableModel, outputMidiDevice);
+		newSequenceDialog = new NewSequenceDialog(playlistTable, outputMidiDevice);
 		setTitle("MIDI Editor/Playlist - "+ChordHelperApplet.VersionInfo.NAME);
 		setBounds( 150, 200, 900, 500 );
 		setLayout(new FlowLayout());

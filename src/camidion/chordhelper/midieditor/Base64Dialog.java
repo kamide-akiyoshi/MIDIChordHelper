@@ -40,7 +40,7 @@ public class Base64Dialog extends JDialog implements DocumentListener {
 		return "Content-Type: audio/midi; name=\"" + filename + "\"\n"
 				+ "Content-Transfer-Encoding: base64\n\n";
 	}
-	public PlaylistTableModel playlistModel;
+	public PlaylistTable playlistTable;
 	/**
 	 * 入力されたBase64テキストをデコードし、MIDIシーケンスとしてプレイリストに追加します。
 	 * @return プレイリストに追加されたMIDIシーケンスのインデックス（先頭が0）、追加に失敗した場合は -1
@@ -54,7 +54,9 @@ public class Base64Dialog extends JDialog implements DocumentListener {
 			return -1;
 		}
 		try (InputStream in = new ByteArrayInputStream(midiData)) {
-			return playlistModel.add(MidiSystem.getSequence(in), null);
+			int index = playlistTable.getModel().add(MidiSystem.getSequence(in), null);
+			playlistTable.getSelectionModel().setSelectionInterval(index, index);
+			return index;
 		} catch( IOException|InvalidMidiDataException e ) {
 			error("Base64デコードした結果をMIDIシーケンスとして読み込めませんでした。\n"+e);
 			return -1;
@@ -80,10 +82,10 @@ public class Base64Dialog extends JDialog implements DocumentListener {
 	};
 	/**
 	 * Base64テキスト入力ダイアログを構築します。
-	 * @param playlistModel Base64デコードされたMIDIシーケンスの追加先プレイリスト
+	 * @param playlistTable Base64デコードされたMIDIシーケンスの追加先プレイリストビュー
 	 */
-	public Base64Dialog(PlaylistTableModel playlistModel) {
-		this.playlistModel = playlistModel;
+	public Base64Dialog(PlaylistTable playlistTable) {
+		this.playlistTable = playlistTable;
 		setTitle("Base64-encoded MIDI sequence - " + ChordHelperApplet.VersionInfo.NAME);
 		add(new JPanel() {{
 			setLayout(new BoxLayout(this, BoxLayout.PAGE_AXIS));

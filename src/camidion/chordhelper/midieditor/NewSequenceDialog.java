@@ -93,7 +93,7 @@ public class NewSequenceDialog extends JDialog {
 		@Override
 		public void actionPerformed(ActionEvent e) { setVisible(true); }
 	};
-	private PlaylistTableModel playlist;
+	private PlaylistTable playlistTable;
 	/**
 	 * MIDIシーケンス生成アクション
 	 */
@@ -103,8 +103,8 @@ public class NewSequenceDialog extends JDialog {
 		@Override
 		public void actionPerformed(ActionEvent event) {
 			try {
-				int index = playlist.play(getMidiSequence());
-				playlist.getSequenceModelList().get(index).setModified(true);
+				int index = playlistTable.play(getMidiSequence());
+				playlistTable.getModel().getSequenceModelList().get(index).setModified(true);
 			} catch (Exception ex) {
 				JOptionPane.showMessageDialog(
 					NewSequenceDialog.this, ex,
@@ -118,8 +118,8 @@ public class NewSequenceDialog extends JDialog {
 	 * @param playlist シーケンス追加先プレイリスト
 	 * @param midiOutDevice 操作音を出力するMIDI出力デバイス
 	 */
-	public NewSequenceDialog(PlaylistTableModel playlist, VirtualMidiDevice midiOutDevice) {
-		this.playlist = playlist;
+	public NewSequenceDialog(PlaylistTable playlistTable, VirtualMidiDevice midiOutDevice) {
+		this.playlistTable = playlistTable;
 		trackSpecPanel.setChannels(midiOutDevice.getChannels());
 		setTitle("Generate new sequence - " + ChordHelperApplet.VersionInfo.NAME);
 		add(new JTabbedPane() {{

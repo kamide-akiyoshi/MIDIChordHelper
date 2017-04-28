@@ -95,7 +95,9 @@ public class ChordHelperApplet extends JApplet {
 	public int addRandomSongToPlaylist(int measureLength) throws InvalidMidiDataException {
 		NewSequenceDialog d = midiEditor.newSequenceDialog;
 		d.setRandomChordProgression(measureLength);
-		return playlistModel.play(d.getMidiSequence());
+		int index = playlistModel.play(d.getMidiSequence());
+		midiEditor.playlistTable.getSelectionModel().setSelectionInterval(index, index);
+		return index;
 	}
 	/**
 	 * URLで指定されたMIDIファイルをプレイリストへ追加します。
@@ -111,7 +113,9 @@ public class ChordHelperApplet extends JApplet {
 			URL url = (new URI(midiFileUrl)).toURL();
 			String filename = url.getFile().replaceFirst("^.*/","");
 			Sequence sequence = MidiSystem.getSequence(url);
-			return playlistModel.add(sequence, filename);
+			int index = playlistModel.add(sequence, filename);
+			midiEditor.playlistTable.getSelectionModel().setSelectionInterval(index, index);
+			return index;
 		} catch( URISyntaxException|IOException|InvalidMidiDataException e ) {
 			JOptionPane.showMessageDialog(null, e, VersionInfo.NAME, JOptionPane.WARNING_MESSAGE);
 		} catch( Exception e ) {
@@ -138,7 +142,9 @@ public class ChordHelperApplet extends JApplet {
 	public int addToPlaylistBase64(String base64EncodedText, String filename) {
 		Base64Dialog d = midiEditor.playlistTable.base64Dialog;
 		d.setBase64Data(base64EncodedText, filename);
-		return d.addToPlaylist();
+		int index = d.addToPlaylist();
+		midiEditor.playlistTable.getSelectionModel().setSelectionInterval(index, index);
+		return index;
 	}
 	/**
 	 * プレイリスト上で現在選択されているMIDIシーケンスをシーケンサへロードして再生します。
@@ -264,7 +270,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public static class VersionInfo {
 		public static final String NAME = "MIDI Chord Helper";
-		public static final String VERSION = "Ver.20170427.1";
+		public static final String VERSION = "Ver.20170428.1";
 		public static final String COPYRIGHT = "Copyright (C) 2004-2017";
 		public static final String AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";

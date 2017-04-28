@@ -17,6 +17,8 @@ import java.util.List;
 
 import javax.sound.midi.InvalidMidiDataException;
 import javax.sound.midi.MidiSystem;
+import javax.sound.midi.Sequence;
+import javax.sound.midi.Sequencer;
 import javax.swing.AbstractAction;
 import javax.swing.AbstractCellEditor;
 import javax.swing.Action;
@@ -121,7 +123,7 @@ public class PlaylistTable extends JTable {
 		setAutoCreateColumnsFromModel(false);
 		//
 		// Base64画面を開くアクションの生成
-		base64Dialog = new Base64Dialog(model);
+		base64Dialog = new Base64Dialog(this);
 		base64EncodeAction = new AbstractAction("Base64") {
 			{
 				String tooltip = "Base64 text conversion - Base64テキスト変換";
@@ -354,6 +356,18 @@ public class PlaylistTable extends JTable {
 		return firstIndex;
 	}
 	/**
+	 * 指定されたシーケンスを追加して再生します。
+	 * @param sequence 再生するシーケンス
+	 * @return 追加されたシーケンスのインデックス（先頭が 0）
+	 * @throws InvalidMidiDataException {@link Sequencer#setSequence(Sequence)} を参照
+	 * @throws IllegalStateException MIDIシーケンサデバイスが閉じている場合
+	 */
+	public int play(Sequence sequence) throws InvalidMidiDataException {
+		int index = getModel().play(sequence);
+		selectionModel.setSelectionInterval(index, index);
+		return index;
+	}
+	/**
 	 * シーケンスを削除するアクション
 	 */
 	Action deleteSequenceAction = new SelectedSequenceAction(
@@ -444,10 +458,13 @@ public class PlaylistTable extends JTable {
 				}
 				int firstIndex = PlaylistTable.this.add(Arrays.asList(getSelectedFile()));
 				try {
-					PlaylistTableModel playlist = getModel();
-					MidiSequencerModel sequencerModel = playlist.getSequencerModel();
+					PlaylistTableModel model = getModel();
+					MidiSequencerModel sequencerModel = model.getSequencerModel();
 					if( sequencerModel.getSequencer().isRunning() ) return;
-					if( firstIndex >= 0 ) playlist.play(firstIndex);
+					if( firstIndex >= 0 ) {
+						model.play(firstIndex);
+						selectionModel.setSelectionInterval(firstIndex, firstIndex);
+					}
 				} catch (Exception ex) {
 					JOptionPane.showMessageDialog(
 							rootPane, ex, ChordHelperApplet.VersionInfo.NAME,
