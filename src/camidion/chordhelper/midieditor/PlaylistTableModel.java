@@ -379,8 +379,7 @@ public class PlaylistTableModel extends AbstractTableModel {
 	public void loadToSequencer(int newRowIndex) throws InvalidMidiDataException {
 		SequenceTrackListTableModel oldSeq = sequencerModel.getSequenceTrackListTableModel();
 		SequenceTrackListTableModel newSeq = (newRowIndex < 0 || sequenceModelList.isEmpty() ? null : sequenceModelList.get(newRowIndex));
-		if( oldSeq == newSeq ) return;
-		sequencerModel.setSequenceTrackListTableModel(newSeq);
+		if( ! sequencerModel.setSequenceTrackListTableModel(newSeq) ) return;
 		int columnIndices[] = {
 			Column.PLAY.ordinal(),
 			Column.POSITION.ordinal(),

@@ -275,23 +275,38 @@ public class MidiSequencerModel extends MidiDeviceModel implements BoundedRangeM
 		return sequenceTrackListTableModel;
 	}
 	/**
-	 * MIDIトラックリストテーブルモデルをこのシーケンサーモデルにセットします。
-	 * nullを指定してアンセットすることもできます。
-	 * @param sequenceTableModel MIDIトラックリストテーブルモデル
+	 * MIDIシーケンスモデル（トラックリストテーブルモデル）をこのシーケンサーモデルにセットします。
+	 * <p>新旧のシーケンスモデルが同一である場合、何もせずにfalseを返します。
+	 * </p>
+	 * <p>旧シーケンスモデルがセットされていた場合、そのシーケンスのトラック番号単位で設定された
+	 * ソロ状態、ミュート状態がシーケンサーに残っていることがあるので、
+	 * それらをすべて解除してから新シーケンスモデルをセットします。
+	 * </p>
+	 * @param sequenceTableModel MIDIトラックリストテーブルモデル（nullを指定するとアンセットされます）
+	 * @return シーケンスモデルが変更された場合true
 	 * @throws InvalidMidiDataException {@link Sequencer#setSequence(Sequence)} を参照
 	 * @throws IllegalStateException MIDIシーケンサデバイスが閉じている状態で引数にnullを指定した場合
 	 */
-	public void setSequenceTrackListTableModel(SequenceTrackListTableModel sequenceTableModel)
+	public boolean setSequenceTrackListTableModel(SequenceTrackListTableModel sequenceTableModel)
 		throws InvalidMidiDataException
 	{
+		if( this.sequenceTrackListTableModel == sequenceTableModel ) return false;
 		Sequencer sequencer = getSequencer();
-		Sequence sequence = sequenceTableModel == null ? null : sequenceTableModel.getSequence();
-		sequencer.setSequence(sequence);
+		Sequence oldSequence = sequencer.getSequence();
+		if( oldSequence != null ) {
+			int nTracks = oldSequence.getTracks().length;
+			for( int trackIndex = 0; trackIndex < nTracks ; trackIndex++ ) {
+				sequencer.setTrackMute(trackIndex, false);
+				sequencer.setTrackSolo(trackIndex, false);
+			}
+		}
+		sequencer.setSequence(sequenceTableModel == null ? null : sequenceTableModel.getSequence());
 		startStopAction.updateEnableStatus();
 		if( this.sequenceTrackListTableModel != null ) this.sequenceTrackListTableModel.fireTableDataChanged();
 		if( sequenceTableModel != null ) sequenceTableModel.fireTableDataChanged();
 		this.sequenceTrackListTableModel = sequenceTableModel;
 		fireStateChanged();
+		return true;
 	}
 	/**
 	 * 小節単位で位置を移動します。
