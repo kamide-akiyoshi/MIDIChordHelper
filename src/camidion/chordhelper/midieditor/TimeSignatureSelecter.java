@@ -38,14 +38,16 @@ public class TimeSignatureSelecter extends JPanel {
 		add(timesigValueLabel);
 		setEditable(true);
 	}
-	public void clear() {
-		upperTimesigModel.setValue(4);
-		lowerTimesigView.setSelectedIndex(2);
-	}
 	public byte[] getByteArray() {
 		byte upper = upperTimesigModel.getNumber().byteValue();
 		byte lowerIndex = (byte)lowerTimesigView.getSelectedIndex();
 		return new byte[] { upper, lowerIndex, (byte)(96 >> lowerIndex), 8 };
+	}
+	protected void updateTimesigValueLabel() {
+		timesigValueLabel.setTimeSignature(
+			upperTimesigModel.getNumber().byteValue(),
+			(byte)lowerTimesigView.getSelectedIndex()
+		);
 	}
 	public void setValue(byte upper, byte lowerIndex) {
 		upperTimesigModel.setValue(upper);
@@ -62,9 +64,11 @@ public class TimeSignatureSelecter extends JPanel {
 		upperTimesigView.setVisible(editable);
 		lowerTimesigView.setVisible(editable);
 		timesigValueLabel.setVisible(!editable);
-		if(!editable) timesigValueLabel.setTimeSignature(
-			upperTimesigModel.getNumber().byteValue(),
-			(byte)lowerTimesigView.getSelectedIndex()
-		);
+		if(!editable) updateTimesigValueLabel();
+	}
+	public void clear() {
+		upperTimesigModel.setValue(4);
+		lowerTimesigView.setSelectedIndex(2);
+		updateTimesigValueLabel();
 	}
 }

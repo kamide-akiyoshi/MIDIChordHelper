@@ -82,7 +82,7 @@ public class TempoSelecter extends JPanel {
 		}
 		tempoLabel.setToolTipText(
 			editable ?
-			"Click rhythmically to adjust tempo - ここをクリックしてリズムをとるとテンポを合わせられます"
+			"Tap rhythmically here to adjust tempo - ここをクリックしてリズムをとるとテンポを合わせられます"
 			: null
 		);
 	}
@@ -113,6 +113,7 @@ public class TempoSelecter extends JPanel {
 	 * @param msgdata MIDIメタメッセージのバイト列（null を指定した場合はデフォルトに戻る）
 	 */
 	public void setTempo(byte msgdata[]) {
-		setTempo(msgdata==null ? DEFAULT_QPM: MIDISpec.byteArrayToQpmTempo(msgdata));
+		if( msgdata==null ) clear(); else setTempo(MIDISpec.byteArrayToQpmTempo(msgdata));
 	}
+	public void clear() { setTempo(DEFAULT_QPM); }
 }
