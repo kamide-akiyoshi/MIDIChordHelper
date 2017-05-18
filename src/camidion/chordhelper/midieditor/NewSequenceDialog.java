@@ -13,6 +13,7 @@ import java.awt.event.ComponentListener;
 import java.awt.event.InputEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Vector;
 
@@ -61,6 +62,7 @@ public class NewSequenceDialog extends JDialog {
 		"Key: C\nC G/B | Am Em/G | F C/E | Dm7 G7 C % | F G7 | Csus4 C\n";
 	private JTextArea chordText = new JTextArea(INITIAL_CHORD_STRING, 18, 30);
 	private JTextField seqNameText = new JTextField();
+	private CharsetComboBox charsetSelecter = new CharsetComboBox();
 	private JComboBox<Integer> ppqComboBox = new JComboBox<Integer>(PPQList);
 	private TimeSignatureSelecter timesigSelecter = new TimeSignatureSelecter();
 	private TempoSelecter tempoSelecter = new TempoSelecter();
@@ -103,16 +105,20 @@ public class NewSequenceDialog extends JDialog {
 		@Override
 		public void actionPerformed(ActionEvent event) {
 			try {
-				int index = playlistTable.play(getMidiSequence());
+				int index = playlistTable.play(getMidiSequence(), getSelectedCharset());
 				playlistTable.getModel().getSequenceModelList().get(index).setModified(true);
 			} catch (Exception ex) {
 				JOptionPane.showMessageDialog(
 					NewSequenceDialog.this, ex,
 					ChordHelperApplet.VersionInfo.NAME, JOptionPane.ERROR_MESSAGE);
+				ex.printStackTrace();
 			}
 			setVisible(false);
 		}
 	};
+	public Charset getSelectedCharset() {
+		return charsetSelecter.getSelectedCharset();
+	}
 	/**
 	 * 新しいMIDIシーケンスを生成するダイアログを構築します。
 	 * @param playlist シーケンス追加先プレイリスト
@@ -129,6 +135,8 @@ public class NewSequenceDialog extends JDialog {
 					setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
 					add(new JLabel("Sequence name:"));
 					add(seqNameText);
+					add(new JLabel("Character set:"));
+					add(charsetSelecter);
 				}});
 				add(new JPanel() {{
 					setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
@@ -219,7 +227,8 @@ public class NewSequenceDialog extends JDialog {
 			measureSelecter.getStartMeasurePosition(),
 			measureSelecter.getEndMeasurePosition(),
 			firstTrackSpec,
-			trackSpecPanel.getTrackSpecs()
+			trackSpecPanel.getTrackSpecs(),
+			charsetSelecter.getSelectedCharset()
 		);
 	}
 	/**

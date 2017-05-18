@@ -85,14 +85,17 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 	 * MIDIシーケンスとファイル名から {@link SequenceTrackListTableModel} を構築します。
 	 * @param sequenceListTableModel 親のプレイリスト
 	 * @param sequence MIDIシーケンス
+	 * @param charset MIDIシーケンスのテキスト文字コード
 	 * @param filename ファイル名
 	 */
 	public SequenceTrackListTableModel(
 		PlaylistTableModel sequenceListTableModel,
 		Sequence sequence,
+		Charset charset,
 		String filename
 	) {
 		this.sequenceListTableModel = sequenceListTableModel;
+		this.charset = charset;
 		setSequence(sequence);
 		setFilename(filename);
 	}
@@ -244,12 +247,7 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 		//
 		// トラックリストを再構築
 		Track tracks[] = sequence.getTracks();
-		for(Track track : tracks) {
-			trackModelList.add(new MidiEventTableModel(this, track));
-		}
-		// 文字コードの判定
-		Charset cs = MIDISpec.getCharsetOf(sequence);
-		charset = cs==null ? Charset.defaultCharset() : cs;
+		for(Track track : tracks) trackModelList.add(new MidiEventTableModel(this, track));
 		//
 		// トラックが挿入されたことを通知
 		fireTableRowsInserted(0, tracks.length-1);
@@ -280,6 +278,7 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 	 */
 	@Override
 	public String toString() {
+		if( sequence == null ) return "";
 		byte b[] = MIDISpec.getNameBytesOf(sequence);
 		return b == null ? "" : new String(b, charset);
 	}
@@ -290,10 +289,12 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 	 * @return 成功したらtrue
 	 */
 	public boolean setName(String name) {
-		if( name.equals(toString()) ) return false;
+		if( name.equals(toString()) || sequence == null ) return false;
 		if( ! MIDISpec.setNameBytesOf(sequence, name.getBytes(charset)) ) return false;
 		setModified(true);
 		fireTableDataChanged();
+		if( isOnSequencer() )
+			sequenceListTableModel.getSequencerModel().fireStateChanged();
 		return true;
 	}
 	/**
@@ -328,7 +329,7 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 	 * @return トラックモデル（見つからない場合null）
 	 */
 	public MidiEventTableModel getSelectedTrackModel(ListSelectionModel selectionModel) {
-		if( selectionModel.isSelectionEmpty() ) return null;
+		if( sequence == null || selectionModel.isSelectionEmpty() ) return null;
 		Track tracks[] = sequence.getTracks();
 		if( tracks.length == 0 ) return null;
 		Track t = tracks[selectionModel.getMinSelectionIndex()];
@@ -340,8 +341,10 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 	 * @return トラックのインデックス（先頭 0、トラックが見つからない場合 -1）
 	 */
 	public int indexOf(Track track) {
-		Track tracks[] = sequence.getTracks();
-		for( int i=0; i<tracks.length; i++ ) if( tracks[i] == track ) return i;
+		if( sequence != null ) {
+			Track tracks[] = sequence.getTracks();
+			for( int i=0; i<tracks.length; i++ ) if( tracks[i] == track ) return i;
+		}
 		return -1;
 	}
 	/**

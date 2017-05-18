@@ -1,5 +1,7 @@
 package camidion.chordhelper.music;
 
+import java.nio.charset.Charset;
+
 import javax.sound.midi.Sequence;
 import javax.sound.midi.Track;
 
@@ -19,16 +21,12 @@ public class FirstTrackSpec extends AbstractTrackSpec {
 		if( tempoData != null ) this.tempoData = tempoData;
 		if( timesigData != null ) this.timesigData = timesigData;
 	}
-	public FirstTrackSpec(String name, byte[] tempoData, byte[] timesigData, Key key) {
-		this(name,tempoData,timesigData);
-		this.key = key;
+	public Track createTrack(Sequence seq, Charset charset) {
+		return createTrack(seq, charset, 0, 0);
 	}
-	public Track createTrack(Sequence seq) {
-		return createTrack( seq, 0, 0 );
-	}
-	public Track createTrack(Sequence seq, int startMeasurePos, int endMeasurePos) {
+	public Track createTrack(Sequence seq, Charset charset, int startMeasurePos, int endMeasurePos) {
 		preMeasures = startMeasurePos - 1;
-		Track track = super.createTrack( seq, this );
+		Track track = super.createTrack(seq, this, charset);
 		if( tempoData == null ) tempoData = DEFAULT_TEMPO_DATA;
 		addTempo(tempoData, 0);
 		if( timesigData == null ) timesigData = DEFAULT_TIMESIG_DATA;

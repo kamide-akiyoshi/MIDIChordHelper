@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.charset.Charset;
 import java.util.Arrays;
 
 import javax.sound.midi.InvalidMidiDataException;
@@ -60,6 +61,7 @@ import camidion.chordhelper.midieditor.TempoSelecter;
 import camidion.chordhelper.midieditor.TimeSignatureSelecter;
 import camidion.chordhelper.music.Chord;
 import camidion.chordhelper.music.Key;
+import camidion.chordhelper.music.MIDISpec;
 import camidion.chordhelper.music.Range;
 import camidion.chordhelper.pianokeyboard.MidiKeyboardPanel;
 import camidion.chordhelper.pianokeyboard.PianoKeyboardAdapter;
@@ -95,7 +97,7 @@ public class ChordHelperApplet extends JApplet {
 	public int addRandomSongToPlaylist(int measureLength) throws InvalidMidiDataException {
 		NewSequenceDialog d = midiEditor.newSequenceDialog;
 		d.setRandomChordProgression(measureLength);
-		int index = playlistModel.play(d.getMidiSequence());
+		int index = playlistModel.play(d.getMidiSequence(), d.getSelectedCharset());
 		midiEditor.playlistTable.getSelectionModel().setSelectionInterval(index, index);
 		return index;
 	}
@@ -113,7 +115,9 @@ public class ChordHelperApplet extends JApplet {
 			URL url = (new URI(midiFileUrl)).toURL();
 			String filename = url.getFile().replaceFirst("^.*/","");
 			Sequence sequence = MidiSystem.getSequence(url);
-			int index = playlistModel.add(sequence, filename);
+			Charset charset = MIDISpec.getCharsetOf(sequence);
+			if( charset == null ) charset = Charset.defaultCharset();
+			int index = playlistModel.add(sequence, charset, filename);
 			midiEditor.playlistTable.getSelectionModel().setSelectionInterval(index, index);
 			return index;
 		} catch( URISyntaxException|IOException|InvalidMidiDataException e ) {
@@ -270,7 +274,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public static class VersionInfo {
 		public static final String NAME = "MIDI Chord Helper";
-		public static final String VERSION = "Ver.20170517.1";
+		public static final String VERSION = "Ver.20170518.1";
 		public static final String COPYRIGHT = "Copyright (C) 2004-2017";
 		public static final String AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";
@@ -407,7 +411,7 @@ public class ChordHelperApplet extends JApplet {
 				break;
 			}
 		});
-		// シーケンサーの再生時間位置、またはシーケンサーにロード中のシーケンスが変更されたときに呼び出されるリスナーを登録
+		// 再生時間位置の移動、シーケンス名の変更、またはシーケンスの入れ替えが発生したときに呼び出されるリスナーを登録
 		JLabel songTitleLabel = new JLabel();
 		sequencerModel.addChangeListener(e->{
 			Sequencer sequencer = sequencerModel.getSequencer();

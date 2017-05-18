@@ -35,7 +35,7 @@ public class PlaylistTableModel extends AbstractTableModel {
 	/**
 	 * 空のトラックリストモデル
 	 */
-	public final SequenceTrackListTableModel emptyTrackListTableModel = new SequenceTrackListTableModel(this, null, null);
+	public final SequenceTrackListTableModel emptyTrackListTableModel = new SequenceTrackListTableModel(this, null, null, null);
 	/**
 	 * 空のイベントリストモデル
 	 */
@@ -344,12 +344,15 @@ public class PlaylistTableModel extends AbstractTableModel {
 	/**
 	 * MIDIシーケンスを追加します。
 	 * @param sequence MIDIシーケンス（nullの場合、シーケンスを自動生成して追加）
+	 * @param charset MIDIシーケンス内のテキスト文字コード
 	 * @param filename ファイル名（nullの場合、ファイル名なし）
 	 * @return 追加されたシーケンスのインデックス（先頭が 0）
 	 */
-	public int add(Sequence sequence, String filename) {
-		if( sequence == null ) sequence = (new ChordProgression()).toMidiSequence();
-		sequenceModelList.add(new SequenceTrackListTableModel(this, sequence, filename));
+	public int add(Sequence sequence, Charset charset, String filename) {
+		if( sequence == null ) {
+			sequence = (new ChordProgression()).toMidiSequence(charset);
+		}
+		sequenceModelList.add(new SequenceTrackListTableModel(this, sequence, charset, filename));
 		int lastIndex = sequenceModelList.size() - 1;
 		fireTableRowsInserted(lastIndex, lastIndex);
 		return lastIndex;
@@ -405,12 +408,13 @@ public class PlaylistTableModel extends AbstractTableModel {
 	/**
 	 * 指定されたMIDIシーケンスをこのプレイリストに追加し、再生されていなければ追加した曲から再生します。
 	 * @param sequence MIDIシーケンス
+	 * @param charset 文字コード
 	 * @return 追加されたシーケンスのインデックス（先頭が 0）
 	 * @throws InvalidMidiDataException {@link Sequencer#setSequence(Sequence)} を参照
 	 * @throws IllegalStateException MIDIシーケンサデバイスが閉じている場合
 	 */
-	public int play(Sequence sequence) throws InvalidMidiDataException {
-		int lastIndex = add(sequence,"");
+	public int play(Sequence sequence, Charset charset) throws InvalidMidiDataException {
+		int lastIndex = add(sequence, charset, "");
 		if( ! sequencerModel.getSequencer().isRunning() ) play(lastIndex);
 		return lastIndex;
 	}

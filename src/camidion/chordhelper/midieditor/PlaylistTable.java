@@ -25,7 +25,6 @@ import javax.swing.Action;
 import javax.swing.DefaultCellEditor;
 import javax.swing.Icon;
 import javax.swing.JButton;
-import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
@@ -45,6 +44,7 @@ import javax.swing.table.TableColumnModel;
 
 import camidion.chordhelper.ChordHelperApplet;
 import camidion.chordhelper.mididevice.MidiSequencerModel;
+import camidion.chordhelper.music.MIDISpec;
 
 /**
  * プレイリストビュー（シーケンスリスト）
@@ -117,9 +117,7 @@ public class PlaylistTable extends JTable {
 		//
 		// 文字コード選択をプルダウンにする
 		getColumnModel().getColumn(PlaylistTableModel.Column.CHARSET.ordinal())
-			.setCellEditor(new DefaultCellEditor(new JComboBox<Charset>() {{
-				Charset.availableCharsets().values().stream().forEach(v->addItem(v));
-			}}));
+			.setCellEditor(new DefaultCellEditor(new CharsetComboBox()));
 		setAutoCreateColumnsFromModel(false);
 		//
 		// Base64画面を開くアクションの生成
@@ -328,7 +326,10 @@ public class PlaylistTable extends JTable {
 		while(itr.hasNext()) {
 			File file = itr.next();
 			try (FileInputStream in = new FileInputStream(file)) {
-				int lastIndex = ((PlaylistTableModel)dataModel).add(MidiSystem.getSequence(in), file.getName());
+				Sequence sequence = MidiSystem.getSequence(in);
+				Charset charset = MIDISpec.getCharsetOf(sequence);
+				if( charset == null ) charset = Charset.defaultCharset();
+				int lastIndex = ((PlaylistTableModel)dataModel).add(sequence, charset, file.getName());
 				if( firstIndex < 0 ) firstIndex = lastIndex;
 			} catch(IOException|InvalidMidiDataException e) {
 				String message = "Could not open as MIDI file "+file+"\n"+e;
@@ -358,12 +359,13 @@ public class PlaylistTable extends JTable {
 	/**
 	 * 指定されたシーケンスを追加して再生します。
 	 * @param sequence 再生するシーケンス
+	 * @param charset 文字コード
 	 * @return 追加されたシーケンスのインデックス（先頭が 0）
 	 * @throws InvalidMidiDataException {@link Sequencer#setSequence(Sequence)} を参照
 	 * @throws IllegalStateException MIDIシーケンサデバイスが閉じている場合
 	 */
-	public int play(Sequence sequence) throws InvalidMidiDataException {
-		int index = getModel().play(sequence);
+	public int play(Sequence sequence, Charset charset) throws InvalidMidiDataException {
+		int index = getModel().play(sequence, charset);
 		selectionModel.setSelectionInterval(index, index);
 		return index;
 	}

@@ -1,5 +1,6 @@
 package camidion.chordhelper.music;
 
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Vector;
@@ -435,26 +436,26 @@ public class ChordProgression {
 		}
 	}
 	// コード文字列の書き込み
-	public void setChordSymbolTextTo( AbstractTrackSpec ts ) {
+	public void setChordSymbolTextTo( AbstractTrackSpec ts, Charset charset ) {
 		for( Line line : lines ) {
 			for( Measure measure : line ) {
 				if( measure.ticks_per_beat == null ) continue;
 				for( Object element : measure ) {
 					if( element instanceof ChordStroke ) {
-						ts.addStringTo( 0x01, (ChordStroke)element );
+						ts.addStringTo( 0x01, (ChordStroke)element, charset );
 					}
 				}
 			}
 		}
 	}
 	// 歌詞の書き込み
-	public void setLyricsTo( AbstractTrackSpec ts ) {
+	public void setLyricsTo( AbstractTrackSpec ts, Charset charset ) {
 		for( Line line : lines ) {
 			for( Measure measure : line ) {
 				if( measure.ticks_per_beat == null ) continue;
 				for( Object element : measure ) {
 					if( element instanceof Lyrics ) {
-						ts.addStringTo( 0x05, (Lyrics)element );
+						ts.addStringTo( 0x05, (Lyrics)element, charset );
 					}
 				}
 			}
@@ -462,19 +463,23 @@ public class ChordProgression {
 	}
 	/**
 	 * コード進行をもとに MIDI シーケンスを生成します。
+	 * @param charset 文字コード
 	 * @return MIDIシーケンス
 	 */
-	public Sequence toMidiSequence() { return toMidiSequence(48); }
+	public Sequence toMidiSequence(Charset charset) {
+		return toMidiSequence(48, charset);
+	}
 	/**
-	 * 指定のタイミング解像度で、
-	 * コード進行をもとに MIDI シーケンスを生成します。
+	 * 指定のタイミング解像度、文字コードで、コード進行をもとに MIDI シーケンスを生成します。
+	 * @param ppq 分解能（pulse per quarter）
+	 * @param charset 文字コード
 	 * @return MIDIシーケンス
 	 */
-	public Sequence toMidiSequence(int ppq) {
+	public Sequence toMidiSequence(int ppq, Charset charset) {
 		//
 		// PPQ = Pulse Per Quarter (TPQN = Tick Per Quearter Note)
 		//
-		return toMidiSequence( ppq, 0, 0, null, null );
+		return toMidiSequence( ppq, 0, 0, null, null, charset );
 	}
 	/**
 	 * 小節数、トラック仕様、コード進行をもとに MIDI シーケンスを生成します。
@@ -483,11 +488,14 @@ public class ChordProgression {
 	 * @param endMeasure 終了小節位置
 	 * @param firstTrack 最初のトラックの仕様
 	 * @param trackSpecs 残りのトラックの仕様
+	 * @param charset 文字コード
 	 * @return MIDIシーケンス
 	 */
 	public Sequence toMidiSequence(
 		int ppq, int startMeasure, int endMeasure,
-		FirstTrackSpec firstTrack, Vector<AbstractNoteTrackSpec> trackSpecs
+		FirstTrackSpec firstTrack,
+		Vector<AbstractNoteTrackSpec> trackSpecs,
+		Charset charset
 	) {
 		Sequence seq;
 		try {
@@ -498,7 +506,7 @@ public class ChordProgression {
 		// マスタートラックの生成
 		if( firstTrack == null ) firstTrack = new FirstTrackSpec();
 		firstTrack.key = this.key;
-		firstTrack.createTrack( seq, startMeasure, endMeasure );
+		firstTrack.createTrack(seq, charset, startMeasure, endMeasure);
 		//
 		// 中身がなければここで終了
 		if( lines == null || trackSpecs == null ) return seq;
@@ -507,17 +515,17 @@ public class ChordProgression {
 		setTickPositions(firstTrack);
 		//
 		// コードのテキストと歌詞を書き込む
-		setChordSymbolTextTo(firstTrack);
-		setLyricsTo(firstTrack);
+		setChordSymbolTextTo(firstTrack, charset);
+		setLyricsTo(firstTrack, charset);
 		//
 		// 残りのトラックを生成
 		for( AbstractNoteTrackSpec ts : trackSpecs ) {
-			ts.createTrack(seq, firstTrack);
+			ts.createTrack(seq, firstTrack, charset);
 			if( ts instanceof DrumTrackSpec ) {
 				((DrumTrackSpec)ts).addDrums(this);
 			}
 			else {
-				((MelodyTrackSpec)ts).addChords(this);
+				((MelodyTrackSpec)ts).addChords(this, charset);
 			}
 		}
 		return seq;

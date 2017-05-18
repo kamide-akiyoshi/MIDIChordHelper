@@ -197,7 +197,7 @@ public class MIDISpec {
 		return Arrays.stream(sequence.getTracks()).anyMatch(t->setNameBytesOf(t,name));
 	}
 	/**
-	 * シーケンスの名前や歌詞など、メタイベントのテキストをもとに文字コードを判定します。
+	 * 指定されたMIDIシーケンスからメタイベントのテキスト（名前や歌詞など）を検索し、その文字コードを判定します。
 	 * 判定できなかった場合はnullを返します。
 	 * @param sequence MIDIシーケンス
 	 * @return 文字コード判定結果（またはnull）

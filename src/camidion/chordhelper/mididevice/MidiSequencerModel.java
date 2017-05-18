@@ -249,11 +249,17 @@ public class MidiSequencerModel extends MidiDeviceModel implements BoundedRangeM
 		listenerList.remove(ChangeListener.class, listener);
 	}
 	/**
-	 * 秒位置が変わったことをリスナーに通知します。
-	 * <p>登録中のすべての {@link ChangeListener} について
+	 * 登録中のすべての {@link ChangeListener} の
 	 * {@link ChangeListener#stateChanged(ChangeEvent)}
-	 * を呼び出すことによって状態の変化を通知します。
+	 * を呼び出します。
 	 * </p>
+	 * <p>次のような状態変更を通知したいときに呼び出します。
+	 * </p>
+	 * <ul>
+	 * <li>秒位置の移動</li>
+	 * <li>ロードされているシーケンス名の変更</li>
+	 * <li>ロードされているシーケンスの入れ替え</li>
+	 * </ul>
 	 */
 	public void fireStateChanged() {
 		Object[] listeners = listenerList.getListenerList();

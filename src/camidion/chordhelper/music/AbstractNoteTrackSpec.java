@@ -1,5 +1,7 @@
 package camidion.chordhelper.music;
 
+import java.nio.charset.Charset;
+
 import javax.sound.midi.InvalidMidiDataException;
 import javax.sound.midi.MidiEvent;
 import javax.sound.midi.MidiMessage;
@@ -30,8 +32,8 @@ public abstract class AbstractNoteTrackSpec extends AbstractTrackSpec {
 		this(ch,name,programNumber);
 		this.velocity = velocity;
 	}
-	public Track createTrack( Sequence seq, FirstTrackSpec firstTrackSpec ) {
-		Track track = super.createTrack( seq, firstTrackSpec );
+	public Track createTrack( Sequence seq, FirstTrackSpec firstTrackSpec, Charset charset ) {
+		Track track = super.createTrack( seq, firstTrackSpec, charset );
 		if( programNumber >= 0 ) addProgram( programNumber, 0 );
 		return track;
 	}

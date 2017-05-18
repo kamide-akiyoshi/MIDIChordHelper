@@ -4,11 +4,13 @@ import java.awt.event.ActionEvent;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.Charset;
 import java.util.Base64;
 import java.util.regex.Pattern;
 
 import javax.sound.midi.InvalidMidiDataException;
 import javax.sound.midi.MidiSystem;
+import javax.sound.midi.Sequence;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.Box;
@@ -24,6 +26,7 @@ import javax.swing.event.DocumentListener;
 
 import camidion.chordhelper.ButtonIcon;
 import camidion.chordhelper.ChordHelperApplet;
+import camidion.chordhelper.music.MIDISpec;
 
 /**
  * Base64テキスト入力ダイアログ
@@ -54,7 +57,10 @@ public class Base64Dialog extends JDialog implements DocumentListener {
 			return -1;
 		}
 		try (InputStream in = new ByteArrayInputStream(midiData)) {
-			int index = playlistTable.getModel().add(MidiSystem.getSequence(in), null);
+			Sequence sequence = MidiSystem.getSequence(in);
+			Charset charset = MIDISpec.getCharsetOf(sequence);
+			if( charset == null ) charset = Charset.defaultCharset();
+			int index = playlistTable.getModel().add(sequence, charset, null);
 			playlistTable.getSelectionModel().setSelectionInterval(index, index);
 			return index;
 		} catch( IOException|InvalidMidiDataException e ) {

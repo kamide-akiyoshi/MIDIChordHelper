@@ -1,5 +1,7 @@
 package camidion.chordhelper.music;
 
+import java.nio.charset.Charset;
+
 import javax.sound.midi.InvalidMidiDataException;
 import javax.sound.midi.MetaMessage;
 import javax.sound.midi.MidiEvent;
@@ -43,10 +45,10 @@ public abstract class AbstractTrackSpec {
 	 * @param firstTrackSpec 最初のトラック仕様
 	 * @return 生成したトラック
 	 */
-	public Track createTrack( Sequence seq, FirstTrackSpec firstTrackSpec ) {
+	public Track createTrack( Sequence seq, FirstTrackSpec firstTrackSpec, Charset charset ) {
 		this.firstTrackSpec = firstTrackSpec;
 		track = (sequence = seq).createTrack();
-		if( name != null ) addStringTo( 0x03, name, 0 );
+		if( name != null ) addStringTo( 0x03, name, charset, 0 );
 		minNoteTicks = (long)( seq.getResolution() >> 2 );
 		return track;
 	}
@@ -58,14 +60,14 @@ public abstract class AbstractTrackSpec {
 	 * @return {@link Track#add(MidiEvent)} と同じ
 	 */
 	public boolean addMetaEventTo( int type, byte data[], long tickPos  ) {
-		MetaMessage meta_msg = new MetaMessage();
+		MetaMessage metaMessage = new MetaMessage();
 		try {
-			meta_msg.setMessage( type, data, data.length );
+			metaMessage.setMessage( type, data, data.length );
 		} catch( InvalidMidiDataException ex ) {
 			ex.printStackTrace();
 			return false;
 		}
-		return track.add(new MidiEvent(meta_msg, tickPos));
+		return track.add(new MidiEvent(metaMessage, tickPos));
 	}
 	/**
 	 * 文字列をメタイベントとして追加します。
@@ -74,21 +76,21 @@ public abstract class AbstractTrackSpec {
 	 * @param tickPos tick位置
 	 * @return {@link #addMetaEventTo(int, byte[], long)} と同じ
 	 */
-	public boolean addStringTo( int type, String str, long tickPos ) {
+	public boolean addStringTo( int type, String str, Charset charset, long tickPos ) {
 		if( str == null ) str = "";
-		return addMetaEventTo( type, str.getBytes(), tickPos );
+		return addMetaEventTo(type, str.getBytes(charset), tickPos);
 	}
-	public boolean addStringTo( int type, ChordProgression.ChordStroke cs ) {
-		return addStringTo(type, cs.chord.toString(), cs.tickRange.startTickPos);
+	public boolean addStringTo( int type, ChordProgression.ChordStroke cs, Charset charset ) {
+		return addStringTo(type, cs.chord.toString(), charset, cs.tickRange.startTickPos);
 	}
-	public boolean addStringTo( int type, ChordProgression.Lyrics lyrics ) {
-		return addStringTo(type, lyrics.text, lyrics.startTickPos);
+	public boolean addStringTo( int type, ChordProgression.Lyrics lyrics, Charset charset ) {
+		return addStringTo(type, lyrics.text, charset, lyrics.startTickPos);
 	}
 	public boolean addEOT( long tickPos ) {
 		return addMetaEventTo( 0x2F, new byte[0], tickPos );
 	}
-	public void setChordSymbolText( ChordProgression cp ) {
-		cp.setChordSymbolTextTo( this );
+	public void setChordSymbolText(ChordProgression cp, Charset charset) {
+		cp.setChordSymbolTextTo(this, charset);
 	}
 	public boolean addSysEx(byte[] data, long tickPos) {
 		SysexMessage msg = new SysexMessage();

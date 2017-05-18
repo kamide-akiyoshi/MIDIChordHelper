@@ -1,5 +1,7 @@
 package camidion.chordhelper.music;
 
+import java.nio.charset.Charset;
+
 /**
  * メロディトラック仕様
  */
@@ -55,8 +57,9 @@ public class MelodyTrackSpec extends AbstractNoteTrackSpec {
 	/**
 	 * コードの追加
 	 * @param cp コード進行
+	 * @param charset 文字コード
 	 */
-	public void addChords( ChordProgression cp ) {
+	public void addChords( ChordProgression cp, Charset charset ) {
 		int mask;
 		long tick;
 		long startTickPos;
@@ -175,7 +178,7 @@ public class MelodyTrackSpec extends AbstractNoteTrackSpec {
 							// 決定された音符を追加
 							addNote(startTickPos, tick + minNoteTicks, noteNumber, velocity);
 							// 歌詞をテキストとして追加
-							addStringTo(0x05, MIDISpec.nsx39LyricElements[index], startTickPos);
+							addStringTo(0x05, MIDISpec.nsx39LyricElements[index], charset, startTickPos);
 						}
 						else {
 							// 決定された音符を追加
