@@ -74,31 +74,43 @@ public class MidiChordHelper extends JFrame implements AppletStub, AppletContext
 		updateFilename(((PlaylistTableModel)event.getSource()).getSequencerModel());
 	}
 	private MidiChordHelper(List<File> fileList) {
-		ChordHelperApplet applet = new ChordHelperApplet();
-		add(applet, BorderLayout.CENTER);
-		add(statusBar, BorderLayout.SOUTH);
-		applet.setStub(this);
-		applet.init();
-		setIconImage(applet.getIconImage());
+		setTitle(ChordHelperApplet.VersionInfo.NAME);
+		JLabel startingLabel = new JLabel(
+			"<html>"
+			+"<div width=300 height=50 style='font-size: 120%; font-style: italic; text-align: center;'>"
+			+"Starting...</div>"
+			+"</html>");
+		add(startingLabel);
 		pack();
 		setLocationRelativeTo(null);
-		setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
-		addWindowListener(new WindowAdapter() {
-			@Override
-			public void windowClosing(WindowEvent event) {
-				if( applet.isModified() && ! confirmBeforeExit() ) return;
-				applet.destroy();
-				System.exit(0);
-			}
-		});
-		PlaylistTableModel playlist = applet.midiEditor.getPlaylistModel();
-		MidiSequencerModel sequencer = playlist.getSequencerModel();
-		sequencer.addChangeListener(e->updateFilename((MidiSequencerModel)e.getSource()));
-		playlist.addTableModelListener(e->updateFilename(e));
-		updateFilename(sequencer);
 		setVisible(true);
-		applet.start();
-		applet.midiEditor.play(fileList);
+		SwingUtilities.invokeLater(()->{
+			ChordHelperApplet applet = new ChordHelperApplet();
+			remove(startingLabel);
+			add(applet, BorderLayout.CENTER);
+			add(statusBar, BorderLayout.SOUTH);
+			applet.setStub(this);
+			applet.init();
+			setIconImage(applet.getIconImage());
+			pack();
+			setLocationRelativeTo(null);
+			setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
+			addWindowListener(new WindowAdapter() {
+				@Override
+				public void windowClosing(WindowEvent event) {
+					if( applet.isModified() && ! confirmBeforeExit() ) return;
+					applet.destroy();
+					System.exit(0);
+				}
+			});
+			PlaylistTableModel playlist = applet.midiEditor.getPlaylistModel();
+			MidiSequencerModel sequencer = playlist.getSequencerModel();
+			sequencer.addChangeListener(e->updateFilename((MidiSequencerModel)e.getSource()));
+			playlist.addTableModelListener(e->updateFilename(e));
+			updateFilename(sequencer);
+			applet.start();
+			applet.midiEditor.play(fileList);
+		});
 	}
 	@Override
 	public boolean isActive() { return true; }
