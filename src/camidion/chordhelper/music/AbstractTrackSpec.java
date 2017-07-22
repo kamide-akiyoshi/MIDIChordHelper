@@ -13,8 +13,6 @@ import javax.sound.midi.Track;
  * MIDIトラックの仕様を表すクラス
  */
 public abstract class AbstractTrackSpec {
-	public static final int BEAT_RESOLUTION = 2;
-	// 最短の音符の長さ（四分音符を何回半分にするか）
 	public String name = null;
 	Track track = null;
 	FirstTrackSpec firstTrackSpec = null;

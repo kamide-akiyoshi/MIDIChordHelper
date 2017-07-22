@@ -1,5 +1,6 @@
 package camidion.chordhelper.midieditor;
 
+import javax.sound.midi.MetaMessage;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -56,6 +57,13 @@ public class TimeSignatureSelecter extends JPanel {
 	}
 	public void setValue(byte[] data) {
 		if(data == null) clear(); else setValue(data[0], data[1]);
+	}
+	public void setValueAt(SequenceTickIndex tickIndex, long tickPosition) {
+		MetaMessage msg = tickIndex.lastMetaMessageAt(
+			SequenceTickIndex.MetaMessageType.TIME_SIGNATURE,
+			tickPosition
+		);
+		setValue(msg==null ? null : msg.getData());
 	}
 	private boolean	editable;
 	public boolean isEditable() { return editable; }

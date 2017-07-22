@@ -1,6 +1,5 @@
 package camidion.chordhelper.mididevice;
 
-import java.util.AbstractCollection;
 import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -8,7 +7,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Vector;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -38,6 +36,7 @@ public class MidiDeviceTreeModel extends AbstractList<MidiDeviceModel> implement
 	public String toString() { return "MIDI devices"; }
 
 	protected List<MidiDeviceModel> deviceModelList = new ArrayList<>();
+
 	@Override
 	public int size() { return deviceModelList.size(); }
 	@Override
@@ -45,42 +44,21 @@ public class MidiDeviceTreeModel extends AbstractList<MidiDeviceModel> implement
 
 	protected Map<MidiDeviceInOutType, List<MidiDeviceModel>> deviceModelTree
 		= MidiDeviceInOutType.stream().collect(Collectors.toMap(Function.identity(), t-> new ArrayList<>()));
-	/**
-	 * {@link AbstractList#add(E)}の操作を内部的に行います。
-	 * 指定された要素をこのリストの最後に追加し、ツリー構造にも反映します。
-	 * @param dm 追加するMIDIデバイスモデル
-	 * @return true（{@link AbstractList#add(E)} と同様）
-	 */
-	protected boolean addInternally(MidiDeviceModel dm) {
-		if( ! deviceModelList.add(dm) ) return false;
-		deviceModelTree.get(dm.getInOutType()).add(dm);
-		return true;
-	}
+
 	protected MidiDeviceModel add(MidiDevice device) {
 		if( device == null ) return null;
-		MidiDeviceModel m = new MidiDeviceModel(device,this);
-		addInternally(m);
-		return m;
+		MidiDeviceModel dm;
+		if( device instanceof Sequencer ) {
+			dm = new MidiSequencerModel((Sequencer)device,this);
+		} else {
+			dm = new MidiDeviceModel(device,this);
+		}
+		deviceModelList.add(dm);
+		deviceModelTree.get(dm.getInOutType()).add(dm);
+		return dm;
 	}
 	protected MidiSequencerModel add(Sequencer sequencer) {
-		if( sequencer == null ) return null;
-		MidiSequencerModel m = new MidiSequencerModel(sequencer,this);
-		addInternally(m);
-		return m;
-	}
-	/**
-	 * {@link AbstractCollection#removeAll(Collection)}の操作を内部的に行います。
-	 * 指定されたコレクションに該当するすべての要素を、このリストから削除します。
-	 * このリストが変更された場合、ツリー構造にも反映されます。
-	 * @param c 削除する要素のコレクション
-	 * @return このリストが変更された場合はtrue（{@link AbstractCollection#removeAll(Collection)} と同様）
-	 */
-	protected boolean removeAllInternally(Collection<?> c) {
-		if( ! deviceModelList.removeAll(c) ) return false;
-		c.stream().filter(o -> o instanceof MidiDeviceModel).forEach(
-			o -> deviceModelTree.get(((MidiDeviceModel)o).getInOutType()).remove(o)
-		);
-		return true;
+		return (MidiSequencerModel)add((MidiDevice)sequencer);
 	}
 	@Override
 	public Object getRoot() { return this; }
@@ -217,8 +195,8 @@ public class MidiDeviceTreeModel extends AbstractList<MidiDeviceModel> implement
 			//   NOTE: 必ず MIDI OUT Rx デバイスを先に開くこと。
 			//
 			//   そうすれば、後から開いた MIDI IN Tx デバイスからのタイムスタンプのほうが「若く」なるので、
-			//   相手の MIDI OUT Rx デバイスは「信号が遅れてやってきた」と認識、遅れを取り戻そうとして
-			//   即座に音を出してくれる。
+			//   相手の MIDI OUT Rx デバイスは「若いころの信号が遅れてやってきた」と認識、
+			//	  遅れを取り戻そうとして即座に音を出してくれる。
 			//
 			//   開く順序が逆になると「進みすぎるから遅らせよう」として無用なレイテンシーが発生する原因になる。
 			synthModel, firstMidiOutModel,	// MIDI OUT Rx
@@ -230,12 +208,12 @@ public class MidiDeviceTreeModel extends AbstractList<MidiDeviceModel> implement
 		// 自身のTx/Rx同士の接続は、シーケンサーモデルはなし、それ以外（GUIデバイスモデル）はあり。
 		connectDevices(
 			openedDeviceModels.stream().filter(
-				m->Objects.nonNull(m.getReceiverListModel())
+				rxm->Objects.nonNull(rxm.getReceiverListModel())
 			).collect(Collectors.toMap(
 				Function.identity(),
-				r->openedDeviceModels.stream()
-				.filter(m->Objects.nonNull(m.getTransmitterListModel()))
-				.filter(t-> !(t == sequencerModel && t == r))
+				rxm->openedDeviceModels.stream()
+				.filter(txm->Objects.nonNull(txm.getTransmitterListModel()))
+				.filter(txm-> !(txm == sequencerModel && txm == rxm))
 				.collect(Collectors.toList())
 			))
 		);
@@ -275,10 +253,11 @@ public class MidiDeviceTreeModel extends AbstractList<MidiDeviceModel> implement
 	 * </ul>
 	 */
 	private void connectDevices(Map<MidiDeviceModel, Collection<MidiDeviceModel>> rxToTxConnections) {
-		rxToTxConnections.keySet().stream().forEach(rxm->{
+		rxToTxConnections.entrySet().stream().forEach(rxe->{
+			MidiDeviceModel rxm = rxe.getKey();
 			Receiver rx = rxm.getReceiver();
 			if( rx == null ) return;
-			rxToTxConnections.get(rxm).stream().filter(Objects::nonNull).forEach(txm->{
+			rxe.getValue().stream().filter(Objects::nonNull).forEach(txm->{
 				try {
 					txm.getTransmitterListModel().openTransmitter().setReceiver(rx);
 				} catch( Exception ex ) {
@@ -296,29 +275,30 @@ public class MidiDeviceTreeModel extends AbstractList<MidiDeviceModel> implement
 	 * 新しく装着されたMIDIデバイスを開くことができるようになります。
 	 * 同時に、取り外されたMIDIデバイスが閉じられ、そのデバイスの表示も消えます。
 	 * </p>
-	 * <p>別のMIDIデバイスに
+	 * <p>USB端子からMIDIデバイスを抜いた場合、そのMIDIデバイスの
 	 * {@link Transmitter} や {@link Receiver}
-	 * を接続したままUSB端子からMIDIデバイスを抜くと、
-	 * {@link MidiSystem#getMidiDeviceInfo()} を呼び出したときに Java VM がクラッシュしてしまうため、
-	 * 最初に{@link #disconnectAllDevices()}で接続をすべて切断してから
+	 * を接続したままで
+	 * {@link MidiSystem#getMidiDeviceInfo()} を呼び出すと Java VM がクラッシュしてしまいます。
+	 * これを避けるため、最初に{@link #disconnectAllDevices()}で接続をすべて切断してから
 	 * MIDIデバイスリストを最新の状態に更新し、その後{@link #connectDevices(Map)}で接続を復元します。
 	 * </p>
 	 */
 	public void update() {
-		Map<MidiDeviceModel, Collection<MidiDeviceModel>> savedConnections = disconnectAllDevices();
-		List<MidiDevice.Info> additionalInfo = new Vector<>(getMidiDeviceInfo());
-		List<MidiDeviceModel> closedModels = stream().filter(model->{
+		Map<MidiDeviceModel, Collection<MidiDeviceModel>> saved = disconnectAllDevices();
+		List<MidiDevice.Info> newDeviceInfo = new ArrayList<>(getMidiDeviceInfo());
+		Collection<MidiDeviceModel> oldDeviceModels = stream().filter(model->{
 			MidiDevice device = model.getMidiDevice();
 			if( device instanceof VirtualMidiDevice ) return false;
-			if( additionalInfo.remove(device.getDeviceInfo()) ) return false;
+			if( newDeviceInfo.remove(device.getDeviceInfo()) ) return false;
 			device.close(); return true;
-		}).collect(Collectors.toList());
-		if( removeAllInternally(closedModels) ) {
-			savedConnections.keySet().removeAll(closedModels); // Rx
-			savedConnections.values().forEach(m->m.removeAll(closedModels)); // Tx
+		}).collect(Collectors.toSet());
+		if( deviceModelList.removeAll(oldDeviceModels) ) {
+			oldDeviceModels.forEach(m->deviceModelTree.get(m.getInOutType()).remove(m));
+			saved.keySet().removeAll(oldDeviceModels); // Rx
+			saved.values().forEach(m->m.removeAll(oldDeviceModels)); // Tx
 		}
-		additionalInfo.forEach(info->add(getMidiDevice(info)));
-		connectDevices(savedConnections);
+		newDeviceInfo.forEach(info->add(getMidiDevice(info)));
+		connectDevices(saved);
 		fireTreeStructureChanged(this, null, null, null);
 	}
 

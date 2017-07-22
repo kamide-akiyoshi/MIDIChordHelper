@@ -31,6 +31,7 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JSeparator;
 import javax.swing.JSpinner;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextArea;
@@ -144,12 +145,13 @@ public class NewSequenceDialog extends JDialog {
 					add(ppqComboBox);
 					add(measureSelecter);
 				}});
-				add(new JButton("Randomize (Tempo, Time signature, Chord progression)") {{
-					setMargin(ChordHelperApplet.ZERO_INSETS);
-					addActionListener(e->setRandomChordProgression(measureSelecter.getMeasureDuration()));
-				}});
+				add(new JSeparator());
 				add(new JPanel() {{
 					setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
+					add(new JButton("Randomize") {{
+						setMargin(ChordHelperApplet.ZERO_INSETS);
+						addActionListener(e->setRandomChordProgression(measureSelecter.getMeasureDuration()));
+					}});
 					add(tempoSelecter);
 					add(new JPanel() {{
 						add(new JLabel("Time signature ="));

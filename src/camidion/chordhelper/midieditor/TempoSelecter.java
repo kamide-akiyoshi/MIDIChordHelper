@@ -4,6 +4,7 @@ import java.awt.Component;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 
+import javax.sound.midi.MetaMessage;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JLabel;
@@ -114,6 +115,18 @@ public class TempoSelecter extends JPanel {
 	 */
 	public void setTempo(byte msgdata[]) {
 		if( msgdata==null ) clear(); else setTempo(MIDISpec.byteArrayToQpmTempo(msgdata));
+	}
+	/**
+	 * MIDIシーケンスの特定tick位置におけるテンポを設定します。
+	 * @param tickIndex MIDIシーケンスのtickインデックス
+	 * @param tickPosition tick位置
+	 */
+	public void setTempoAt(SequenceTickIndex tickIndex, long tickPosition) {
+		MetaMessage msg = tickIndex.lastMetaMessageAt(
+			SequenceTickIndex.MetaMessageType.TEMPO,
+			tickPosition
+		);
+		setTempo(msg==null ? null : msg.getData());
 	}
 	public void clear() { setTempo(DEFAULT_QPM); }
 }

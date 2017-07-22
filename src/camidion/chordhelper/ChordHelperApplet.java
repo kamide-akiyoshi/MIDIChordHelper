@@ -27,7 +27,6 @@ import javax.swing.ImageIcon;
 import javax.swing.JApplet;
 import javax.swing.JButton;
 import javax.swing.JComponent;
-import javax.swing.JLabel;
 import javax.swing.JLayeredPane;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -267,14 +266,15 @@ public class ChordHelperApplet extends JApplet {
 	 * @param isDark ダークモードのときtrue、明るい表示のときfalse（デフォルト）
 	 */
 	public void setDarkMode(boolean isDark) {
-		darkModeToggleButton.setSelected(isDark);
+		if( darkModeToggleButton.isSelected() != isDark )
+			darkModeToggleButton.doClick();
 	}
 	/**
 	 * バージョン情報
 	 */
 	public static class VersionInfo {
 		public static final String NAME = "MIDI Chord Helper";
-		public static final String VERSION = "Ver.20170523.1";
+		public static final String VERSION = "Ver.20170722.1";
 		public static final String COPYRIGHT = "Copyright (C) 2004-2017";
 		public static final String AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";
@@ -297,9 +297,6 @@ public class ChordHelperApplet extends JApplet {
 	private ChordMatrix chordMatrix;
 	private JPanel keyboardSequencerPanel;
 	private JPanel chordGuide;
-	private Color rootPaneDefaultBgcolor;
-	private Color lyricDisplayDefaultBgcolor;
-	private Border lyricDisplayDefaultBorder;
 	private JSplitPane mainSplitPane;
 	private JSplitPane keyboardSplitPane;
 	private ChordButtonLabel enterButtonLabel;
@@ -329,7 +326,7 @@ public class ChordHelperApplet extends JApplet {
 		AboutMessagePane about = new AboutMessagePane(imageIcon);
 		//
 		// 背景色の取得
-		rootPaneDefaultBgcolor = getContentPane().getBackground();
+		Color rootPaneDefaultBgcolor = getContentPane().getBackground();
 		//
 		// コードダイアグラム、コードボタン、ピアノ鍵盤、およびそれらの仮想MIDIデバイスを生成
 		CapoComboBoxModel capoComboBoxModel = new CapoComboBoxModel();
@@ -342,9 +339,11 @@ public class ChordHelperApplet extends JApplet {
 			}
 			{
 				addChordMatrixListener(new ChordMatrixListener(){
+					@Override
 					public void keySignatureChanged() {
 						keyboardPanel.setCapoKey(getKeySignatureCapo());
 					}
+					@Override
 					public void chordChanged() { chordOn(); }
 				});
 				capoSelecter.checkbox.addItemListener(e->clearChord());
@@ -392,8 +391,8 @@ public class ChordHelperApplet extends JApplet {
 		(lyricDisplay = new ChordTextField(sequencerModel)).addActionListener(
 			e->chordMatrix.setSelectedChord(e.getActionCommand().trim().split("[ \t\r\n]")[0])
 		);
-		lyricDisplayDefaultBorder = lyricDisplay.getBorder();
-		lyricDisplayDefaultBgcolor = lyricDisplay.getBackground();
+		Border lyricDisplayDefaultBorder = lyricDisplay.getBorder();
+		Color lyricDisplayDefaultBgcolor = lyricDisplay.getBackground();
 		//
 		// メタイベント（テンポ・拍子・調号）を受信して表示するリスナーを登録
 		TempoSelecter tempoSelecter = new TempoSelecter() {{ setEditable(false); }};
@@ -412,41 +411,28 @@ public class ChordHelperApplet extends JApplet {
 			}
 		});
 		// 再生時間位置の移動、シーケンス名の変更、またはシーケンスの入れ替えが発生したときに呼び出されるリスナーを登録
-		JLabel songTitleLabel = new JLabel();
+		SongTitleLabel songTitleLabel = new SongTitleLabel();
 		sequencerModel.addChangeListener(e->{
 			Sequencer sequencer = sequencerModel.getSequencer();
 			chordMatrix.setPlaying(sequencer.isRunning());
 			SequenceTrackListTableModel sequenceModel = sequencerModel.getSequenceTrackListTableModel();
 			if( sequenceModel == null ) {
-				songTitleLabel.setText("<html>[No MIDI file loaded]</html>");
+				songTitleLabel.clear();
 				timesigSelecter.clear();
 				tempoSelecter.clear();
 				keysigLabel.clear();
 				return;
 			}
-			String songTitle = sequenceModel.toString();
 			int songIndex = playlistModel.getSequenceModelList().indexOf(sequenceModel);
-			songTitleLabel.setText("<html>"+("MIDI file " + songIndex + ": " + (
-				songTitle.isEmpty() ? "[Untitled]" : "<font color=maroon>"+songTitle+"</font>"
-			))+"</html>");
+			songTitleLabel.setSongTitle(songIndex, sequenceModel);
 			SequenceTickIndex tickIndex = sequenceModel.getSequenceTickIndex();
 			long tickPosition = sequencer.getTickPosition();
 			tickIndex.tickToMeasure(tickPosition);
 			chordMatrix.setBeat(tickIndex);
 			if( sequencerModel.getValueIsAdjusting() || ! (sequencer.isRunning() || sequencer.isRecording()) ) {
-				MetaMessage msg;
-				msg = tickIndex.lastMetaMessageAt(
-					SequenceTickIndex.MetaMessageType.TIME_SIGNATURE, tickPosition
-				);
-				timesigSelecter.setValue(msg==null ? null : msg.getData());
-				msg = tickIndex.lastMetaMessageAt(
-					SequenceTickIndex.MetaMessageType.TEMPO, tickPosition
-				);
-				tempoSelecter.setTempo(msg==null ? null : msg.getData());
-				msg = tickIndex.lastMetaMessageAt(
-					SequenceTickIndex.MetaMessageType.KEY_SIGNATURE, tickPosition
-				);
-				if(msg == null) keysigLabel.clear(); else setKeySignature(new Key(msg.getData()));
+				timesigSelecter.setValueAt(tickIndex, tickPosition);
+				tempoSelecter.setTempoAt(tickIndex, tickPosition);
+				setKeySignatureAt(tickIndex, tickPosition);
 			}
 		});
 		sequencerModel.fireStateChanged();
@@ -461,10 +447,8 @@ public class ChordHelperApplet extends JApplet {
 				addMouseListener(new MouseAdapter() {
 					public void mousePressed(MouseEvent event) {
 						boolean rightClicked = (event.getModifiersEx() & InputEvent.BUTTON3_DOWN_MASK) != 0;
-						if( rightClicked )
-							chordMatrix.setSelectedChord((Chord)null);
-						else
-							chordMatrix.setSelectedChord(lyricDisplay.getText());
+						String selectedChord = rightClicked ? lyricDisplay.getText() : null;
+						chordMatrix.setSelectedChord(selectedChord);
 					}
 				});
 			}});
@@ -473,7 +457,28 @@ public class ChordHelperApplet extends JApplet {
 			add( Box.createHorizontalStrut(5) );
 			add( darkModeToggleButton = new JToggleButton(new ButtonIcon(ButtonIcon.DARK_MODE_ICON)) {{
 				setMargin(ZERO_INSETS);
-				addItemListener(e->innerSetDarkMode(darkModeToggleButton.isSelected()));
+				addItemListener(e->{
+					boolean isDark = darkModeToggleButton.isSelected();
+					Color col = isDark ? Color.black : null;
+					getContentPane().setBackground(isDark ? Color.black : rootPaneDefaultBgcolor);
+					mainSplitPane.setBackground(col);
+					keyboardSplitPane.setBackground(col);
+					enterButtonLabel.setDarkMode(isDark);
+					chordGuide.setBackground(col);
+					lyricDisplay.setBorder(isDark ? null : lyricDisplayDefaultBorder);
+					lyricDisplay.setBackground(isDark ?
+						chordMatrix.darkModeColorset.backgrounds[2] :
+						lyricDisplayDefaultBgcolor
+					);
+					lyricDisplay.setForeground(isDark ? Color.white : null);
+					inversionOmissionButton.setBackground(col);
+					anoGakkiToggleButton.setBackground(col);
+					keyboardSequencerPanel.setBackground(col);
+					chordDiagram.setBackground(col);
+					chordDiagram.titleLabel.setDarkMode(isDark);
+					chordMatrix.setDarkMode(isDark);
+					keyboardPanel.setDarkMode(isDark);
+				});
 				setToolTipText("Light / Dark - 明かりを点灯／消灯");
 				setBorder(null);
 			}});
@@ -583,31 +588,16 @@ public class ChordHelperApplet extends JApplet {
 	@Override
 	public void stop() { sequencerModel.stop(); }
 
-	private void innerSetDarkMode(boolean isDark) {
-		Color col = isDark ? Color.black : null;
-		getContentPane().setBackground(isDark ? Color.black : rootPaneDefaultBgcolor);
-		mainSplitPane.setBackground(col);
-		keyboardSplitPane.setBackground(col);
-		enterButtonLabel.setDarkMode(isDark);
-		chordGuide.setBackground(col);
-		lyricDisplay.setBorder(isDark ? null : lyricDisplayDefaultBorder);
-		lyricDisplay.setBackground(isDark ?
-			chordMatrix.darkModeColorset.backgrounds[2] :
-			lyricDisplayDefaultBgcolor
-		);
-		lyricDisplay.setForeground(isDark ? Color.white : null);
-		inversionOmissionButton.setBackground(col);
-		anoGakkiToggleButton.setBackground(col);
-		keyboardSequencerPanel.setBackground(col);
-		chordDiagram.setBackground(col);
-		chordDiagram.titleLabel.setDarkMode(isDark);
-		chordMatrix.setDarkMode(isDark);
-		keyboardPanel.setDarkMode(isDark);
-	}
-
 	private void setKeySignature(Key key) {
 		keysigLabel.setKey(key);
 		chordMatrix.setKeySignature(key);
+	}
+	private void setKeySignatureAt(SequenceTickIndex tickIndex, long tickPosition) {
+		MetaMessage msg = tickIndex.lastMetaMessageAt(
+			SequenceTickIndex.MetaMessageType.KEY_SIGNATURE,
+			tickPosition
+		);
+		if(msg == null) keysigLabel.clear(); else setKeySignature(new Key(msg.getData()));
 	}
 
 	private int[] chordOnNotes = null;
