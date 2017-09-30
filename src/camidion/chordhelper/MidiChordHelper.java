@@ -25,9 +25,9 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import javax.swing.WindowConstants;
-import javax.swing.event.TableModelEvent;
 
 import camidion.chordhelper.mididevice.MidiSequencerModel;
+import camidion.chordhelper.midieditor.MidiSequenceEditorDialog;
 import camidion.chordhelper.midieditor.PlaylistTableModel;
 import camidion.chordhelper.midieditor.SequenceTrackListTableModel;
 
@@ -41,7 +41,7 @@ public class MidiChordHelper extends JFrame implements AppletStub, AppletContext
 	 * @throws Exception 何らかの異常が発生した場合にスローされる
 	 */
 	public static void main(String[] args) throws Exception {
-		List<File> fileList = Arrays.asList(args).stream()
+		List<File> fileList = Arrays.stream(args)
 				.map(arg -> new File(arg))
 				.collect(Collectors.toList());
 		SwingUtilities.invokeLater(()->new MidiChordHelper(fileList));
@@ -57,21 +57,17 @@ public class MidiChordHelper extends JFrame implements AppletStub, AppletContext
 	private JLabel statusBar = new JLabel("Welcome to "+ChordHelperApplet.VersionInfo.NAME) {
 		{ setFont(getFont().deriveFont(Font.PLAIN)); }
 	};
-	private void updateFilename(SequenceTrackListTableModel sequence) {
+	private static String titleOf(SequenceTrackListTableModel sequence) {
 		String title = ChordHelperApplet.VersionInfo.NAME;
 		if( sequence != null ) {
 			String filename = sequence.getFilename();
 			if( filename != null && ! filename.isEmpty() )
 				title = filename+" - "+title;
 		}
-		setTitle(title);
+		return title;
 	}
-	private void updateFilename(MidiSequencerModel sequencer) {
-		updateFilename(sequencer.getSequenceTrackListTableModel());
-	}
-	private void updateFilename(TableModelEvent event) {
-		if( ! PlaylistTableModel.filenameChanged(event) ) return;
-		updateFilename(((PlaylistTableModel)event.getSource()).getSequencerModel());
+	private void setTitleOf(MidiSequencerModel sequencer) {
+		setTitle(titleOf(sequencer.getSequenceTrackListTableModel()));
 	}
 	private MidiChordHelper(List<File> fileList) {
 		setTitle(ChordHelperApplet.VersionInfo.NAME);
@@ -103,13 +99,17 @@ public class MidiChordHelper extends JFrame implements AppletStub, AppletContext
 					System.exit(0);
 				}
 			});
-			PlaylistTableModel playlist = applet.midiEditor.getPlaylistModel();
+			MidiSequenceEditorDialog editor = applet.getMidiEditor();
+			PlaylistTableModel playlist = editor.getPlaylistModel();
 			MidiSequencerModel sequencer = playlist.getSequencerModel();
-			sequencer.addChangeListener(e->updateFilename((MidiSequencerModel)e.getSource()));
-			playlist.addTableModelListener(e->updateFilename(e));
-			updateFilename(sequencer);
+			sequencer.addChangeListener(ce->setTitleOf(sequencer));
+			playlist.addTableModelListener(tme->{
+				if( playlist.isLoadedSequenceChanged(tme, PlaylistTableModel.Column.FILENAME) )
+					setTitleOf(sequencer);
+			});
+			setTitleOf(sequencer);
 			applet.start();
-			applet.midiEditor.play(fileList);
+			editor.play(fileList);
 		});
 	}
 	@Override

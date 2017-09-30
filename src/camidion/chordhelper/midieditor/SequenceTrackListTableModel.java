@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Stream;
 
 import javax.sound.midi.MidiSystem;
 import javax.sound.midi.Sequence;
@@ -45,6 +46,15 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 			this.columnClass = columnClass;
 			this.preferredWidth = preferredWidth;
 		}
+	}
+	/**
+	 * [row, column]にあるセルの値が更新されたことを、すべてのリスナーに通知します。
+	 * @param row 更新されたセルの行
+	 * @param column 更新されたセルの列
+	 * @see #fireTableCellUpdated(int, int)
+	 */
+	public void fireTableCellUpdated(int row, Column column) {
+		fireTableCellUpdated(row, column.ordinal());
 	}
 	/**
 	 * このモデルを収容している親のプレイリストを返します。
@@ -102,6 +112,13 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 	@Override
 	public int getRowCount() {
 		return sequence == null ? 0 : sequence.getTracks().length;
+	}
+	/**
+	 * トラックが存在しない、空のシーケンスかどうか調べます。
+	 * @return トラックが存在しなければtrue
+	 */
+	public boolean isEmpty() {
+		return sequence == null || sequence.getTracks().length == 0;
 	}
 	@Override
 	public int getColumnCount() { return Column.values().length; }
@@ -193,7 +210,7 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 			if( ch == trackTableModel.getChannel() ) break;
 			trackTableModel.setChannel(ch);
 			setModified(true);
-			fireTableCellUpdated(row, Column.EVENTS.ordinal());
+			fireTableCellUpdated(row, Column.EVENTS);
 			break;
 		}
 		case TRACK_NAME: trackModelList.get(row).setString((String)val); break;
@@ -222,6 +239,14 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 	 */
 	public SequenceTickIndex getSequenceTickIndex() { return sequenceTickIndex; }
 	/**
+	 * トラックから子モデルを生成します。
+	 * @param track 対象トラック
+	 * @return 対象トラックから生成した子モデル
+	 */
+	private MidiEventTableModel createModelOf(Track track) {
+		return new MidiEventTableModel(this, track);
+	}
+	/**
 	 * MIDIシーケンスを設定します。
 	 * @param sequence MIDIシーケンス（nullを指定するとトラックリストが空になる）
 	 */
@@ -246,11 +271,12 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 		fireTimeSignatureChanged();
 		//
 		// トラックリストを再構築
-		Track tracks[] = sequence.getTracks();
-		for(Track track : tracks) trackModelList.add(new MidiEventTableModel(this, track));
+		Track[] tracks = sequence.getTracks();
+		int newSize = tracks.length;
+		Stream.of(tracks).forEach(track -> trackModelList.add(createModelOf(track)));
 		//
 		// トラックが挿入されたことを通知
-		fireTableRowsInserted(0, tracks.length-1);
+		fireTableRowsInserted(0, newSize-1);
 	}
 	/**
 	 * 拍子が変更されたとき、シーケンスtickインデックスを再作成します。
@@ -289,8 +315,8 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 	 * @return 成功したらtrue
 	 */
 	public boolean setName(String name) {
-		if( name.equals(toString()) || sequence == null ) return false;
-		if( ! MIDISpec.setNameBytesOf(sequence, name.getBytes(charset)) ) return false;
+		if( name.equals(toString()) || ! MIDISpec.setNameBytesOf(sequence, name.getBytes(charset)) )
+			return false;
 		setModified(true);
 		fireTableDataChanged();
 		if( isOnSequencer() )
@@ -303,9 +329,7 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 	 * @throws IOException バイト列の出力に失敗した場合
 	 */
 	public byte[] getMIDIdata() throws IOException {
-		if( sequence == null || sequence.getTracks().length == 0 ) {
-			return null;
-		}
+		if( isEmpty() ) return null;
 		try( ByteArrayOutputStream out = new ByteArrayOutputStream() ) {
 			MidiSystem.write(sequence, 1, out);
 			return out.toByteArray();
@@ -329,10 +353,8 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 	 * @return トラックモデル（見つからない場合null）
 	 */
 	public MidiEventTableModel getSelectedTrackModel(ListSelectionModel selectionModel) {
-		if( sequence == null || selectionModel.isSelectionEmpty() ) return null;
-		Track tracks[] = sequence.getTracks();
-		if( tracks.length == 0 ) return null;
-		Track t = tracks[selectionModel.getMinSelectionIndex()];
+		if( isEmpty() || selectionModel.isSelectionEmpty() ) return null;
+		Track t = sequence.getTracks()[selectionModel.getMinSelectionIndex()];
 		return trackModelList.stream().filter(tm -> tm.getTrack() == t).findFirst().orElse(null);
 	}
 	/**
@@ -352,9 +374,9 @@ public class SequenceTrackListTableModel extends AbstractTableModel {
 	 * @return 追加したトラックのインデックス（先頭 0）
 	 */
 	public int createTrack() {
+		int newIndex = getRowCount();
 		trackModelList.add(new MidiEventTableModel(this, sequence.createTrack()));
 		setModified(true);
-		int newIndex = getRowCount() - 1;
 		fireTableRowsInserted(newIndex, newIndex);
 		return newIndex;
 	}

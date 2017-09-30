@@ -182,11 +182,11 @@ public class MIDISpec {
 	 */
 	public static byte[] getNameBytesOf(Sequence sequence) {
 		return Arrays.stream(sequence.getTracks()).map(t->getNameBytesOf(t))
-			.filter(Objects::nonNull).findFirst().orElse(null);
+				.filter(Objects::nonNull).findFirst().orElse(null);
 	}
 	/**
 	 * シーケンス名のバイト列を設定します。
-	 * <p>先頭のトラックに設定されます。設定に失敗した場合、順に次のトラックへの設定を試みます。
+	 * <p>先頭のトラックから順に設定を試み、成功したところでtrueを返します。
 	 * </p>
 	 *
 	 * @param sequence MIDIシーケンス
@@ -194,7 +194,8 @@ public class MIDISpec {
 	 * @return 成功：true、失敗：false
 	 */
 	public static boolean setNameBytesOf(Sequence sequence, byte[] name) {
-		return Arrays.stream(sequence.getTracks()).anyMatch(t->setNameBytesOf(t,name));
+		return sequence != null && Arrays.stream(sequence.getTracks())
+				.anyMatch(t->setNameBytesOf(t,name));
 	}
 	/**
 	 * 指定されたMIDIシーケンスからメタイベントのテキスト（名前や歌詞など）を検索し、その文字コードを判定します。

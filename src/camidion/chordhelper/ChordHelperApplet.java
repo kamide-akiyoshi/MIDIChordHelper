@@ -13,7 +13,6 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.nio.charset.Charset;
 import java.util.Arrays;
 
 import javax.sound.midi.InvalidMidiDataException;
@@ -60,7 +59,6 @@ import camidion.chordhelper.midieditor.TempoSelecter;
 import camidion.chordhelper.midieditor.TimeSignatureSelecter;
 import camidion.chordhelper.music.Chord;
 import camidion.chordhelper.music.Key;
-import camidion.chordhelper.music.MIDISpec;
 import camidion.chordhelper.music.Range;
 import camidion.chordhelper.pianokeyboard.MidiKeyboardPanel;
 import camidion.chordhelper.pianokeyboard.PianoKeyboardAdapter;
@@ -114,9 +112,7 @@ public class ChordHelperApplet extends JApplet {
 			URL url = (new URI(midiFileUrl)).toURL();
 			String filename = url.getFile().replaceFirst("^.*/","");
 			Sequence sequence = MidiSystem.getSequence(url);
-			Charset charset = MIDISpec.getCharsetOf(sequence);
-			if( charset == null ) charset = Charset.defaultCharset();
-			int index = playlistModel.add(sequence, charset, filename);
+			int index = playlistModel.add(sequence, filename);
 			midiEditor.playlistTable.getSelectionModel().setSelectionInterval(index, index);
 			return index;
 		} catch( URISyntaxException|IOException|InvalidMidiDataException e ) {
@@ -144,10 +140,8 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public int addToPlaylistBase64(String base64EncodedText, String filename) {
 		Base64Dialog d = midiEditor.playlistTable.base64Dialog;
-		d.setBase64Data(base64EncodedText, filename);
-		int index = d.addToPlaylist();
-		midiEditor.playlistTable.getSelectionModel().setSelectionInterval(index, index);
-		return index;
+		d.setBase64TextData(base64EncodedText, filename);
+		return d.addToPlaylist();
 	}
 	/**
 	 * プレイリスト上で現在選択されているMIDIシーケンスをシーケンサへロードして再生します。
@@ -172,15 +166,13 @@ public class ChordHelperApplet extends JApplet {
 	public boolean isPlaying() { return isRunning(); }
 	/**
 	 * 現在シーケンサにロードされているMIDIデータをBase64テキストに変換した結果を返します。
-	 * @return MIDIデータをBase64テキストに変換した結果（シーケンサにロードされていない場合null）
+	 * @return MIDIデータをBase64テキストに変換した結果
 	 * @throws IOException MIDIデータの読み込みに失敗した場合
 	 */
 	public String getMidiDataBase64() throws IOException {
-		SequenceTrackListTableModel s = sequencerModel.getSequenceTrackListTableModel();
-		if( s == null ) return null;
 		Base64Dialog d = midiEditor.playlistTable.base64Dialog;
-		d.setMIDIData(s.getMIDIdata());
-		return d.getBase64Data();
+		d.setSequenceModel(sequencerModel.getSequenceTrackListTableModel());
+		return d.getBase64TextData();
 	}
 	/**
 	 * 現在シーケンサにロードされているMIDIファイルのファイル名を返します。
@@ -274,7 +266,7 @@ public class ChordHelperApplet extends JApplet {
 	 */
 	public static class VersionInfo {
 		public static final String NAME = "MIDI Chord Helper";
-		public static final String VERSION = "Ver.20170722.1";
+		public static final String VERSION = "Ver.20170930.1";
 		public static final String COPYRIGHT = "Copyright (C) 2004-2017";
 		public static final String AUTHER = "＠きよし - Akiyoshi Kamide";
 		public static final String URL = "http://www.yk.rim.or.jp/~kamide/music/chordhelper/";
@@ -287,9 +279,6 @@ public class ChordHelperApplet extends JApplet {
 	}
 	/** ボタンの余白を詰めたいときに setMargin() の引数に指定するインセット */
 	public static final Insets ZERO_INSETS = new Insets(0,0,0,0);
-
-	// MIDIエディタダイアログ（Javaアプリメインからもアクセスできるようprivateにしていない）
-	MidiSequenceEditorDialog midiEditor;
 
 	// GUIコンポーネント（内部保存用）
 	private PlaylistTableModel playlistModel;
@@ -309,6 +298,15 @@ public class ChordHelperApplet extends JApplet {
 	private AnoGakkiPane anoGakkiPane;
 	private JToggleButton anoGakkiToggleButton;
 	private MidiDeviceTreeModel deviceTreeModel;
+
+	private MidiSequenceEditorDialog midiEditor;
+	/**
+	 * MIDIエディタダイアログを返します。
+	 * @return MIDIエディタダイアログ
+	 */
+	public MidiSequenceEditorDialog getMidiEditor() {
+		return midiEditor;
+	}
 
 	// アイコン画像
 	private Image iconImage;
@@ -412,7 +410,8 @@ public class ChordHelperApplet extends JApplet {
 		});
 		// 再生時間位置の移動、シーケンス名の変更、またはシーケンスの入れ替えが発生したときに呼び出されるリスナーを登録
 		SongTitleLabel songTitleLabel = new SongTitleLabel();
-		sequencerModel.addChangeListener(e->{
+		sequencerModel.addChangeListener(event->{
+			MidiSequencerModel sequencerModel = (MidiSequencerModel) event.getSource();
 			Sequencer sequencer = sequencerModel.getSequencer();
 			chordMatrix.setPlaying(sequencer.isRunning());
 			SequenceTrackListTableModel sequenceModel = sequencerModel.getSequenceTrackListTableModel();
@@ -457,8 +456,8 @@ public class ChordHelperApplet extends JApplet {
 			add( Box.createHorizontalStrut(5) );
 			add( darkModeToggleButton = new JToggleButton(new ButtonIcon(ButtonIcon.DARK_MODE_ICON)) {{
 				setMargin(ZERO_INSETS);
-				addItemListener(e->{
-					boolean isDark = darkModeToggleButton.isSelected();
+				addItemListener(event->{
+					boolean isDark = ((JToggleButton)event.getSource()).isSelected();
 					Color col = isDark ? Color.black : null;
 					getContentPane().setBackground(isDark ? Color.black : rootPaneDefaultBgcolor);
 					mainSplitPane.setBackground(col);
@@ -488,9 +487,9 @@ public class ChordHelperApplet extends JApplet {
 				setMargin(ZERO_INSETS);
 				setBorder(null);
 				setToolTipText("あの楽器");
-				addItemListener(e->
+				addItemListener(event->
 					keyboardPanel.keyboardCenterPanel.keyboard.anoGakkiPane
-					= anoGakkiToggleButton.isSelected() ? anoGakkiPane : null
+					= ((JToggleButton)event.getSource()).isSelected() ? anoGakkiPane : null
 				);
 			}} );
 			add( Box.createHorizontalStrut(5) );

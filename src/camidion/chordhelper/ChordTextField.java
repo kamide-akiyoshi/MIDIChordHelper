@@ -104,7 +104,7 @@ public class ChordTextField extends JTextField {
 	private Chord currentChord = null;
 	/**
 	 * コードを追加します。
-	 * @param chord コード
+	 * @param chord 追加するコード
 	 */
 	public void appendChord(Chord chord) {
 		if( currentChord == null && chord == null )

@@ -44,7 +44,6 @@ import javax.swing.table.TableColumnModel;
 
 import camidion.chordhelper.ChordHelperApplet;
 import camidion.chordhelper.mididevice.MidiSequencerModel;
-import camidion.chordhelper.music.MIDISpec;
 
 /**
  * プレイリストビュー（シーケンスリスト）
@@ -129,20 +128,7 @@ public class PlaylistTable extends JTable {
 			}
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				SequenceTrackListTableModel sequenceModel = getSelectedSequenceModel();
-				byte[] data = null;
-				String filename = null;
-				if( sequenceModel != null ) {
-					filename = sequenceModel.getFilename();
-					try {
-						data = sequenceModel.getMIDIdata();
-					} catch (IOException ioe) {
-						base64Dialog.setText("File["+filename+"]:"+ioe.toString());
-						base64Dialog.setVisible(true);
-						return;
-					}
-				}
-				base64Dialog.setMIDIData(data, filename);
+				base64Dialog.setSequenceModel(getSelectedSequenceModel());
 				base64Dialog.setVisible(true);
 			}
 		};
@@ -314,22 +300,28 @@ public class PlaylistTable extends JTable {
 	 */
 	@Override
 	public PlaylistTableModel getModel() { return (PlaylistTableModel)dataModel; }
+    /**
+     * {@link #add(List)} を呼び出し、このプレイリストにMIDIファイルを追加します。
+     * @param files MIDIファイル
+     * @return 追加されたMIDIファイルのインデックス値（先頭が0、追加されなかった場合は-1）
+     */
+	public int add(File... files) {
+		return add(Arrays.asList(files));
+	}
 	/**
 	 * このプレイリストにMIDIファイルを追加します。追加に失敗した場合はダイアログを表示し、
 	 * 後続のMIDIファイルが残っていればそれを追加するかどうかをユーザに尋ねます。
-	 * @param fileList MIDIファイルのリスト
+	 * @param files MIDIファイルのリスト
 	 * @return 追加されたMIDIファイルのインデックス値（先頭が0、追加されなかった場合は-1）
 	 */
-	public int add(List<File> fileList) {
+	public int add(List<File> files) {
 		int firstIndex = -1;
-		Iterator<File> itr = fileList.iterator();
+		Iterator<File> itr = files.iterator();
 		while(itr.hasNext()) {
 			File file = itr.next();
 			try (FileInputStream in = new FileInputStream(file)) {
 				Sequence sequence = MidiSystem.getSequence(in);
-				Charset charset = MIDISpec.getCharsetOf(sequence);
-				if( charset == null ) charset = Charset.defaultCharset();
-				int lastIndex = ((PlaylistTableModel)dataModel).add(sequence, charset, file.getName());
+				int lastIndex = ((PlaylistTableModel)dataModel).add(sequence, file.getName());
 				if( firstIndex < 0 ) firstIndex = lastIndex;
 			} catch(IOException|InvalidMidiDataException e) {
 				String message = "Could not open as MIDI file "+file+"\n"+e;
@@ -458,7 +450,7 @@ public class PlaylistTable extends JTable {
 					ex.printStackTrace();
 					return;
 				}
-				int firstIndex = PlaylistTable.this.add(Arrays.asList(getSelectedFile()));
+				int firstIndex = PlaylistTable.this.add(getSelectedFile());
 				try {
 					PlaylistTableModel model = getModel();
 					MidiSequencerModel sequencerModel = model.getSequencerModel();
