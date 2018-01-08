@@ -294,7 +294,7 @@ public class PlaylistTableModel extends AbstractTableModel {
 		if( column != null && ! column.isChanged(event) ) return false;
 		SequenceTrackListTableModel loadedSequence = sequencerModel.getSequenceTrackListTableModel();
 		return loadedSequence != null && IntStream.rangeClosed(event.getFirstRow(), event.getLastRow())
-			.anyMatch( index -> index != TableModelEvent.HEADER_ROW && sequenceModelList.get(index) == loadedSequence );
+				.anyMatch( i -> i >= 0 && i < sequenceModelList.size() && sequenceModelList.get(i) == loadedSequence );
 	}
 	/**
 	 * [row, column]にあるセルの値が更新されたことを、すべてのリスナーに通知します。

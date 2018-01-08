@@ -70,7 +70,7 @@ public class MidiChordHelper extends JFrame implements AppletStub, AppletContext
 		setTitle(titleOf(sequencer.getSequenceTrackListTableModel()));
 	}
 	private MidiChordHelper(List<File> fileList) {
-		setTitle(ChordHelperApplet.VersionInfo.NAME);
+		setTitle(titleOf(null));
 		JLabel startingLabel = new JLabel(
 			"<html>"
 			+"<div width=300 height=50 style='font-size: 120%; font-style: italic; text-align: center;'>"

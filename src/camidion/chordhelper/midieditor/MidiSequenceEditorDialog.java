@@ -120,7 +120,7 @@ public class MidiSequenceEditorDialog extends JDialog {
 	 * すでに再生されていた場合、このエディタダイアログを表示します。
 	 */
 	public void play() {
-		play(playlistTable.getSelectionModel().getMinSelectionIndex());
+		play(playlistTable.getSelectedRow());
 	}
 
 	static final Icon deleteIcon = new ButtonIcon(ButtonIcon.X_ICON);

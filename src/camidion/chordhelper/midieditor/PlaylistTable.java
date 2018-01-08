@@ -62,10 +62,10 @@ public class PlaylistTable extends JTable {
 	 * @return 選択されたMIDIシーケンスのテーブルモデル（非選択時はnull）
 	 */
 	private SequenceTrackListTableModel getSelectedSequenceModel() {
-		if( selectionModel.isSelectionEmpty() ) return null;
-		int selectedIndex = selectionModel.getMinSelectionIndex();
+		int i = getSelectedRow();
+		if( i < 0 ) return null;
 		List<SequenceTrackListTableModel> list = getModel().getSequenceModelList();
-		return selectedIndex >= list.size() ? null : list.get(selectedIndex);
+		return i >= list.size() ? null : list.get(i);
 	}
 	/**
 	 * 行が選択されているときだけイネーブルになるアクション
@@ -83,8 +83,7 @@ public class PlaylistTable extends JTable {
 			setEnebledBySelection();
 		}
 		protected void setEnebledBySelection() {
-			int index = selectionModel.getMinSelectionIndex();
-			setEnabled(index >= 0);
+			setEnabled(getSelectedRow() >= 0);
 		}
 		private void init(String tooltip) {
 			putValue(Action.SHORT_DESCRIPTION, tooltip);
@@ -373,10 +372,15 @@ public class PlaylistTable extends JTable {
 			"選択したMIDIシーケンスはまだ保存されていません。プレイリストから削除しますか？";
 		@Override
 		public void actionPerformed(ActionEvent event) {
+			int index = getSelectedRow();
+			if( index < 0 ) return;
 			PlaylistTableModel model = getModel();
+			List<SequenceTrackListTableModel> list = model.getSequenceModelList();
+			if( index >= list.size() ) return;
+			SequenceTrackListTableModel sequenceModel = list.get(index);
+			if( sequenceModel == null ) return;
 			if( midiFileChooser != null ) {
-				SequenceTrackListTableModel sequenceModel = getSelectedSequenceModel();
-				if( sequenceModel != null && sequenceModel.isModified() && JOptionPane.showConfirmDialog(
+				if( sequenceModel.isModified() && JOptionPane.showConfirmDialog(
 						((JComponent)event.getSource()).getRootPane(),
 						CONFIRM_MESSAGE,
 						ChordHelperApplet.VersionInfo.NAME,
@@ -384,8 +388,8 @@ public class PlaylistTable extends JTable {
 						JOptionPane.WARNING_MESSAGE) != JOptionPane.YES_OPTION
 				) return;
 			}
-			if( ! selectionModel.isSelectionEmpty() ) try {
-				model.remove(selectionModel.getMinSelectionIndex());
+			try {
+				model.remove(index);
 			} catch (Exception ex) {
 				JOptionPane.showMessageDialog(
 						((JComponent)event.getSource()).getRootPane(), ex,

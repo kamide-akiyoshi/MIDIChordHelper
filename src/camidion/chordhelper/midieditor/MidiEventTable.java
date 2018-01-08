@@ -198,7 +198,7 @@ public class MidiEventTable extends JTable {
 			eventDialog.midiMessageForm.durationForm.setPPQ(ppq);
 			tickPositionModel.setSequenceIndex(sequenceTableModel.getSequenceTickIndex());
 
-			selectedIndex = selectionModel.getMinSelectionIndex();
+			selectedIndex = getSelectedRow();
 			selectedMidiEvent = selectedIndex < 0 ? null : trackModel.getMidiEvent(selectedIndex);
 			currentTick = selectedMidiEvent == null ? 0 : selectedMidiEvent.getTick();
 			tickPositionModel.setTickPosition(currentTick);

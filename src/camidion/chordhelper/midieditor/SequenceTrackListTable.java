@@ -80,7 +80,7 @@ public class SequenceTrackListTable extends JTable {
 			if( event.getValueIsAdjusting() ) return;
 			deleteTrackAction.setEnabled(! selectionModel.isSelectionEmpty());
 			eventListTable.setModel(getModel().getSelectedTrackModel(selectionModel));
-			eventListTable.titleLabel.showTrackNumber(selectionModel.getMinSelectionIndex());
+			eventListTable.titleLabel.showTrackNumber(getSelectedRow());
 		});
 	}
 	/**
