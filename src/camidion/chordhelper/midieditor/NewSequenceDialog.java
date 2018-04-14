@@ -15,6 +15,7 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Vector;
 
 import javax.sound.midi.MidiChannel;
@@ -22,12 +23,15 @@ import javax.sound.midi.Sequence;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.BoxLayout;
+import javax.swing.DefaultListCellRenderer;
+import javax.swing.DefaultListModel;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
+import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -36,7 +40,10 @@ import javax.swing.JSpinner;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
+import javax.swing.ListModel;
+import javax.swing.ListSelectionModel;
 import javax.swing.SpinnerNumberModel;
+import javax.swing.SwingConstants;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
@@ -68,23 +75,7 @@ public class NewSequenceDialog extends JDialog {
 	private TimeSignatureSelecter timesigSelecter = new TimeSignatureSelecter();
 	private TempoSelecter tempoSelecter = new TempoSelecter();
 	private MeasureSelecter measureSelecter = new MeasureSelecter();
-	private TrackSpecPanel trackSpecPanel = new TrackSpecPanel() {{
-		DrumTrackSpec dts = new DrumTrackSpec(9, "Percussion track");
-		dts.velocity = 127;
-		addTrackSpec(dts);
-		MelodyTrackSpec mts;
-		mts = new MelodyTrackSpec(2, "Bass track", new Range(36,48));
-		mts.isBass = true;
-		mts.velocity = 96;
-		addTrackSpec(mts);
-		mts =  new MelodyTrackSpec(1, "Chord track", new Range(60,72));
-		addTrackSpec(mts);
-		mts = new MelodyTrackSpec(0, "Melody track", new Range(60,84));
-		mts.randomMelody = true;
-		mts.beatPattern = 0xFFFF;
-		mts.continuousBeatPattern = 0x820A;
-		addTrackSpec(mts);
-	}};
+	private TrackSpecPanel trackSpecPanel = new TrackSpecPanel();
 	/**
 	 * ダイアログを開くアクション
 	 */
@@ -254,14 +245,23 @@ public class NewSequenceDialog extends JDialog {
 		timesigSelecter.setValue((byte)timesig_upper, (byte)timesig_lower_index);
 		setChordProgression(new ChordProgression(measureLength, timesig_upper));
 	}
+	private static class TrackSelecter extends JList<AbstractNoteTrackSpec> {
+		public TrackSelecter() {
+			setLayoutOrientation(HORIZONTAL_WRAP);
+			setVisibleRowCount(1);
+			setFixedCellWidth(130);
+			DefaultListCellRenderer renderer = (DefaultListCellRenderer) getCellRenderer();
+			renderer.setHorizontalAlignment(SwingConstants.CENTER);
+			setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+		}
+	}
 	/**
-	 * トラック設定画面
+	 * トラック仕様設定パネル
 	 */
 	private static class TrackSpecPanel extends JPanel
-		implements PianoKeyboardListener, ActionListener, ChangeListener
+		implements PianoKeyboardListener, ChangeListener
 	{
-		JComboBox<AbstractNoteTrackSpec> trackSelecter = new JComboBox<>();
-		JLabel trackTypeLabel = new JLabel();
+		TrackSelecter trackSelecter = new TrackSelecter();
 		JTextField nameTextField = new JTextField(20);
 		MidiChannelComboSelecter chSelecter =
 			new MidiChannelComboSelecter("MIDI Channel:");
@@ -287,13 +287,11 @@ public class NewSequenceDialog extends JDialog {
 		private MidiChannel[] midiChannels;
 
 		public TrackSpecPanel() {
-			nameTextField.addActionListener(this);
+			nameTextField.addActionListener(
+				e -> getTrackSpec().name = nameTextField.getText()
+			);
 			keyboardPanel.keyboard.addPianoKeyboardListener(this);
-			add(new JPanel() {{
-				add(new JLabel("Track select:"));
-				add(trackSelecter);
-			}});
-			add(trackTypeLabel);
+			add(trackSelecter);
 			add(new JPanel() {{
 				add(new JLabel("Track name (Press [Enter] key to change):"));
 				add(nameTextField);
@@ -314,12 +312,64 @@ public class NewSequenceDialog extends JDialog {
 			nsx39Checkbox.addChangeListener(this);
 			add(nsx39Checkbox);
 			add(beatPadPanel);
-			trackSelecter.addActionListener(this);
-			chSelecter.comboBox.addActionListener(this);
+			trackSelecter.addListSelectionListener(e -> {
+				AbstractNoteTrackSpec ants = trackSelecter.getSelectedValue();
+				nameTextField.setText(ants.name);
+				chSelecter.setSelectedChannel(ants.midiChannel);
+				keyboardPanel.keyboard.velocityModel.setValue(ants.velocity);
+				pgSelecter.setProgram(ants.programNumber);
+				keyboardPanel.keyboard.clear();
+				if( ants instanceof DrumTrackSpec ) {
+					rangePanel.setVisible(false);
+					randomMelodyCheckbox.setVisible(false);
+					randomLyricCheckbox.setVisible(false);
+					nsx39Checkbox.setVisible(false);
+					bassCheckbox.setVisible(false);
+				}
+				else if( ants instanceof MelodyTrackSpec ) {
+					MelodyTrackSpec ts = (MelodyTrackSpec)ants;
+					rangePanel.setVisible(true);
+					keyboardPanel.keyboard.setSelectedNote(ts.range.minNote);
+					keyboardPanel.keyboard.setSelectedNote(ts.range.maxNote);
+					keyboardPanel.keyboard.autoScroll(ts.range.minNote);
+					randomMelodyCheckbox.setSelected(ts.randomMelody);
+					randomLyricCheckbox.setSelected(ts.randomLyric);
+					bassCheckbox.setSelected(ts.isBass);
+					randomMelodyCheckbox.setVisible(true);
+					randomLyricCheckbox.setVisible(true);
+					nsx39Checkbox.setVisible(true);
+					bassCheckbox.setVisible(true);
+				}
+				beatPadPanel.setTrackSpec(ants);
+			});
+			chSelecter.comboBox.addActionListener(
+				e -> getTrackSpec().midiChannel = chSelecter.getSelectedChannel()
+			);
 			keyboardPanel.keyboard.velocityModel.addChangeListener(
 				e -> getTrackSpec().velocity = keyboardPanel.keyboard.velocityModel.getValue()
 			);
-			pgSelecter.addActionListener(this);
+			pgSelecter.addActionListener(
+				e -> getTrackSpec().programNumber = pgSelecter.getProgram()
+			);
+			// Add track specs
+			DefaultListModel<AbstractNoteTrackSpec> tracksModel = new DefaultListModel<>();
+			DrumTrackSpec dts = new DrumTrackSpec(9, "Percussion track");
+			dts.velocity = 127;
+			tracksModel.addElement(dts);
+			MelodyTrackSpec mts;
+			mts = new MelodyTrackSpec(2, "Bass track", new Range(36,48));
+			mts.isBass = true;
+			mts.velocity = 96;
+			tracksModel.addElement(mts);
+			mts =  new MelodyTrackSpec(1, "Chord track", new Range(60,72));
+			tracksModel.addElement(mts);
+			mts = new MelodyTrackSpec(0, "Melody track", new Range(60,84));
+			mts.randomMelody = true;
+			mts.beatPattern = 0xFFFF;
+			mts.continuousBeatPattern = 0x820A;
+			tracksModel.addElement(mts);
+			trackSelecter.setModel(tracksModel);
+			trackSelecter.setSelectedIndex(0);
 		}
 		@Override
 		public void stateChanged(ChangeEvent e) {
@@ -354,55 +404,6 @@ public class NewSequenceDialog extends JDialog {
 			}
 		}
 		@Override
-		public void actionPerformed(ActionEvent e) {
-			Object src = e.getSource();
-			AbstractNoteTrackSpec ants;
-			if( src == nameTextField ) {
-				getTrackSpec().name = nameTextField.getText();
-			}
-			else if( src == trackSelecter ) {
-				ants = (AbstractNoteTrackSpec)(trackSelecter.getSelectedItem());
-				String trackTypeString = "Track type: " + (
-					ants instanceof DrumTrackSpec ? "Percussion" :
-					ants instanceof MelodyTrackSpec ? "Melody" : "(Unknown)"
-				);
-				trackTypeLabel.setText(trackTypeString);
-				nameTextField.setText(ants.name);
-				chSelecter.setSelectedChannel(ants.midiChannel);
-				keyboardPanel.keyboard.velocityModel.setValue(ants.velocity);
-				pgSelecter.setProgram(ants.programNumber);
-				keyboardPanel.keyboard.clear();
-				if( ants instanceof DrumTrackSpec ) {
-					rangePanel.setVisible(false);
-					randomMelodyCheckbox.setVisible(false);
-					randomLyricCheckbox.setVisible(false);
-					nsx39Checkbox.setVisible(false);
-					bassCheckbox.setVisible(false);
-				}
-				else if( ants instanceof MelodyTrackSpec ) {
-					MelodyTrackSpec ts = (MelodyTrackSpec)ants;
-					rangePanel.setVisible(true);
-					keyboardPanel.keyboard.setSelectedNote(ts.range.minNote);
-					keyboardPanel.keyboard.setSelectedNote(ts.range.maxNote);
-					keyboardPanel.keyboard.autoScroll(ts.range.minNote);
-					randomMelodyCheckbox.setSelected(ts.randomMelody);
-					randomLyricCheckbox.setSelected(ts.randomLyric);
-					bassCheckbox.setSelected(ts.isBass);
-					randomMelodyCheckbox.setVisible(true);
-					randomLyricCheckbox.setVisible(true);
-					nsx39Checkbox.setVisible(true);
-					bassCheckbox.setVisible(true);
-				}
-				beatPadPanel.setTrackSpec(ants);
-			}
-			else if( src == chSelecter.comboBox ) {
-				getTrackSpec().midiChannel = chSelecter.getSelectedChannel();
-			}
-			else if( src == pgSelecter ) {
-				getTrackSpec().programNumber = pgSelecter.getProgram();
-			}
-		}
-		@Override
 		public void pianoKeyPressed(int n, InputEvent e) {
 			noteOn(n);
 			AbstractNoteTrackSpec ants = getTrackSpec();
@@ -429,21 +430,18 @@ public class NewSequenceDialog extends JDialog {
 			this.midiChannels = midiChannels;
 		}
 		public AbstractNoteTrackSpec getTrackSpec() {
-			Object trackSpecObj = trackSelecter.getSelectedItem();
-			AbstractNoteTrackSpec ants = (AbstractNoteTrackSpec)trackSpecObj;
+			AbstractNoteTrackSpec ants = trackSelecter.getSelectedValue();
 			ants.name = nameTextField.getText();
 			return ants;
 		}
-		public Vector<AbstractNoteTrackSpec> getTrackSpecs() {
-			Vector<AbstractNoteTrackSpec> trackSpecs = new Vector<>();
-			int i=0, n_items = trackSelecter.getItemCount();
-			while( i < n_items ) {
-				trackSpecs.add((AbstractNoteTrackSpec)trackSelecter.getItemAt(i++));
+		public List<AbstractNoteTrackSpec> getTrackSpecs() {
+			List<AbstractNoteTrackSpec> trackSpecs = new Vector<>();
+			ListModel<AbstractNoteTrackSpec> m = trackSelecter.getModel();
+			int i=0, n = m.getSize();
+			while( i < n ) {
+				trackSpecs.add(m.getElementAt(i++));
 			}
 			return trackSpecs;
-		}
-		public void addTrackSpec(AbstractNoteTrackSpec trackSpec) {
-			trackSelecter.addItem(trackSpec);
 		}
 	}
 	private static class MeasureSelecter extends JPanel {

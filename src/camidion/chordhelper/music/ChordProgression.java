@@ -494,7 +494,7 @@ public class ChordProgression {
 	public Sequence toMidiSequence(
 		int ppq, int startMeasure, int endMeasure,
 		FirstTrackSpec firstTrack,
-		Vector<AbstractNoteTrackSpec> trackSpecs,
+		List<AbstractNoteTrackSpec> trackSpecs,
 		Charset charset
 	) {
 		Sequence seq;
